@@ -1,0 +1,21 @@
+# Regenerable data — never committed
+data/raw/*.jsonl.gz
+data/raw/_console.txt
+data/geo/raw/
+
+# Kept: data/raw/*.meta.json, *.state.json, _fetch_log.txt, _discovery.json
+# (provenance — the indicator registry is built from the metadata, and the
+#  state files record which geography vintage and period window each pull used)
+
+# Secrets and local noise
+.env
+.DS_Store
+__pycache__/
+*.pyc
+
+# Build artefacts that are not the deliverable
+dist/fixture.html
+tests/fixture_*.json
+
+# Never public
+data/processed/portfolio.json

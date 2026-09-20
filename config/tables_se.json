@@ -1,0 +1,537 @@
+{
+ "_doc": "Deep raw pull list for the Swedish edition. One entry per SCB table. `levels` = which geographic level(s) to pull out of SCB's mixed Region dimension: kommun (290) | regso (3363) | deso (6160) | all (everything the table has) | none (no Region dimension). Every other dimension is pulled in full — the raw layer is deliberately wider than the dashboard, so indicator codes can be resolved offline later without re-fetching. `time`: 'all' or 'top(N)' newest periods. Table IDs verified live 2026-09-14/18; anything only known by its old PxWeb path is resolved by scripts/discover_scb.py instead. `pin` is used sparingly: only where a dimension holds alternative definitions of the same measure (overlapping age spans) or bookkeeping series, never to drop a real breakdown. Sex and age splits are kept in full — they are what makes a RegSO/DeSO area page worth opening. Pinned codes are intersected with the table's real codes, so a code that does not exist is dropped rather than failing the pull.",
+ "history_years": 11,
+ "tables": [
+  {
+   "table": "TAB6574",
+   "levels": [
+    "kommun",
+    "regso",
+    "deso"
+   ],
+   "time": "top(11)",
+   "note": "population by region, age and sex — the growth and age-structure backbone"
+  },
+  {
+   "table": "TAB6473",
+   "levels": [
+    "all"
+   ],
+   "time": "top(24)",
+   "note": "monthly population change by region"
+  },
+  {
+   "table": "TAB6568",
+   "levels": [
+    "kommun",
+    "regso",
+    "deso"
+   ],
+   "time": "top(11)",
+   "note": "households by type — one-person share"
+  },
+  {
+   "table": "TAB6571",
+   "levels": [
+    "regso",
+    "deso"
+   ],
+   "time": "top(11)",
+   "note": "foreign/Swedish background"
+  },
+  {
+   "table": "TAB6572",
+   "levels": [
+    "regso"
+   ],
+   "time": "top(11)",
+   "note": "by region of birth"
+  },
+  {
+   "table": "TAB6569",
+   "levels": [
+    "regso"
+   ],
+   "time": "top(11)",
+   "note": "by citizenship"
+  },
+  {
+   "table": "TAB6649",
+   "levels": [
+    "kommun"
+   ],
+   "time": "all",
+   "note": "foreign/Swedish background, kommun"
+  },
+  {
+   "table": "TAB6683",
+   "levels": [
+    "regso",
+    "deso"
+   ],
+   "time": "top(11)",
+   "note": "net income structure — mean amounts"
+  },
+  {
+   "table": "TAB5750",
+   "levels": [
+    "regso"
+   ],
+   "time": "all",
+   "note": "median disposable income, RegSO (price base amounts, frozen 2023)",
+   "pin": {
+    "Kon": [
+     "1+2"
+    ],
+    "ContentsCode": [
+     "000004X3",
+     "000004X4"
+    ]
+   }
+  },
+  {
+   "table": "TAB6684",
+   "levels": [
+    "regso",
+    "deso"
+   ],
+   "time": "top(11)",
+   "note": "equivalised income quartiles"
+  },
+  {
+   "table": "TAB6685",
+   "levels": [
+    "regso",
+    "deso"
+   ],
+   "time": "top(11)",
+   "note": "low / high economic standard — the affordability proxy"
+  },
+  {
+   "table": "TAB1792",
+   "levels": [
+    "kommun"
+   ],
+   "time": "top(11)",
+   "note": "income variables by kommun"
+  },
+  {
+   "table": "TAB6534",
+   "levels": [
+    "kommun",
+    "regso",
+    "deso"
+   ],
+   "time": "all",
+   "note": "education level 25-65 (2024-2025)"
+  },
+  {
+   "table": "TAB5956",
+   "levels": [
+    "regso",
+    "deso"
+   ],
+   "time": "all",
+   "note": "education, older series 2015-2023"
+  },
+  {
+   "table": "TAB824",
+   "levels": [
+    "kommun"
+   ],
+   "time": "top(11)",
+   "note": "dwelling stock by building type and tenure"
+  },
+  {
+   "table": "TAB6638",
+   "levels": [
+    "regso",
+    "deso"
+   ],
+   "time": "all",
+   "note": "dwellings by tenure, sub-municipal"
+  },
+  {
+   "table": "TAB6258",
+   "levels": [
+    "regso",
+    "deso"
+   ],
+   "time": "all",
+   "note": "dwellings by tenure, older vintage"
+  },
+  {
+   "table": "TAB826",
+   "levels": [
+    "all"
+   ],
+   "time": "top(11)",
+   "note": "dwellings by building type and floor space"
+  },
+  {
+   "table": "TAB5291",
+   "levels": [
+    "all"
+   ],
+   "time": "top(11)",
+   "note": "floor space per dwelling by tenure"
+  },
+  {
+   "table": "TAB1541",
+   "levels": [
+    "all"
+   ],
+   "time": "top(11)",
+   "note": "floor space per person"
+  },
+  {
+   "table": "TAB6065",
+   "levels": [
+    "regso"
+   ],
+   "time": "top(11)",
+   "note": "persons by type of building"
+  },
+  {
+   "table": "TAB6253",
+   "levels": [
+    "regso"
+   ],
+   "time": "top(11)",
+   "note": "persons by tenure"
+  },
+  {
+   "table": "TAB6680",
+   "levels": [
+    "regso",
+    "deso"
+   ],
+   "time": "all",
+   "note": "labour market status (2020-2024)",
+   "pin": {
+    "Alder": [
+     "20-64",
+     "15-74"
+    ]
+   }
+  },
+  {
+   "table": "TAB6681",
+   "levels": [
+    "regso"
+   ],
+   "time": "all",
+   "note": "employed by industry"
+  },
+  {
+   "table": "TAB6682",
+   "levels": [
+    "regso"
+   ],
+   "time": "all",
+   "note": "employed by sector"
+  },
+  {
+   "table": "TAB6586",
+   "levels": [
+    "regso"
+   ],
+   "time": "all",
+   "note": "socio-economic index — RegSO only"
+  },
+  {
+   "table": "TAB6766",
+   "levels": [
+    "regso"
+   ],
+   "time": "top(6)",
+   "note": "self-sufficiency",
+   "pin": {
+    "Kon": [
+     "1+2"
+    ],
+    "Alder": [
+     "20-64"
+    ]
+   }
+  },
+  {
+   "table": "TAB4590",
+   "levels": [
+    "all"
+   ],
+   "time": "all",
+   "note": "RENT SEK/m2/yr by kommun, median + mean + margins (2016-2025)"
+  },
+  {
+   "table": "TAB4603",
+   "levels": [
+    "all"
+   ],
+   "time": "all",
+   "note": "rent by number of rooms, larger kommuner"
+  },
+  {
+   "table": "TAB4611",
+   "levels": [
+    "all"
+   ],
+   "time": "all",
+   "note": "rent by construction year"
+  },
+  {
+   "table": "TAB4612",
+   "levels": [
+    "all"
+   ],
+   "time": "all",
+   "note": "rent by rooms and construction year"
+  },
+  {
+   "table": "TAB4610",
+   "levels": [
+    "all"
+   ],
+   "time": "all",
+   "note": "rent by construction year and owner category"
+  },
+  {
+   "table": "TAB4618",
+   "levels": [
+    "all"
+   ],
+   "time": "all",
+   "note": "rent by rooms and owner category — allmännytta vs private"
+  },
+  {
+   "table": "TAB4619",
+   "levels": [
+    "all"
+   ],
+   "time": "all",
+   "note": "rent by rooms, year and owner category"
+  },
+  {
+   "table": "TAB4620",
+   "levels": [
+    "all"
+   ],
+   "time": "all",
+   "note": "rent change %"
+  },
+  {
+   "table": "TAB4621",
+   "levels": [
+    "all"
+   ],
+   "time": "all",
+   "note": "rent change %"
+  },
+  {
+   "table": "TAB4622",
+   "levels": [
+    "all"
+   ],
+   "time": "all",
+   "note": "rent change %"
+  },
+  {
+   "table": "TAB4623",
+   "levels": [
+    "all"
+   ],
+   "time": "all",
+   "note": "rent change %"
+  },
+  {
+   "table": "TAB6051",
+   "levels": [
+    "all"
+   ],
+   "time": "all",
+   "note": "rent change, national series from 1969"
+  },
+  {
+   "table": "TAB6417",
+   "levels": [
+    "all"
+   ],
+   "time": "all",
+   "note": "new-build rents by rent-setting model (bruksvärde / presumtionshyra)"
+  },
+  {
+   "table": "TAB6421",
+   "levels": [
+    "all"
+   ],
+   "time": "all",
+   "note": "new-build rents, companion table"
+  },
+  {
+   "table": "TAB5602",
+   "levels": [
+    "all"
+   ],
+   "time": "all",
+   "note": "vacant dwellings + vacancy rate (6 groups, triennial)"
+  },
+  {
+   "table": "TAB5603",
+   "levels": [
+    "all"
+   ],
+   "time": "all",
+   "note": "vacancy"
+  },
+  {
+   "table": "TAB5604",
+   "levels": [
+    "all"
+   ],
+   "time": "all",
+   "note": "vacancy"
+  },
+  {
+   "table": "TAB5605",
+   "levels": [
+    "all"
+   ],
+   "time": "all",
+   "note": "vacancy"
+  },
+  {
+   "table": "TAB3208",
+   "levels": [
+    "all"
+   ],
+   "time": "top(30)",
+   "note": "vacant dwellings, allmännytta, twice a year"
+  },
+  {
+   "table": "TAB1169",
+   "levels": [
+    "all"
+   ],
+   "time": "top(11)",
+   "note": "PRICES: småhus sales, mean price, K/T-tal by kommun"
+  },
+  {
+   "table": "TAB3655",
+   "levels": [
+    "none"
+   ],
+   "time": "top(132)",
+   "note": "småhusbarometern, national, monthly"
+  },
+  {
+   "table": "TAB3656",
+   "levels": [
+    "all"
+   ],
+   "time": "top(132)",
+   "note": "småhusbarometern, län, 3-month rolling"
+  },
+  {
+   "table": "TAB1167",
+   "levels": [
+    "all"
+   ],
+   "time": "top(45)",
+   "note": "småhus prices, quarterly, län"
+  },
+  {
+   "table": "TAB1151",
+   "levels": [
+    "all"
+   ],
+   "time": "top(11)",
+   "note": "bostadsrätt prices, län, annual"
+  },
+  {
+   "table": "TAB1149",
+   "levels": [
+    "all"
+   ],
+   "time": "top(45)",
+   "note": "property price index"
+  },
+  {
+   "table": "TAB1150",
+   "levels": [
+    "all"
+   ],
+   "time": "top(45)",
+   "note": "property price index"
+  },
+  {
+   "table": "TAB4572",
+   "levels": [
+    "kommun"
+   ],
+   "time": "top(45)",
+   "note": "CONSTRUCTION: dwellings started and completed, quarterly"
+  },
+  {
+   "table": "TAB6925",
+   "levels": [
+    "kommun"
+   ],
+   "time": "top(45)",
+   "note": "started/completed, specialbostäder split out"
+  },
+  {
+   "table": "TAB4193",
+   "levels": [
+    "kommun"
+   ],
+   "time": "top(11)",
+   "note": "completed dwellings by tenure"
+  },
+  {
+   "table": "TAB4194",
+   "levels": [
+    "kommun"
+   ],
+   "time": "top(11)",
+   "note": "completed by owner category"
+  },
+  {
+   "table": "TAB4195",
+   "levels": [
+    "kommun"
+   ],
+   "time": "top(11)",
+   "note": "completed by dwelling type"
+  },
+  {
+   "table": "TAB6598",
+   "levels": [
+    "none"
+   ],
+   "time": "top(132)",
+   "note": "CPI by COICOP — 04.1 is the rent index"
+  },
+  {
+   "table": "TAB6602",
+   "levels": [
+    "none"
+   ],
+   "time": "top(132)",
+   "note": "KPIF"
+  },
+  {
+   "table": "TAB6612",
+   "levels": [
+    "none"
+   ],
+   "time": "top(132)",
+   "note": "CPI companion table",
+   "pin": {
+    "ContentsCode": [
+     "000007WR",
+     "0000080A"
+    ]
+   }
+  }
+ ]
+}

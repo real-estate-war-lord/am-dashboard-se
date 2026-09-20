@@ -1,0 +1,85 @@
+{
+ "unemployment_kommun": {
+  "query": "arbetsmarknadsstatus region",
+  "why": "BAS monthly labour market status, 290 kommuner (was AM0210A/ArbStatusM)",
+  "hits": []
+ },
+ "_raw_sample": {
+  "language": "en",
+  "tables": [],
+  "page": {
+   "pageNumber": 1,
+   "pageSize": 3,
+   "totalElements": 0,
+   "totalPages": 1,
+   "links": []
+  },
+  "links": [
+   {
+    "rel": "self",
+    "hreflang": "en",
+    "href": "https://api.scb.se/OV0104/v2beta/api/v2/tables/?lang=en&query=hyra&pagesize=3&pageNumber=1"
+   }
+  ]
+ },
+ "unemployment_deso": {
+  "query": "arbetsmarknadsstatus DeSO",
+  "why": "same at DeSO/RegSO level (was AM0210G)",
+  "hits": []
+ },
+ "mortgage_rates": {
+  "query": "utlåningsränta bindningstid",
+  "why": "lending rates by fixation period (was FM5001C/RantaT01N)",
+  "hits": []
+ },
+ "mortgage_volumes": {
+  "query": "utlåning hushåll bostadsändamål",
+  "why": "housing lending volumes (was FM5001A)",
+  "hits": []
+ },
+ "ltv": {
+  "query": "belåningsgrad",
+  "why": "loan-to-value bands (was FM5001Belaningsgrad)",
+  "hits": []
+ },
+ "gdp": {
+  "query": "bruttonationalprodukt kvartal säsongrensad",
+  "why": "quarterly GDP (was NR0103B)",
+  "hits": []
+ },
+ "wages": {
+  "query": "löneindex",
+  "why": "wage index (was AM0301B)",
+  "hits": []
+ },
+ "assessed_smahus": {
+  "query": "genomsnittligt taxeringsvärde småhus",
+  "why": "assessed values, småhus, by kommun (was BO0601A)",
+  "hits": []
+ },
+ "assessed_other": {
+  "query": "taxeringsvärde hyreshus",
+  "why": "assessed values incl. hyreshus by typkod",
+  "hits": []
+ },
+ "building_permits": {
+  "query": "bygglov nybyggnad lägenheter",
+  "why": "building permits (was BO0101G)",
+  "hits": []
+ },
+ "conversions": {
+  "query": "ombyggnad flerbostadshus",
+  "why": "conversions/ombyggnad",
+  "hits": []
+ },
+ "regional_gdp": {
+  "query": "bruttoregionprodukt",
+  "why": "regional GDP per län (BRP)",
+  "hits": []
+ },
+ "forced_sales": {
+  "query": "exekutiv försäljning fastighet",
+  "why": "forced sales, if SCB carries any",
+  "hits": []
+ }
+}

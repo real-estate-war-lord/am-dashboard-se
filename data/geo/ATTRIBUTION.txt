@@ -1,0 +1,7 @@
+Boundary data: Statistiska centralbyrån (SCB).
+RegSO 2025 and DeSO 2025 via SCB GeoServer WFS (https://geodata.scb.se/geoserver/stat/wfs).
+Kommun and län via SCB's generalised boundary files.
+Licence: CC0 1.0 — free use, redistribution and modification, attribution not required.
+Attribution given voluntarily as "Källa: SCB".
+Note: SCB states the kommun/län boundaries are generalised for thematic mapping
+and not suitable for spatial analysis.
