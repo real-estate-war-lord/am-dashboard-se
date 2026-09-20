@@ -94,6 +94,17 @@ def _request(url: str, body: dict | None = None, tries: int = 3) -> dict:
             raise ScbError(last) from None
         except json.JSONDecodeError as exc:
             raise ScbError(f"response was not JSON: {exc}") from None
+        except OSError as exc:
+            # A read that stalls mid-body raises TimeoutError straight out of
+            # resp.read(), not URLError — it is an OSError and nothing above
+            # catches it. Left alone it escapes as an unexpected exception, and
+            # the caller loses the chunk bookkeeping with it. Retry like any
+            # other transport hiccup, then surface it as a normal ScbError.
+            last = f"{type(exc).__name__}: {exc}"
+            if attempt < tries - 1:
+                time.sleep(5 * (3 ** attempt))
+                continue
+            raise ScbError(last) from None
     raise ScbError(last or "unknown error")
 
 
@@ -191,6 +202,21 @@ def periods_for(all_periods: list[str], spec: str) -> list[str]:
     raise ScbError(f"unsupported time spec '{spec}' (use 'all' or 'top(N)')")
 
 
+def unrequestable(values: list[str]) -> list[str]:
+    """Value codes that cannot be asked for, whatever the transport.
+
+    A comma inside a value code collides with the separator SCB uses between
+    values. `TAB4195`'s `Lagenhetstyp` advertises '1R,1RKV' and '2+R,2+RKV' in
+    its metadata, and both are rejected with 400 'Non-existent value' — sent
+    alone, and over POST as well as GET. It is a defect on SCB's side: the
+    metadata offers codes the data endpoint will not accept. Nothing here can
+    fix it, so they are dropped and named in the pull's note rather than
+    failing the whole table. (`+` is fine — '7+RK' fetches; percent-encoding
+    handles it.)
+    """
+    return [c for c in values if "," in c]
+
+
 def build_selection(meta: dict, level: str, time_spec: str,
                     pin: dict[str, list[str]] | None = None) -> tuple[dict[str, list[str]], str]:
     """Every dimension fully selected, Region narrowed to one level,
@@ -203,6 +229,12 @@ def build_selection(meta: dict, level: str, time_spec: str,
         values = codes(meta, dim)
         if not values:
             raise ScbError(f"dimension '{dim}' has no value codes in metadata")
+        blocked = unrequestable(values)
+        if blocked:
+            values = [c for c in values if c not in blocked]
+            notes.append(f"{dim}: dropped {len(blocked)} uncodeable value(s) {blocked}")
+            if not values:
+                raise ScbError(f"every value code of '{dim}' contains a comma")
         if dim == rdim and level != "none":
             values, note = regions_for(values, level)
             notes.append(note)

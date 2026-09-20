@@ -90,6 +90,13 @@ def pull(table: str, level: str, time_spec: str, note: str, pin: dict | None,
     if refresh:
         state = {"done": [], "rows": 0, "started": None, "finished": None}
         out_path.unlink(missing_ok=True)
+    elif out_path.exists() and not state.get("done"):
+        # Rows on disk that no state file accounts for. Chunks are appended, so
+        # re-running would write them a second time and there is no way to tell
+        # the copies apart afterwards. Nothing records what is in there, so it
+        # cannot be trusted or resumed — start the pull over.
+        log(f"    discarding {out_path.name}: rows on disk with no progress record")
+        out_path.unlink()
     if state.get("finished") and not refresh:
         return "CACHED", int(state.get("rows") or 0), f"already complete {state['finished'][:10]}"
 
@@ -104,11 +111,16 @@ def pull(table: str, level: str, time_spec: str, note: str, pin: dict | None,
                 continue
             try:
                 rows = scb.fetch_rows(table, chunk, scb.region_dim(meta))
-            except scb.ScbError as exc:
+            except Exception as exc:  # noqa: BLE001 — the progress record matters more
+                # Catch everything, not just ScbError: whatever went wrong, the
+                # chunks already written have to be recorded or the next run
+                # appends them again.
+                fh.flush()
                 state["done"] = sorted(done)
                 state["rows"] = rows_written
                 state_path.write_text(json.dumps(state, ensure_ascii=False, indent=1), encoding="utf-8")
-                return "FAILED", rows_written, f"chunk {i}/{len(chunks)}: {exc}"
+                detail = exc if isinstance(exc, scb.ScbError) else f"{type(exc).__name__}: {exc}"
+                return "FAILED", rows_written, f"chunk {i}/{len(chunks)}: {detail}"
             for row in rows:
                 fh.write(json.dumps(row, ensure_ascii=False, separators=(",", ":")) + "\n")
             rows_written += len(rows)
