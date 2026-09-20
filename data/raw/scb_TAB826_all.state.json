@@ -1,0 +1,22 @@
+{
+ "done": [
+  "{\"Bostadsarea\": [\"30mindre\", \"US\", 20], \"ContentsCode\": [\"BO0104AE\", \"BO0104AE\", 1], \"Hustyp\": [\"SMÅHUS\", \"ÖVRHUS\", 3], \"Region\": [\"00\", \"2584\", 312], \"Tid\": [\"2015\", \"2015\", 1]}",
+  "{\"Bostadsarea\": [\"30mindre\", \"US\", 20], \"ContentsCode\": [\"BO0104AE\", \"BO0104AE\", 1], \"Hustyp\": [\"SMÅHUS\", \"ÖVRHUS\", 3], \"Region\": [\"00\", \"2584\", 312], \"Tid\": [\"2016\", \"2016\", 1]}",
+  "{\"Bostadsarea\": [\"30mindre\", \"US\", 20], \"ContentsCode\": [\"BO0104AE\", \"BO0104AE\", 1], \"Hustyp\": [\"SMÅHUS\", \"ÖVRHUS\", 3], \"Region\": [\"00\", \"2584\", 312], \"Tid\": [\"2017\", \"2017\", 1]}",
+  "{\"Bostadsarea\": [\"30mindre\", \"US\", 20], \"ContentsCode\": [\"BO0104AE\", \"BO0104AE\", 1], \"Hustyp\": [\"SMÅHUS\", \"ÖVRHUS\", 3], \"Region\": [\"00\", \"2584\", 312], \"Tid\": [\"2018\", \"2018\", 1]}",
+  "{\"Bostadsarea\": [\"30mindre\", \"US\", 20], \"ContentsCode\": [\"BO0104AE\", \"BO0104AE\", 1], \"Hustyp\": [\"SMÅHUS\", \"ÖVRHUS\", 3], \"Region\": [\"00\", \"2584\", 312], \"Tid\": [\"2019\", \"2019\", 1]}",
+  "{\"Bostadsarea\": [\"30mindre\", \"US\", 20], \"ContentsCode\": [\"BO0104AE\", \"BO0104AE\", 1], \"Hustyp\": [\"SMÅHUS\", \"ÖVRHUS\", 3], \"Region\": [\"00\", \"2584\", 312], \"Tid\": [\"2020\", \"2020\", 1]}",
+  "{\"Bostadsarea\": [\"30mindre\", \"US\", 20], \"ContentsCode\": [\"BO0104AE\", \"BO0104AE\", 1], \"Hustyp\": [\"SMÅHUS\", \"ÖVRHUS\", 3], \"Region\": [\"00\", \"2584\", 312], \"Tid\": [\"2021\", \"2021\", 1]}",
+  "{\"Bostadsarea\": [\"30mindre\", \"US\", 20], \"ContentsCode\": [\"BO0104AE\", \"BO0104AE\", 1], \"Hustyp\": [\"SMÅHUS\", \"ÖVRHUS\", 3], \"Region\": [\"00\", \"2584\", 312], \"Tid\": [\"2022\", \"2022\", 1]}",
+  "{\"Bostadsarea\": [\"30mindre\", \"US\", 20], \"ContentsCode\": [\"BO0104AE\", \"BO0104AE\", 1], \"Hustyp\": [\"SMÅHUS\", \"ÖVRHUS\", 3], \"Region\": [\"00\", \"2584\", 312], \"Tid\": [\"2023\", \"2023\", 1]}",
+  "{\"Bostadsarea\": [\"30mindre\", \"US\", 20], \"ContentsCode\": [\"BO0104AE\", \"BO0104AE\", 1], \"Hustyp\": [\"SMÅHUS\", \"ÖVRHUS\", 3], \"Region\": [\"00\", \"2584\", 312], \"Tid\": [\"2024\", \"2024\", 1]}",
+  "{\"Bostadsarea\": [\"30mindre\", \"US\", 20], \"ContentsCode\": [\"BO0104AE\", \"BO0104AE\", 1], \"Hustyp\": [\"SMÅHUS\", \"ÖVRHUS\", 3], \"Region\": [\"00\", \"2584\", 312], \"Tid\": [\"2025\", \"2025\", 1]}"
+ ],
+ "rows": 205920,
+ "started": "2026-09-20T18:59:26",
+ "finished": "2026-09-20T18:59:44",
+ "updated_at_source": "2026-04-17T06:00:00Z",
+ "vintage": "all levels",
+ "time_spec": "top(11)",
+ "note": "dwellings by building type and floor space"
+}

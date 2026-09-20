@@ -1,0 +1,12 @@
+{
+ "done": [
+  "{\"ContentsCode\": [\"BO0501C1\", \"BO0501C4\", 4], \"Fastighetstyp\": [\"220\", \"221\", 2], \"Region\": [\"00\", \"2584\", 312], \"Tid\": [\"2015\", \"2025\", 11]}"
+ ],
+ "rows": 27456,
+ "started": "2026-09-20T19:18:54",
+ "finished": "2026-09-20T19:18:55",
+ "updated_at_source": "2026-06-05T06:00:00Z",
+ "vintage": "all levels",
+ "time_spec": "top(11)",
+ "note": "PRICES: småhus sales, mean price, K/T-tal by kommun"
+}

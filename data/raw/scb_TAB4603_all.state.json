@@ -1,0 +1,12 @@
+{
+ "done": [
+  "{\"AntalRum\": [\"1\", \"00\", 6], \"ContentsCode\": [\"00000126\", \"00000128\", 4], \"Hyresuppg\": [\"Ah_lgh\", \"Mh_kvm\", 4], \"Region\": [\"0180\", \"V\", 20], \"Tid\": [\"2016\", \"2025\", 10]}"
+ ],
+ "rows": 19200,
+ "started": "2026-09-20T19:18:10",
+ "finished": "2026-09-20T19:18:11",
+ "updated_at_source": "2025-10-03T06:00:00Z",
+ "vintage": "all levels",
+ "time_spec": "all",
+ "note": "rent by number of rooms, larger kommuner"
+}

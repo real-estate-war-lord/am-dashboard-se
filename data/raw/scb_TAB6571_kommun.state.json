@@ -1,0 +1,12 @@
+{
+ "done": [
+  "{\"ContentsCode\": [\"000007Y4\", \"000007Y4\", 1], \"Kon\": [\"1\", \"1+2\", 3], \"Region\": [\"0114\", \"2584\", 290], \"Tid\": [\"2015\", \"2025\", 11], \"UtlBakgrund\": [\"2\", \"SA\", 3]}"
+ ],
+ "rows": 28710,
+ "started": "2026-09-20T18:28:54",
+ "finished": "2026-09-20T18:28:57",
+ "updated_at_source": "2026-03-24T07:00:00Z",
+ "vintage": "kommun",
+ "time_spec": "top(11)",
+ "note": "foreign/Swedish background"
+}

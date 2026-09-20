@@ -1,0 +1,12 @@
+{
+ "done": [
+  "{\"ContentsCode\": [\"BO0701A6\", \"BO0701A7\", 2], \"Hustyp\": [\"0001\", \"0002\", 3], \"Region\": [\"00\", \"25\", 30], \"Tid\": [\"2015K2\", \"2026K2\", 45]}"
+ ],
+ "rows": 8100,
+ "started": "2026-09-20T19:19:54",
+ "finished": "2026-09-20T19:19:55",
+ "updated_at_source": "2026-08-24T06:00:00Z",
+ "vintage": "all levels",
+ "time_spec": "top(45)",
+ "note": "building permits: count and gross floor area, quarterly — same 30 regions, no kommun"
+}

@@ -1,0 +1,12 @@
+{
+ "done": [
+  "{\"ContentsCode\": [\"000004AE\", \"000004AD\", 3], \"Fardigstallandear\": [\"01\", \"99\", 10], \"Region\": [\"00\", \"0041\", 6], \"Tid\": [\"2019\", \"2024\", 3]}"
+ ],
+ "rows": 540,
+ "started": "2026-09-20T19:18:48",
+ "finished": "2026-09-20T19:18:49",
+ "updated_at_source": "2024-12-10T07:00:00Z",
+ "vintage": "all levels",
+ "time_spec": "all",
+ "note": "vacancy"
+}

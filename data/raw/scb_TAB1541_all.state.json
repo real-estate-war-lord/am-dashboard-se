@@ -1,0 +1,22 @@
+{
+ "done": [
+  "{\"Boendeform\": [\"SMAG\", \"TOT\", 9], \"ContentsCode\": [\"HE0111DJ\", \"HE0111DJ\", 1], \"Hushallstyp\": [\"LEK\", \"SAMTLH\", 13], \"Region\": [\"00\", \"2584\", 312], \"Tid\": [\"2015\", \"2015\", 1]}",
+  "{\"Boendeform\": [\"SMAG\", \"TOT\", 9], \"ContentsCode\": [\"HE0111DJ\", \"HE0111DJ\", 1], \"Hushallstyp\": [\"LEK\", \"SAMTLH\", 13], \"Region\": [\"00\", \"2584\", 312], \"Tid\": [\"2016\", \"2016\", 1]}",
+  "{\"Boendeform\": [\"SMAG\", \"TOT\", 9], \"ContentsCode\": [\"HE0111DJ\", \"HE0111DJ\", 1], \"Hushallstyp\": [\"LEK\", \"SAMTLH\", 13], \"Region\": [\"00\", \"2584\", 312], \"Tid\": [\"2017\", \"2017\", 1]}",
+  "{\"Boendeform\": [\"SMAG\", \"TOT\", 9], \"ContentsCode\": [\"HE0111DJ\", \"HE0111DJ\", 1], \"Hushallstyp\": [\"LEK\", \"SAMTLH\", 13], \"Region\": [\"00\", \"2584\", 312], \"Tid\": [\"2018\", \"2018\", 1]}",
+  "{\"Boendeform\": [\"SMAG\", \"TOT\", 9], \"ContentsCode\": [\"HE0111DJ\", \"HE0111DJ\", 1], \"Hushallstyp\": [\"LEK\", \"SAMTLH\", 13], \"Region\": [\"00\", \"2584\", 312], \"Tid\": [\"2019\", \"2019\", 1]}",
+  "{\"Boendeform\": [\"SMAG\", \"TOT\", 9], \"ContentsCode\": [\"HE0111DJ\", \"HE0111DJ\", 1], \"Hushallstyp\": [\"LEK\", \"SAMTLH\", 13], \"Region\": [\"00\", \"2584\", 312], \"Tid\": [\"2020\", \"2020\", 1]}",
+  "{\"Boendeform\": [\"SMAG\", \"TOT\", 9], \"ContentsCode\": [\"HE0111DJ\", \"HE0111DJ\", 1], \"Hushallstyp\": [\"LEK\", \"SAMTLH\", 13], \"Region\": [\"00\", \"2584\", 312], \"Tid\": [\"2021\", \"2021\", 1]}",
+  "{\"Boendeform\": [\"SMAG\", \"TOT\", 9], \"ContentsCode\": [\"HE0111DJ\", \"HE0111DJ\", 1], \"Hushallstyp\": [\"LEK\", \"SAMTLH\", 13], \"Region\": [\"00\", \"2584\", 312], \"Tid\": [\"2022\", \"2022\", 1]}",
+  "{\"Boendeform\": [\"SMAG\", \"TOT\", 9], \"ContentsCode\": [\"HE0111DJ\", \"HE0111DJ\", 1], \"Hushallstyp\": [\"LEK\", \"SAMTLH\", 13], \"Region\": [\"00\", \"2584\", 312], \"Tid\": [\"2023\", \"2023\", 1]}",
+  "{\"Boendeform\": [\"SMAG\", \"TOT\", 9], \"ContentsCode\": [\"HE0111DJ\", \"HE0111DJ\", 1], \"Hushallstyp\": [\"LEK\", \"SAMTLH\", 13], \"Region\": [\"00\", \"2584\", 312], \"Tid\": [\"2024\", \"2024\", 1]}",
+  "{\"Boendeform\": [\"SMAG\", \"TOT\", 9], \"ContentsCode\": [\"HE0111DJ\", \"HE0111DJ\", 1], \"Hushallstyp\": [\"LEK\", \"SAMTLH\", 13], \"Region\": [\"00\", \"2584\", 312], \"Tid\": [\"2025\", \"2025\", 1]}"
+ ],
+ "rows": 401544,
+ "started": "2026-09-20T18:59:45",
+ "finished": "2026-09-20T19:00:00",
+ "updated_at_source": "2026-04-17T06:00:00Z",
+ "vintage": "all levels",
+ "time_spec": "top(11)",
+ "note": "floor space per person"
+}

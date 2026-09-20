@@ -1,0 +1,12 @@
+{
+ "done": [
+  "{\"ContentsCode\": [\"NR0103A!\", \"NR0103A¤\", 2], \"EkoIndikator\": [\"BNP10\", \"BNP70\", 7], \"Tid\": [\"1981K1\", \"2026K2\", 182]}"
+ ],
+ "rows": 2548,
+ "started": "2026-09-20T19:34:03",
+ "finished": "2026-09-20T19:34:03",
+ "updated_at_source": "2026-08-28T06:00:00Z",
+ "vintage": "",
+ "time_spec": "all",
+ "note": "GDP (NR0103): quarterly volume change, y/y and seasonally adjusted q/q"
+}

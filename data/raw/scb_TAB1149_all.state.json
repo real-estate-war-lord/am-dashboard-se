@@ -1,0 +1,12 @@
+{
+ "done": [
+  "{\"ContentsCode\": [\"BO0501N9\", \"BO0501N9\", 1], \"Region\": [\"00\", \"RIKS8\", 12], \"Tid\": [\"1981\", \"2025\", 45]}"
+ ],
+ "rows": 540,
+ "started": "2026-09-20T19:19:48",
+ "finished": "2026-09-20T19:19:49",
+ "updated_at_source": "2026-06-05T06:00:00Z",
+ "vintage": "all levels",
+ "time_spec": "top(45)",
+ "note": "property price index"
+}

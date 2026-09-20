@@ -1,0 +1,12 @@
+{
+ "done": [
+  "{\"ContentsCode\": [\"00000864\", \"00000864\", 1], \"Region\": [\"0114A0010_DeSO2025\", \"2584C1130_DeSO2025\", 6160], \"Tid\": [\"2024\", \"2025\", 2], \"Upplatelseform\": [\"1\", \"ÖVRIGT\", 4]}"
+ ],
+ "rows": 49280,
+ "started": "2026-09-20T18:58:15",
+ "finished": "2026-09-20T18:58:19",
+ "updated_at_source": "2026-04-17T06:00:00Z",
+ "vintage": "DeSO2025",
+ "time_spec": "all",
+ "note": "dwellings by tenure, sub-municipal"
+}

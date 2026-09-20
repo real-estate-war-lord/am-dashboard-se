@@ -1,0 +1,22 @@
+{
+ "done": [
+  "{\"ContentsCode\": [\"000007DQ\", \"000007DQ\", 1], \"Region\": [\"0114A0010_DeSO2025\", \"2584C1130_DeSO2025\", 6160], \"Tid\": [\"2015\", \"2015\", 1], \"Upplatelseform\": [\"ÄG/ANDEL\", \"TOTALT\", 5]}",
+  "{\"ContentsCode\": [\"000007DQ\", \"000007DQ\", 1], \"Region\": [\"0114A0010_DeSO2025\", \"2584C1130_DeSO2025\", 6160], \"Tid\": [\"2016\", \"2016\", 1], \"Upplatelseform\": [\"ÄG/ANDEL\", \"TOTALT\", 5]}",
+  "{\"ContentsCode\": [\"000007DQ\", \"000007DQ\", 1], \"Region\": [\"0114A0010_DeSO2025\", \"2584C1130_DeSO2025\", 6160], \"Tid\": [\"2017\", \"2017\", 1], \"Upplatelseform\": [\"ÄG/ANDEL\", \"TOTALT\", 5]}",
+  "{\"ContentsCode\": [\"000007DQ\", \"000007DQ\", 1], \"Region\": [\"0114A0010_DeSO2025\", \"2584C1130_DeSO2025\", 6160], \"Tid\": [\"2018\", \"2018\", 1], \"Upplatelseform\": [\"ÄG/ANDEL\", \"TOTALT\", 5]}",
+  "{\"ContentsCode\": [\"000007DQ\", \"000007DQ\", 1], \"Region\": [\"0114A0010_DeSO2025\", \"2584C1130_DeSO2025\", 6160], \"Tid\": [\"2019\", \"2019\", 1], \"Upplatelseform\": [\"ÄG/ANDEL\", \"TOTALT\", 5]}",
+  "{\"ContentsCode\": [\"000007DQ\", \"000007DQ\", 1], \"Region\": [\"0114A0010_DeSO2025\", \"2584C1130_DeSO2025\", 6160], \"Tid\": [\"2020\", \"2020\", 1], \"Upplatelseform\": [\"ÄG/ANDEL\", \"TOTALT\", 5]}",
+  "{\"ContentsCode\": [\"000007DQ\", \"000007DQ\", 1], \"Region\": [\"0114A0010_DeSO2025\", \"2584C1130_DeSO2025\", 6160], \"Tid\": [\"2021\", \"2021\", 1], \"Upplatelseform\": [\"ÄG/ANDEL\", \"TOTALT\", 5]}",
+  "{\"ContentsCode\": [\"000007DQ\", \"000007DQ\", 1], \"Region\": [\"0114A0010_DeSO2025\", \"2584C1130_DeSO2025\", 6160], \"Tid\": [\"2022\", \"2022\", 1], \"Upplatelseform\": [\"ÄG/ANDEL\", \"TOTALT\", 5]}",
+  "{\"ContentsCode\": [\"000007DQ\", \"000007DQ\", 1], \"Region\": [\"0114A0010_DeSO2025\", \"2584C1130_DeSO2025\", 6160], \"Tid\": [\"2023\", \"2023\", 1], \"Upplatelseform\": [\"ÄG/ANDEL\", \"TOTALT\", 5]}",
+  "{\"ContentsCode\": [\"000007DQ\", \"000007DQ\", 1], \"Region\": [\"0114A0010_DeSO2025\", \"2584C1130_DeSO2025\", 6160], \"Tid\": [\"2024\", \"2024\", 1], \"Upplatelseform\": [\"ÄG/ANDEL\", \"TOTALT\", 5]}",
+  "{\"ContentsCode\": [\"000007DQ\", \"000007DQ\", 1], \"Region\": [\"0114A0010_DeSO2025\", \"2584C1130_DeSO2025\", 6160], \"Tid\": [\"2025\", \"2025\", 1], \"Upplatelseform\": [\"ÄG/ANDEL\", \"TOTALT\", 5]}"
+ ],
+ "rows": 338800,
+ "started": "2026-09-20T19:03:44",
+ "finished": "2026-09-20T19:05:18",
+ "updated_at_source": "2026-04-17T06:00:00Z",
+ "vintage": "DeSO2025",
+ "time_spec": "top(11)",
+ "note": "persons by tenure"
+}

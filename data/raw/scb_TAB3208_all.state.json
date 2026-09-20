@@ -1,0 +1,12 @@
+{
+ "done": [
+  "{\"ContentsCode\": [\"BO0303E1\", \"BO0303E2\", 2], \"Fardigstallandear\": [\"01\", \"99\", 10], \"OuthOrsak\": [\"1\", \"5\", 5], \"Tid\": [\"2000M09\", \"2024M09\", 19]}"
+ ],
+ "rows": 1900,
+ "started": "2026-09-20T19:18:53",
+ "finished": "2026-09-20T19:18:54",
+ "updated_at_source": "2024-12-10T07:00:00Z",
+ "vintage": "",
+ "time_spec": "top(30)",
+ "note": "vacant dwellings, allmännytta, twice a year"
+}

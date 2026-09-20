@@ -1,0 +1,12 @@
+{
+ "done": [
+  "{\"Agarkategori\": [\"PrivOovriga\", \"00\", 3], \"ByggAr\": [\"1\", \"00\", 8], \"ContentsCode\": [\"0000013M\", \"0000013N\", 4], \"Hyresuppg\": [\"Ah_kvm\", \"Mh_kvm\", 2], \"Region\": [\"00\", \"0041\", 6], \"Tid\": [\"2016\", \"2025\", 10]}"
+ ],
+ "rows": 11520,
+ "started": "2026-09-20T19:18:15",
+ "finished": "2026-09-20T19:18:16",
+ "updated_at_source": "2025-10-03T06:00:00Z",
+ "vintage": "all levels",
+ "time_spec": "all",
+ "note": "rent by construction year and owner category"
+}

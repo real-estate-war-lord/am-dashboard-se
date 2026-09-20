@@ -1,0 +1,12 @@
+{
+ "done": [
+  "{\"ContentsCode\": [\"000007Z6\", \"000007Z6\", 1], \"Region\": [\"0114\", \"2584\", 290], \"Tid\": [\"2024\", \"2025\", 2], \"UtbildningsNiva\": [\"21\", \"US\", 5]}"
+ ],
+ "rows": 2900,
+ "started": "2026-09-20T18:56:16",
+ "finished": "2026-09-20T18:56:17",
+ "updated_at_source": "2026-04-27T06:00:00Z",
+ "vintage": "kommun",
+ "time_spec": "all",
+ "note": "education level 25-65 (2024-2025)"
+}

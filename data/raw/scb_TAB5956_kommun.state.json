@@ -1,0 +1,12 @@
+{
+ "done": [
+  "{\"ContentsCode\": [\"000005MO\", \"000005MO\", 1], \"Region\": [\"0114\", \"2584\", 290], \"Tid\": [\"2015\", \"2023\", 9], \"UtbildningsNiva\": [\"21\", \"US\", 5]}"
+ ],
+ "rows": 13050,
+ "started": "2026-09-20T18:56:26",
+ "finished": "2026-09-20T18:56:28",
+ "updated_at_source": "2024-04-25T06:00:00Z",
+ "vintage": "kommun",
+ "time_spec": "all",
+ "note": "education, older series 2015-2023"
+}

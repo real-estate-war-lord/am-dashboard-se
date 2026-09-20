@@ -1,0 +1,12 @@
+{
+ "done": [
+  "{\"Agarkategori\": [\"PrivOovriga\", \"00\", 3], \"AntalRum\": [\"1\", \"00\", 6], \"ContentsCode\": [\"0000014L\", \"0000014M\", 4], \"Region\": [\"00\", \"0041\", 6], \"Tid\": [\"2016\", \"2025\", 10]}"
+ ],
+ "rows": 4320,
+ "started": "2026-09-20T19:18:22",
+ "finished": "2026-09-20T19:18:23",
+ "updated_at_source": "2025-10-03T06:00:00Z",
+ "vintage": "all levels",
+ "time_spec": "all",
+ "note": "rent change %"
+}

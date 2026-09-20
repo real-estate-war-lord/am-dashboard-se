@@ -1,0 +1,12 @@
+{
+ "done": [
+  "{\"Agarkategori\": [\"ALLMN\", \"TOT\", 3], \"ContentsCode\": [\"000004A4\", \"000004A6\", 6], \"Fardigstallandear\": [\"01\", \"99\", 8], \"Region\": [\"00\", \"0041\", 6], \"Tid\": [\"2019\", \"2024\", 3]}"
+ ],
+ "rows": 2592,
+ "started": "2026-09-20T19:18:45",
+ "finished": "2026-09-20T19:18:47",
+ "updated_at_source": "2024-12-10T07:00:00Z",
+ "vintage": "all levels",
+ "time_spec": "all",
+ "note": "vacant dwellings + vacancy rate (6 groups, triennial)"
+}

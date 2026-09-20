@@ -33,6 +33,7 @@
   {
    "table": "TAB6571",
    "levels": [
+    "kommun",
     "regso",
     "deso"
    ],
@@ -66,6 +67,7 @@
   {
    "table": "TAB6683",
    "levels": [
+    "kommun",
     "regso",
     "deso"
    ],
@@ -92,6 +94,7 @@
   {
    "table": "TAB6684",
    "levels": [
+    "kommun",
     "regso",
     "deso"
    ],
@@ -101,6 +104,7 @@
   {
    "table": "TAB6685",
    "levels": [
+    "kommun",
     "regso",
     "deso"
    ],
@@ -128,6 +132,7 @@
   {
    "table": "TAB5956",
    "levels": [
+    "kommun",
     "regso",
     "deso"
    ],
@@ -187,7 +192,9 @@
   {
    "table": "TAB6065",
    "levels": [
-    "regso"
+    "kommun",
+    "regso",
+    "deso"
    ],
    "time": "top(11)",
    "note": "persons by type of building"
@@ -195,7 +202,9 @@
   {
    "table": "TAB6253",
    "levels": [
-    "regso"
+    "kommun",
+    "regso",
+    "deso"
    ],
    "time": "top(11)",
    "note": "persons by tenure"
@@ -242,6 +251,7 @@
   {
    "table": "TAB6766",
    "levels": [
+    "kommun",
     "regso"
    ],
    "time": "top(6)",
@@ -252,6 +262,40 @@
     ],
     "Alder": [
      "20-64"
+    ]
+   }
+  },
+  {
+   "table": "TAB6260",
+   "levels": [
+    "kommun"
+   ],
+   "time": "all",
+   "note": "UNEMPLOYMENT: labour market status by kommun, MONTHLY (AM0210 preliminary, 2020M01-2026M06) — 000006II unemployment %, 000006IK employment rate",
+   "pin": {
+    "Kon": [
+     "1+2"
+    ],
+    "Alder": [
+     "20-64",
+     "15-74"
+    ]
+   }
+  },
+  {
+   "table": "TAB2948",
+   "levels": [
+    "kommun"
+   ],
+   "time": "all",
+   "note": "same, final statistics 2020M01-2024M12 — the revised series behind the preliminary one",
+   "pin": {
+    "Kon": [
+     "1+2"
+    ],
+    "Alder": [
+     "20-64",
+     "15-74"
     ]
    }
   },
@@ -416,6 +460,22 @@
    "note": "PRICES: småhus sales, mean price, K/T-tal by kommun"
   },
   {
+   "table": "TAB3797",
+   "levels": [
+    "kommun"
+   ],
+   "time": "top(11)",
+   "note": "ASSESSED VALUES (BO0601B): all typkod incl. hyreshus, land/building split, by kommun"
+  },
+  {
+   "table": "TAB5149",
+   "levels": [
+    "kommun"
+   ],
+   "time": "top(11)",
+   "note": "assessed values, smahus (typkod 220/221), incl. average per unit, by kommun"
+  },
+  {
    "table": "TAB3655",
    "levels": [
     "none"
@@ -470,6 +530,22 @@
    ],
    "time": "top(45)",
    "note": "CONSTRUCTION: dwellings started and completed, quarterly"
+  },
+  {
+   "table": "TAB2534",
+   "levels": [
+    "all"
+   ],
+   "time": "top(45)",
+   "note": "BUILDING PERMITS (BO0701): dwellings permitted, quarterly — riket/metro/lan ONLY, no kommun level exists"
+  },
+  {
+   "table": "TAB796",
+   "levels": [
+    "all"
+   ],
+   "time": "top(45)",
+   "note": "building permits: count and gross floor area, quarterly — same 30 regions, no kommun"
   },
   {
    "table": "TAB6925",
@@ -532,6 +608,30 @@
      "0000080A"
     ]
    }
+  },
+  {
+   "table": "TAB5783",
+   "levels": [
+    "none"
+   ],
+   "time": "all",
+   "note": "MORTGAGE RATES (FM5001C): lending rates to households for housing loans by fixation period, monthly"
+  },
+  {
+   "table": "TAB5780",
+   "levels": [
+    "none"
+   ],
+   "time": "all",
+   "note": "lending rates, households + non-financial corporations by fixation period, monthly from 1987"
+  },
+  {
+   "table": "TAB3100",
+   "levels": [
+    "none"
+   ],
+   "time": "all",
+   "note": "GDP (NR0103): quarterly volume change, y/y and seasonally adjusted q/q"
   }
  ]
 }

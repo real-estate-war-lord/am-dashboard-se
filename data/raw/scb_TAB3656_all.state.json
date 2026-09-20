@@ -1,0 +1,12 @@
+{
+ "done": [
+  "{\"ContentsCode\": [\"BO0501AH\", \"BO0501AK\", 3], \"Region\": [\"00\", \"25\", 25], \"Tid\": [\"2015M09\", \"2026M08\", 132]}"
+ ],
+ "rows": 9900,
+ "started": "2026-09-20T19:19:44",
+ "finished": "2026-09-20T19:19:46",
+ "updated_at_source": "2026-09-10T06:00:00Z",
+ "vintage": "all levels",
+ "time_spec": "top(132)",
+ "note": "småhusbarometern, län, 3-month rolling"
+}

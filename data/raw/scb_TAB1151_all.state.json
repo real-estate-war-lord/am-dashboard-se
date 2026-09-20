@@ -1,0 +1,12 @@
+{
+ "done": [
+  "{\"ContentsCode\": [\"BO0501R6\", \"BO0501R8\", 3], \"Region\": [\"00\", \"25\", 26], \"Tid\": [\"2015\", \"2025\", 11]}"
+ ],
+ "rows": 858,
+ "started": "2026-09-20T19:19:47",
+ "finished": "2026-09-20T19:19:48",
+ "updated_at_source": "2026-07-03T06:00:00Z",
+ "vintage": "all levels",
+ "time_spec": "top(11)",
+ "note": "bostadsrätt prices, län, annual"
+}

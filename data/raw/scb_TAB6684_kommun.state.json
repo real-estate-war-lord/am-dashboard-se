@@ -1,0 +1,12 @@
+{
+ "done": [
+  "{\"ContentsCode\": [\"000008A6\", \"000008A5\", 7], \"Region\": [\"0114\", \"2584\", 290], \"Tid\": [\"2014\", \"2024\", 11]}"
+ ],
+ "rows": 22330,
+ "started": "2026-09-20T18:50:03",
+ "finished": "2026-09-20T18:50:05",
+ "updated_at_source": "2026-01-20T07:00:00Z",
+ "vintage": "kommun",
+ "time_spec": "top(11)",
+ "note": "equivalised income quartiles"
+}

@@ -1,0 +1,12 @@
+{
+ "done": [
+  "{\"AntalRum\": [\"1\", \"00\", 6], \"ContentsCode\": [\"000007GM\", \"000007GL\", 6], \"Hyresattningsmod\": [\"1\", \"99\", 5], \"Region\": [\"00\", \"0041\", 6], \"Tid\": [\"2022\", \"2024\", 3]}"
+ ],
+ "rows": 3240,
+ "started": "2026-09-20T19:18:43",
+ "finished": "2026-09-20T19:18:44",
+ "updated_at_source": "2025-10-14T06:00:00Z",
+ "vintage": "all levels",
+ "time_spec": "all",
+ "note": "new-build rents by rent-setting model (bruksvärde / presumtionshyra)"
+}

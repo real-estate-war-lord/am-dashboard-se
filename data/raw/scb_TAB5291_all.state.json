@@ -1,0 +1,12 @@
+{
+ "done": [
+  "{\"ContentsCode\": [\"0000038Y\", \"0000038V\", 4], \"Region\": [\"00\", \"0002\", 3], \"Tid\": [\"2014\", \"2024\", 11], \"Upplatform\": [\"1\", \"3\", 3]}"
+ ],
+ "rows": 396,
+ "started": "2026-09-20T18:59:44",
+ "finished": "2026-09-20T18:59:45",
+ "updated_at_source": "2026-02-17T07:00:00Z",
+ "vintage": "all levels",
+ "time_spec": "top(11)",
+ "note": "floor space per dwelling by tenure"
+}

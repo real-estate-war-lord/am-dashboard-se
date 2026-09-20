@@ -1,0 +1,12 @@
+{
+ "done": [
+  "{\"ContentsCode\": [\"000002X2\", \"000002X0\", 5], \"Region\": [\"0114\", \"2584\", 290], \"Tid\": [\"2015\", \"2025\", 11], \"Typkod\": [\"220\", \"221\", 2]}"
+ ],
+ "rows": 31900,
+ "started": "2026-09-20T19:19:41",
+ "finished": "2026-09-20T19:19:43",
+ "updated_at_source": "2025-12-11T07:00:00Z",
+ "vintage": "kommun",
+ "time_spec": "top(11)",
+ "note": "assessed values, smahus (typkod 220/221), incl. average per unit, by kommun"
+}

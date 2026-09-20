@@ -1,0 +1,12 @@
+{
+ "done": [
+  "{\"ContentsCode\": [\"0000005Q\", \"0000005Q\", 1], \"Hustyp\": [\"FLERBO\", \"SMÅHUS\", 2], \"Lagenhetstyp\": [\"1RK\", \"7+RK\", 7], \"Region\": [\"0114\", \"2584\", 290], \"Tid\": [\"2015\", \"2025\", 11]}"
+ ],
+ "rows": 44660,
+ "started": "2026-09-20T19:20:43",
+ "finished": "2026-09-20T19:34:23",
+ "updated_at_source": "2026-05-11T06:00:00Z",
+ "vintage": "kommun · Lagenhetstyp: dropped 2 uncodeable value(s) ['1R,1RKV', '2+R,2+RKV']",
+ "time_spec": "top(11)",
+ "note": "completed by dwelling type"
+}

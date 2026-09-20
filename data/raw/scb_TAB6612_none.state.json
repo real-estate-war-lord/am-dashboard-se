@@ -1,0 +1,12 @@
+{
+ "done": [
+  "{\"ContentsCode\": [\"000007WR\", \"0000080A\", 2], \"Tid\": [\"2015M09\", \"2026M08\", 132], \"VaruTjanstegrupp\": [\"00\", \"13.9.0.9\", 398]}"
+ ],
+ "rows": 105072,
+ "started": "2026-09-20T19:25:39",
+ "finished": "2026-09-20T19:25:41",
+ "updated_at_source": "2026-09-14T06:00:00Z",
+ "vintage": "",
+ "time_spec": "top(132)",
+ "note": "CPI companion table"
+}

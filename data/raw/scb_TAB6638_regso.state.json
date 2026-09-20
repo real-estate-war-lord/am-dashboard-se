@@ -1,0 +1,12 @@
+{
+ "done": [
+  "{\"ContentsCode\": [\"00000864\", \"00000864\", 1], \"Region\": [\"0114R001_RegSO2025\", \"2584R015_RegSO2025\", 3363], \"Tid\": [\"2024\", \"2025\", 2], \"Upplatelseform\": [\"1\", \"ÖVRIGT\", 4]}"
+ ],
+ "rows": 26904,
+ "started": "2026-09-20T18:58:10",
+ "finished": "2026-09-20T18:58:15",
+ "updated_at_source": "2026-04-17T06:00:00Z",
+ "vintage": "RegSO2025",
+ "time_spec": "all",
+ "note": "dwellings by tenure, sub-municipal"
+}

@@ -1,0 +1,12 @@
+{
+ "done": [
+  "{\"ContentsCode\": [\"0000005O\", \"0000005O\", 1], \"Hustyp\": [\"FLERBO\", \"SMÅHUS\", 2], \"Region\": [\"0114\", \"2584\", 290], \"Tid\": [\"2015\", \"2025\", 11], \"Upplatelseform\": [\"1\", \"3\", 3]}"
+ ],
+ "rows": 19140,
+ "started": "2026-09-20T19:20:39",
+ "finished": "2026-09-20T19:20:41",
+ "updated_at_source": "2026-05-11T06:00:00Z",
+ "vintage": "kommun",
+ "time_spec": "top(11)",
+ "note": "completed dwellings by tenure"
+}

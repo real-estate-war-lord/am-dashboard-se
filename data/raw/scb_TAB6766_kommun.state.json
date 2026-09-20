@@ -1,0 +1,12 @@
+{
+ "done": [
+  "{\"Alder\": [\"20-64\", \"20-64\", 1], \"ContentsCode\": [\"000008H0\", \"000008GW\", 7], \"Fodelseregion\": [\"samt\", \"utee\", 5], \"Kon\": [\"1+2\", \"1+2\", 1], \"Region\": [\"0114\", \"2584\", 290], \"Tid\": [\"2019\", \"2024\", 6]}"
+ ],
+ "rows": 60900,
+ "started": "2026-09-20T19:09:25",
+ "finished": "2026-09-20T19:09:29",
+ "updated_at_source": "2026-02-25T07:00:00Z",
+ "vintage": "kommun",
+ "time_spec": "top(6)",
+ "note": "self-sufficiency"
+}

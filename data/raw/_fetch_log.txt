@@ -1,204 +1,335 @@
-SCB deep pull · 61 tables · started 2026-09-18 18:40
+SCB deep pull · 70 tables · started 2026-09-20 19:34
 
 TAB6574  population by region, age and sex — the growth and age-structure backbone
   TAB6574/kommun                 11 call(s) ·   172,260 cells · kommun · Population per region by age and sex. Year 2010-2025
+    cached (172,260 rows)
   TAB6574/regso                  22 call(s) · 1,997,622 cells · RegSO2025 · Population per region by age and sex. Year 2010-2025
+    cached (1,997,622 rows)
   TAB6574/deso                   33 call(s) · 3,659,040 cells · DeSO2025 · Population per region by age and sex. Year 2010-2025
+    cached (3,659,040 rows)
 
 TAB6473  monthly population change by region
   TAB6473/all                    19 call(s) ·   373,464 cells · all levels · Population statistics by region and sex.  Month 2025M01-2026M07
+    cached (373,464 rows)
 
 TAB6568  households by type — one-person share
   TAB6568/kommun                  1 call(s) ·    19,140 cells · kommun · Number of households per region by type of household. Year 2011-2025
+    cached (19,140 rows)
   TAB6568/regso                  11 call(s) ·   221,958 cells · RegSO2025 · Number of households per region by type of household. Year 2011-2025
+    cached (221,958 rows)
   TAB6568/deso                   11 call(s) ·   406,560 cells · DeSO2025 · Number of households per region by type of household. Year 2011-2025
+    cached (406,560 rows)
 
 TAB6571  foreign/Swedish background
+  TAB6571/kommun                  1 call(s) ·    28,710 cells · kommun · Population per region by foreign or Swedish background and sex. Year 2
+    cached (28,710 rows)
   TAB6571/regso                  11 call(s) ·   332,937 cells · RegSO2025 · Population per region by foreign or Swedish background and sex. Year 2
+    cached (332,937 rows)
   TAB6571/deso                   11 call(s) ·   609,840 cells · DeSO2025 · Population per region by foreign or Swedish background and sex. Year 2
+    cached (609,840 rows)
 
 TAB6572  by region of birth
   TAB6572/regso                  11 call(s) ·   443,916 cells · RegSO2025 · Population per region by region of birth and sex. Year 2010-2025
+    cached (443,916 rows)
 
 TAB6569  by citizenship
   TAB6569/regso                  11 call(s) ·   443,916 cells · RegSO2025 · Population per region by citizenship and sex. Year 2010-2025
+    cached (443,916 rows)
 
 TAB6649  foreign/Swedish background, kommun
   TAB6649/kommun                  3 call(s) ·   357,570 cells · kommun · Number of persons with foreign or Swedish background (rough division) 
+    cached (357,570 rows)
 
 TAB6683  net income structure — mean amounts
+  TAB6683/kommun                 11 call(s) ·   488,070 cells · kommun · Income structure net income by region and sex. Constant prices. Year 2
+    cached (488,070 rows)
   TAB6683/regso                  55 call(s) · 5,659,929 cells · RegSO2025 · Income structure net income by region and sex. Constant prices. Year 2
+    cached (5,659,929 rows)
   TAB6683/deso                   88 call(s) · 10,367,280 cells · DeSO2025 · Income structure net income by region and sex. Constant prices. Year 2
+    cached (10,367,280 rows)
 
 TAB5750  median disposable income, RegSO (price base amounts, frozen 2023)
   TAB5750/regso                  34 call(s) · 2,858,550 cells · RegSO2020 (no 2025 codes in table) · Income variables by RegSO and sex. Year 2007-2023
+    cached (2,858,550 rows)
 
 TAB6684  equivalised income quartiles
+  TAB6684/kommun                  1 call(s) ·    22,330 cells · kommun · Equivalised disposable income, share of persons by quartiles and regio
+    cached (22,330 rows)
   TAB6684/regso                  11 call(s) ·   258,951 cells · RegSO2025 · Equivalised disposable income, share of persons by quartiles and regio
+    cached (258,951 rows)
   TAB6684/deso                   11 call(s) ·   474,320 cells · DeSO2025 · Equivalised disposable income, share of persons by quartiles and regio
+    cached (474,320 rows)
 
 TAB6685  low / high economic standard — the affordability proxy
+  TAB6685/kommun                  1 call(s) ·    57,420 cells · kommun · Low (at-risk-of-poverty rate) and high economic standard by region and
+    cached (57,420 rows)
   TAB6685/regso                  11 call(s) ·   665,874 cells · RegSO2025 · Low (at-risk-of-poverty rate) and high economic standard by region and
+    cached (665,874 rows)
   TAB6685/deso                   11 call(s) · 1,219,680 cells · DeSO2025 · Low (at-risk-of-poverty rate) and high economic standard by region and
+    cached (1,219,680 rows)
 
 TAB1792  income variables by kommun
   TAB1792/kommun                 11 call(s) ·   535,920 cells · kommun · Income variables by municipality. Year 1997-2023
+    cached (535,920 rows)
 
 TAB6534  education level 25-65 (2024-2025)
   TAB6534/kommun                  1 call(s) ·     2,900 cells · kommun · Population 25–65 years of age by region and level of educational attai
+    cached (2,900 rows)
   TAB6534/regso                   1 call(s) ·    33,630 cells · RegSO2025 · Population 25–65 years of age by region and level of educational attai
+    cached (33,630 rows)
   TAB6534/deso                    1 call(s) ·    61,600 cells · DeSO2025 · Population 25–65 years of age by region and level of educational attai
+    cached (61,600 rows)
 
 TAB5956  education, older series 2015-2023
+  TAB5956/kommun                  1 call(s) ·    13,050 cells · kommun · Population 25–64 years (from 2023, 25–65 years of age) of age by regio
+    cached (13,050 rows)
   TAB5956/regso                   9 call(s) ·   151,335 cells · RegSO2020 (no 2025 codes in table) · Population 25–64 years (from 2023, 25–65 years of age) of age by regio
+    cached (151,335 rows)
   TAB5956/deso                    9 call(s) ·   269,280 cells · DeSO2018 (no 2025 codes in table) · Population 25–64 years (from 2023, 25–65 years of age) of age by regio
+    cached (269,280 rows)
 
 TAB824  dwelling stock by building type and tenure
   TAB824/kommun                   1 call(s) ·    51,040 cells · kommun · Number of dwellings by region, type of building and tenure (including 
+    cached (51,040 rows)
 
 TAB6638  dwellings by tenure, sub-municipal
   TAB6638/regso                   1 call(s) ·    26,904 cells · RegSO2025 · Number of dwellings by region (DeSO/RegSO 2025) and tenure. Year 2024-
+    cached (26,904 rows)
   TAB6638/deso                    1 call(s) ·    49,280 cells · DeSO2025 · Number of dwellings by region (DeSO/RegSO 2025) and tenure. Year 2024-
+    cached (49,280 rows)
 
 TAB6258  dwellings by tenure, older vintage
   TAB6258/regso                   9 call(s) ·   121,068 cells · RegSO2020 (no 2025 codes in table) · Number of dwellings by region (DeSO 2018/RegSO 2020) and tenure (not u
+    cached (121,068 rows)
   TAB6258/deso                    9 call(s) ·   215,424 cells · DeSO2018 (no 2025 codes in table) · Number of dwellings by region (DeSO 2018/RegSO 2020) and tenure (not u
+    cached (215,424 rows)
 
 TAB826  dwellings by building type and floor space
   TAB826/all                     11 call(s) ·   205,920 cells · all levels · Number of dwellings by region, type of building and useful floor space
+    cached (205,920 rows)
 
 TAB5291  floor space per dwelling by tenure
   TAB5291/all                     1 call(s) ·       396 cells · all levels · Floor spaces per dwelling in newly constructed conventional multi-dwel
+    cached (396 rows)
 
 TAB1541  floor space per person
   TAB1541/all                    11 call(s) ·   401,544 cells · all levels · Average useful floor space per person by region, type of household and
+    cached (401,544 rows)
 
 TAB6065  persons by type of building
+  TAB6065/kommun                  1 call(s) ·    19,140 cells · kommun · Number of persons by region and type of building. Year 2012-2025
+    cached (19,140 rows)
   TAB6065/regso                  11 call(s) ·   221,958 cells · RegSO2025 · Number of persons by region and type of building. Year 2012-2025
+    cached (221,958 rows)
+  TAB6065/deso                   11 call(s) ·   406,560 cells · DeSO2025 · Number of persons by region and type of building. Year 2012-2025
+    cached (406,560 rows)
 
 TAB6253  persons by tenure
+  TAB6253/kommun                  1 call(s) ·    15,950 cells · kommun · Number of persons by region and tenure. Year 2012-2025
+    cached (15,950 rows)
   TAB6253/regso                  11 call(s) ·   184,965 cells · RegSO2025 · Number of persons by region and tenure. Year 2012-2025
+    cached (184,965 rows)
+  TAB6253/deso                   11 call(s) ·   338,800 cells · DeSO2025 · Number of persons by region and tenure. Year 2012-2025
+    cached (338,800 rows)
 
 TAB6680  labour market status (2020-2024)
   TAB6680/regso                   5 call(s) ·   504,450 cells · RegSO2025 · Labour market status by region of residence, region (DeSO/RegSO), sex 
+    cached (504,450 rows)
   TAB6680/deso                   10 call(s) ·   924,000 cells · DeSO2025 · Labour market status by region of residence, region (DeSO/RegSO), sex 
+    cached (924,000 rows)
 
 TAB6681  employed by industry
   TAB6681/regso                  10 call(s) ·   857,565 cells · RegSO2025 · Employed 15–74 years by region of residence, region (DeSO/RegSO), sex 
+    cached (857,565 rows)
 
 TAB6682  employed by sector
   TAB6682/regso                   5 call(s) ·   151,335 cells · RegSO2025 · Employed 15–74 years by region of residence, region (DeSO/RegSO), sex 
+    cached (151,335 rows)
 
 TAB6586  socio-economic index — RegSO only
   TAB6586/regso                  14 call(s) ·   235,410 cells · RegSO2025 · Socio-economic index by RegSO. Year 2011-2024
+    cached (235,410 rows)
 
 TAB6766  self-sufficiency
+  TAB6766/kommun                  1 call(s) ·    60,900 cells · kommun · Self-sufficiency by region (incl. RegSo), sex, age and region of birth
+    cached (60,900 rows)
   TAB6766/regso                   6 call(s) ·   706,230 cells · RegSO2025 · Self-sufficiency by region (incl. RegSo), sex, age and region of birth
+    cached (706,230 rows)
+
+TAB6260  UNEMPLOYMENT: labour market status by kommun, MONTHLY (AM0210 preliminary, 2020M01-2026M06) — 000006II unemployment %, 000006IK employment rate
+  TAB6260/kommun                 78 call(s) · 1,492,920 cells · kommun · Labour market status by region, sex, age and region of birth. Prelimin
+    cached (1,492,920 rows)
+
+TAB2948  same, final statistics 2020M01-2024M12 — the revised series behind the preliminary one
+  TAB2948/kommun                 60 call(s) · 1,148,400 cells · kommun · Labour market status by region, sex, age and region of birth. Final st
+    cached (1,148,400 rows)
 
 TAB4590  RENT SEK/m2/yr by kommun, median + mean + margins (2016-2025)
   TAB4590/all                     1 call(s) ·    24,960 cells · all levels · Rent in rented dwellings by county and municipality. Year 2016-2025
+    cached (24,960 rows)
 
 TAB4603  rent by number of rooms, larger kommuner
   TAB4603/all                     1 call(s) ·    19,200 cells · all levels · Rent in rented dwellings by number of rooms for larger municipalities 
+    cached (19,200 rows)
 
 TAB4611  rent by construction year
   TAB4611/all                     1 call(s) ·    12,800 cells · all levels · Rent in rented dwellings by year of construction for larger municipali
+    cached (12,800 rows)
 
 TAB4612  rent by rooms and construction year
   TAB4612/all                     1 call(s) ·    46,080 cells · all levels · Rent in rented dwellings by region, number of rooms and year of constr
+    cached (46,080 rows)
 
 TAB4610  rent by construction year and owner category
   TAB4610/all                     1 call(s) ·    11,520 cells · all levels · Rent in rented dwellings by region, year of construction and ownership
+    cached (11,520 rows)
 
 TAB4618  rent by rooms and owner category — allmännytta vs private
   TAB4618/all                     1 call(s) ·    17,280 cells · all levels · Rent in rented dwellings by region, number of rooms and ownership. Yea
+    cached (17,280 rows)
 
 TAB4619  rent by rooms, year and owner category
   TAB4619/all                     1 call(s) ·    23,040 cells ·  · Rent in rented dwellings by number of rooms, year of construction and 
+    cached (23,040 rows)
 
 TAB4620  rent change %
   TAB4620/all                     1 call(s) ·    11,520 cells · all levels · Rental changes in rented dwellings by region, number of rooms and year
+    cached (11,520 rows)
 
 TAB4621  rent change %
   TAB4621/all                     1 call(s) ·     5,760 cells · all levels · Rental changes in rented dwellings by region, year of construction and
+    cached (5,760 rows)
 
 TAB4622  rent change %
   TAB4622/all                     1 call(s) ·     4,320 cells · all levels · Rental changes in rented dwellings by region, number of rooms and owne
+    cached (4,320 rows)
 
 TAB4623  rent change %
   TAB4623/all                     1 call(s) ·     5,760 cells ·  · Rental changes in rented dwellings by number of rooms, year of constru
+    cached (5,760 rows)
 
 TAB6051  rent change, national series from 1969
   TAB6051/all                     1 call(s) ·       114 cells · all levels · Rental changes in rented dwellings. Year 1969-2025
+    cached (114 rows)
 
 TAB6417  new-build rents by rent-setting model (bruksvärde / presumtionshyra)
   TAB6417/all                     1 call(s) ·     3,240 cells · all levels · Rents in newly constructed buildings (rented dwellings) by region, num
+    cached (3,240 rows)
 
 TAB6421  new-build rents, companion table
   TAB6421/all                     1 call(s) ·     1,944 cells · all levels · Rents in newly constructed buildings (rented dwellings) by region, inv
+    cached (1,944 rows)
 
 TAB5602  vacant dwellings + vacancy rate (6 groups, triennial)
   TAB5602/all                     1 call(s) ·     2,592 cells · all levels · Stock and vacant dwellings 1 of march in multi-dwelling buildings by r
+    cached (2,592 rows)
 
 TAB5603  vacancy
   TAB5603/all                     1 call(s) ·     2,268 cells · all levels · Stock and vacant dwellings 1 of march in multi-dwelling buildings by r
+    cached (2,268 rows)
 
 TAB5604  vacancy
   TAB5604/all                     1 call(s) ·       540 cells · all levels · Vacant dwellings 1st of March and 1st of September in multi-dwelling b
+    cached (540 rows)
 
 TAB5605  vacancy
   TAB5605/all                     1 call(s) ·    19,971 cells · all levels · Dwellings vacant for rent 1th of March and 1th of September in multi-d
+    cached (19,971 rows)
 
 TAB3208  vacant dwellings, allmännytta, twice a year
   TAB3208/all                     1 call(s) ·     1,900 cells ·  · Unlet dwellings 1th of March and 1th of September in multi-dwelling bu
+    cached (1,900 rows)
 
 TAB1169  PRICES: småhus sales, mean price, K/T-tal by kommun
   TAB1169/all                     1 call(s) ·    27,456 cells · all levels · Sold one- and two-dwelling buildings by region and type of real estate
+    cached (27,456 rows)
+
+TAB3797  ASSESSED VALUES (BO0601B): all typkod incl. hyreshus, land/building split, by kommun
+  TAB3797/kommun                 22 call(s) · 1,378,080 cells · kommun · Assessment of real estate excluding units for agriculture and forestry
+    cached (1,378,080 rows)
+
+TAB5149  assessed values, smahus (typkod 220/221), incl. average per unit, by kommun
+  TAB5149/kommun                  1 call(s) ·    31,900 cells · kommun · Assessment of real estate for one- or two- dwelling buildings (type co
+    cached (31,900 rows)
 
 TAB3655  småhusbarometern, national, monthly
   TAB3655/none                    1 call(s) ·       396 cells ·  · Real estate prices for one- or two-dwelling buildings. Month 1997M01-2
+    cached (396 rows)
 
 TAB3656  småhusbarometern, län, 3-month rolling
   TAB3656/all                     1 call(s) ·     9,900 cells · all levels · Real estate prices for one- or two-dwelling buildings, where month ref
+    cached (9,900 rows)
 
 TAB1167  småhus prices, quarterly, län
   TAB1167/all                     1 call(s) ·     5,940 cells · all levels · Sold one- and two-dwelling buildings for permanent living by region. Q
+    cached (5,940 rows)
 
 TAB1151  bostadsrätt prices, län, annual
   TAB1151/all                     1 call(s) ·       858 cells · all levels · Sold tenant-owned flats by region. Year 2000-2025
+    cached (858 rows)
 
 TAB1149  property price index
   TAB1149/all                     1 call(s) ·       540 cells · all levels · Real estate price index for one- or two-dwelling buildings for permane
+    cached (540 rows)
 
 TAB1150  property price index
   TAB1150/all                     1 call(s) ·       540 cells · all levels · Real estate price index for one- and two-dwelling buildings for perman
+    cached (540 rows)
 
 TAB4572  CONSTRUCTION: dwellings started and completed, quarterly
   TAB4572/kommun                  1 call(s) ·    52,200 cells · kommun · Dwellings in newly constructed buildings by region and type of buildin
+    cached (52,200 rows)
+
+TAB2534  BUILDING PERMITS (BO0701): dwellings permitted, quarterly — riket/metro/lan ONLY, no kommun level exists
+  TAB2534/all                     1 call(s) ·     5,400 cells · all levels · Building permits for new construction, number of dwellings in resident
+    cached (5,400 rows)
+
+TAB796  building permits: count and gross floor area, quarterly — same 30 regions, no kommun
+  TAB796/all                      1 call(s) ·     8,100 cells · all levels · Building permits for new construction, number and gross floor area by 
+    cached (8,100 rows)
 
 TAB6925  started/completed, specialbostäder split out
   TAB6925/kommun                 45 call(s) ·   130,500 cells · kommun · Dwellings in newly constructed buildings by region and type of buildin
+    cached (130,500 rows)
 
 TAB4193  completed dwellings by tenure
   TAB4193/kommun                  1 call(s) ·    19,140 cells · kommun · Completed dwellings in newly constructed buildings by region, type of 
+    cached (19,140 rows)
 
 TAB4194  completed by owner category
   TAB4194/kommun                  1 call(s) ·    25,520 cells · kommun · Completed dwellings in newly constructed buildings by region, type of 
+    cached (25,520 rows)
 
 TAB4195  completed by dwelling type
-  TAB4195/kommun                  1 call(s) ·    57,420 cells · kommun · Completed dwellings in newly constructed buildings by region, type of 
+  TAB4195/kommun                  1 call(s) ·    44,660 cells · kommun · Lagenhetstyp: dropped 2 uncodeable value(s) ['1R,1RKV', '2+R,2+RKV'] · Completed dwellings in newly constructed buildings by region, type of 
+    cached (44,660 rows)
 
 TAB6598  CPI by COICOP — 04.1 is the rent index
   TAB6598/none                  132 call(s) ·   210,144 cells ·  · Consumer Price Index (CPI) according to COICOP (all levels), 2020=100.
+    cached (210,144 rows)
 
 TAB6602  KPIF
   TAB6602/none                  132 call(s) ·   210,144 cells ·  · Consumer Price Index (CPI) with fixed interest rate according to COICO
+    cached (210,144 rows)
 
 TAB6612  CPI companion table
   TAB6612/none                    1 call(s) ·   105,072 cells ·  · Detailed table: Consumer Price Index (CPI) according to COICOP (all le
+    cached (105,072 rows)
+
+TAB5783  MORTGAGE RATES (FM5001C): lending rates to households for housing loans by fixation period, monthly
+  TAB5783/none                    1 call(s) ·    19,578 cells ·  · Lending rates to households for housing loans, breakdown by fixation p
+    cached (19,578 rows)
+
+TAB5780  lending rates, households + non-financial corporations by fixation period, monthly from 1987
+  TAB5780/none                  325 call(s) ·   169,000 cells ·  · Lending rates to households and non-financial corporations, breakdown 
+    cached (169,000 rows)
+
+TAB3100  GDP (NR0103): quarterly volume change, y/y and seasonally adjusted q/q
+  TAB3100/none                    1 call(s) ·     2,548 cells ·  · National accounts, GDP (ESA2010), change in volume. Quarter 1981K1-202
+    cached (2,548 rows)
 
 ================================================================
-done in 0.0 min · 0 rows total
-ok 0 · cached 0 · skipped 0 · failed 0
+done in 0.0 min · 43,219,636 rows total
+ok 0 · cached 94 · skipped 0 · failed 0
 
 raw files: data/raw/*.jsonl.gz · metadata: data/raw/*.meta.json

@@ -1,0 +1,12 @@
+{
+ "done": [
+  "{\"ContentsCode\": [\"BO0501L2\", \"BO0501L5\", 4], \"Region\": [\"00\", \"RIKS8\", 33], \"Tid\": [\"2015K2\", \"2026K2\", 45]}"
+ ],
+ "rows": 5940,
+ "started": "2026-09-20T19:19:46",
+ "finished": "2026-09-20T19:19:47",
+ "updated_at_source": "2026-08-21T06:00:00Z",
+ "vintage": "all levels",
+ "time_spec": "top(45)",
+ "note": "småhus prices, quarterly, län"
+}

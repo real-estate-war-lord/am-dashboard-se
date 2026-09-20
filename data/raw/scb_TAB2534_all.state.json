@@ -1,0 +1,12 @@
+{
+ "done": [
+  "{\"ContentsCode\": [\"BO0701A1\", \"BO0701A1\", 1], \"Hustyp\": [\"1113\", \"19\", 4], \"Region\": [\"00\", \"25\", 30], \"Tid\": [\"2015K2\", \"2026K2\", 45]}"
+ ],
+ "rows": 5400,
+ "started": "2026-09-20T19:19:52",
+ "finished": "2026-09-20T19:19:54",
+ "updated_at_source": "2026-08-24T06:00:00Z",
+ "vintage": "all levels",
+ "time_spec": "top(45)",
+ "note": "BUILDING PERMITS (BO0701): dwellings permitted, quarterly — riket/metro/lan ONLY, no kommun level exists"
+}

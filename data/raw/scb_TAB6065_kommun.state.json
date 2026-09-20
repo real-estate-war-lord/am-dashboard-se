@@ -1,0 +1,12 @@
+{
+ "done": [
+  "{\"ContentsCode\": [\"0000077F\", \"0000077F\", 1], \"Hustyp\": [\"SMÅHUS\", \"TOTALT\", 6], \"Region\": [\"0114\", \"2584\", 290], \"Tid\": [\"2015\", \"2025\", 11]}"
+ ],
+ "rows": 19140,
+ "started": "2026-09-20T19:00:00",
+ "finished": "2026-09-20T19:00:03",
+ "updated_at_source": "2026-04-17T06:00:00Z",
+ "vintage": "kommun",
+ "time_spec": "top(11)",
+ "note": "persons by type of building"
+}

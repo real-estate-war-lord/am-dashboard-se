@@ -1,0 +1,12 @@
+{
+ "done": [
+  "{\"ByggAr\": [\"1\", \"00\", 8], \"ContentsCode\": [\"0000013Q\", \"0000013R\", 4], \"Hyresuppg\": [\"Ah_kvm\", \"Mh_kvm\", 2], \"Region\": [\"0180\", \"V\", 20], \"Tid\": [\"2016\", \"2025\", 10]}"
+ ],
+ "rows": 12800,
+ "started": "2026-09-20T19:18:11",
+ "finished": "2026-09-20T19:18:13",
+ "updated_at_source": "2025-10-03T06:00:00Z",
+ "vintage": "all levels",
+ "time_spec": "all",
+ "note": "rent by construction year"
+}

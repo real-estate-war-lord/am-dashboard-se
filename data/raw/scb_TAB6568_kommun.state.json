@@ -1,0 +1,12 @@
+{
+ "done": [
+  "{\"ContentsCode\": [\"000007Y1\", \"000007Y1\", 1], \"Hushallstyp\": [\"SBMB\", \"TOTALT\", 6], \"Region\": [\"0114\", \"2584\", 290], \"Tid\": [\"2015\", \"2025\", 11]}"
+ ],
+ "rows": 19140,
+ "started": "2026-09-20T18:05:06",
+ "finished": "2026-09-20T18:05:08",
+ "updated_at_source": "2026-03-24T07:00:00Z",
+ "vintage": "kommun",
+ "time_spec": "top(11)",
+ "note": "households by type — one-person share"
+}

@@ -1,0 +1,12 @@
+{
+ "done": [
+  "{\"ContentsCode\": [\"000000J4\", \"000000MQ\", 4], \"Hyresuppg\": [\"Ah_kvm\", \"Mh_kvm\", 2], \"Region\": [\"00\", \"2584\", 312], \"Tid\": [\"2016\", \"2025\", 10]}"
+ ],
+ "rows": 24960,
+ "started": "2026-09-20T19:18:08",
+ "finished": "2026-09-20T19:18:10",
+ "updated_at_source": "2025-10-03T06:00:00Z",
+ "vintage": "all levels",
+ "time_spec": "all",
+ "note": "RENT SEK/m2/yr by kommun, median + mean + margins (2016-2025)"
+}

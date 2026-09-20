@@ -1,0 +1,12 @@
+{
+ "done": [
+  "{\"Agarkategori\": [\"22\", \"25\", 4], \"ContentsCode\": [\"0000005P\", \"0000005P\", 1], \"Hustyp\": [\"FLERBO\", \"SMÅHUS\", 2], \"Region\": [\"0114\", \"2584\", 290], \"Tid\": [\"2015\", \"2025\", 11]}"
+ ],
+ "rows": 25520,
+ "started": "2026-09-20T19:20:41",
+ "finished": "2026-09-20T19:20:43",
+ "updated_at_source": "2026-05-11T06:00:00Z",
+ "vintage": "kommun",
+ "time_spec": "top(11)",
+ "note": "completed by owner category"
+}

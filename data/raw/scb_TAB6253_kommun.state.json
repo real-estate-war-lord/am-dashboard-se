@@ -1,0 +1,12 @@
+{
+ "done": [
+  "{\"ContentsCode\": [\"000007DQ\", \"000007DQ\", 1], \"Region\": [\"0114\", \"2584\", 290], \"Tid\": [\"2015\", \"2025\", 11], \"Upplatelseform\": [\"ÄG/ANDEL\", \"TOTALT\", 5]}"
+ ],
+ "rows": 15950,
+ "started": "2026-09-20T19:02:39",
+ "finished": "2026-09-20T19:02:42",
+ "updated_at_source": "2026-04-17T06:00:00Z",
+ "vintage": "kommun",
+ "time_spec": "top(11)",
+ "note": "persons by tenure"
+}

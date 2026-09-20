@@ -1,0 +1,12 @@
+{
+ "done": [
+  "{\"ContentsCode\": [\"BO0101A4\", \"BO0101A3\", 2], \"Hustyp\": [\"FLERBO\", \"SMÅHUS\", 2], \"Region\": [\"0114\", \"2584\", 290], \"Tid\": [\"2015K2\", \"2026K2\", 45]}"
+ ],
+ "rows": 52200,
+ "started": "2026-09-20T19:19:50",
+ "finished": "2026-09-20T19:19:52",
+ "updated_at_source": "2026-08-24T06:00:00Z",
+ "vintage": "kommun",
+ "time_spec": "top(45)",
+ "note": "CONSTRUCTION: dwellings started and completed, quarterly"
+}

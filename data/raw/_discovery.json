@@ -1,85 +1,1018 @@
 {
  "unemployment_kommun": {
-  "query": "arbetsmarknadsstatus region",
-  "why": "BAS monthly labour market status, 290 kommuner (was AM0210A/ArbStatusM)",
-  "hits": []
- },
- "_raw_sample": {
-  "language": "en",
-  "tables": [],
-  "page": {
-   "pageNumber": 1,
-   "pageSize": 3,
-   "totalElements": 0,
-   "totalPages": 1,
-   "links": []
-  },
-  "links": [
+  "query": "arbetsmarknadsstatus",
+  "why": "monthly labour market status, 290 kommuner",
+  "hits": [
    {
-    "rel": "self",
-    "hreflang": "en",
-    "href": "https://api.scb.se/OV0104/v2beta/api/v2/tables/?lang=en&query=hyra&pagesize=3&pageNumber=1"
+    "id": "TAB6548",
+    "label": "Självförsörjning efter kön, ålder, födelseregion, arbetsmarknadsstatus och huvudsaklig inkomstkälla. År 2020-2024",
+    "updated": "2026-02-25T07:00:00Z",
+    "firstPeriod": "2020",
+    "lastPeriod": "2024",
+    "discontinued": null
+   },
+   {
+    "id": "TAB6916",
+    "label": "Godkända elever på C- och D-kurs i svenska för invandrare (sfi) för hela riket efter kön, ålder, tid i Sverige och bakgrundsvariabel. År 2024",
+    "updated": "2026-06-30T06:00:00Z",
+    "firstPeriod": "2024",
+    "lastPeriod": "2024",
+    "discontinued": null
+   },
+   {
+    "id": "TAB6260",
+    "label": "Arbetsmarknadsstatus efter region, kön, ålder och födelseregion. Preliminär statistik. Månad 2020M01-2026M06",
+    "updated": "2026-08-28T06:00:00Z",
+    "firstPeriod": "2020M01",
+    "lastPeriod": "2026M06",
+    "discontinued": null
+   },
+   {
+    "id": "TAB6261",
+    "label": "Arbetsmarknadsstatus efter region, kön, ålder och födelseregion. Preliminär statistik. Kvartal 2020K1-2026K2",
+    "updated": "2026-08-28T06:00:00Z",
+    "firstPeriod": "2020K1",
+    "lastPeriod": "2026K2",
+    "discontinued": null
+   },
+   {
+    "id": "TAB5655",
+    "label": "Arbetsmarknadsstatus efter region, kön, ålder och födelseregion. Preliminär statistik. År 2020-2025",
+    "updated": "2026-05-29T06:00:00Z",
+    "firstPeriod": "2020",
+    "lastPeriod": "2025",
+    "discontinued": null
+   },
+   {
+    "id": "TAB2948",
+    "label": "Arbetsmarknadsstatus efter region, kön, ålder och födelseregion. Slutlig statistik. Månad 2020M01-2024M12",
+    "updated": "2025-11-28T07:00:00Z",
+    "firstPeriod": "2020M01",
+    "lastPeriod": "2024M12",
+    "discontinued": null
+   },
+   {
+    "id": "TAB2947",
+    "label": "Arbetsmarknadsstatus efter region, kön, ålder och födelseregion. Slutlig statistik. Kvartal 2020K1-2024K4",
+    "updated": "2025-11-28T07:00:00Z",
+    "firstPeriod": "2020K1",
+    "lastPeriod": "2024K4",
+    "discontinued": null
+   },
+   {
+    "id": "TAB2921",
+    "label": "Arbetsmarknadsstatus efter region, kön, ålder och födelseregion. Slutlig statistik. År 2020-2024",
+    "updated": "2025-11-28T07:00:00Z",
+    "firstPeriod": "2020",
+    "lastPeriod": "2024",
+    "discontinued": null
+   },
+   {
+    "id": "TAB3200",
+    "label": "Arbetsmarknadsstatus efter region, kön, ålder och födelseregion. Årligt register. År 2020-2024",
+    "updated": "2025-11-28T07:00:00Z",
+    "firstPeriod": "2020",
+    "lastPeriod": "2024",
+    "discontinued": null
+   },
+   {
+    "id": "TAB1784",
+    "label": "Arbetsmarknadsstatus efter region, huvudsaklig inkomstkälla, kön, ålder och födelseregion. Preliminär statistik. Månad 2020M01-2026M06",
+    "updated": "2026-08-28T06:00:00Z",
+    "firstPeriod": "2020M01",
+    "lastPeriod": "2026M06",
+    "discontinued": null
+   },
+   {
+    "id": "TAB1785",
+    "label": "Arbetsmarknadsstatus efter region, arbetsrelaterad inkomstnivå, kön, ålder och födelseregion. Preliminär statistik. Månad 2020M01-2026M06",
+    "updated": "2026-08-28T06:00:00Z",
+    "firstPeriod": "2020M01",
+    "lastPeriod": "2026M06",
+    "discontinued": null
+   },
+   {
+    "id": "TAB1174",
+    "label": "Arbetsmarknadsstatus efter region, huvudsaklig inkomstkälla, arbetsrelaterad inkomstnivå, kön, ålder och födelseregion. Preliminär statistik. Månad 2020M01-2026M06",
+    "updated": "2026-08-28T06:00:00Z",
+    "firstPeriod": "2020M01",
+    "lastPeriod": "2026M06",
+    "discontinued": null
+   },
+   {
+    "id": "TAB6666",
+    "label": "Arbetsmarknadsstatus efter region, kön, ålder, utbildningsnivå och födelseregion. Preliminär statistik. Månad  2020M01-2026M06",
+    "updated": "2026-08-28T06:00:00Z",
+    "firstPeriod": "2020M01",
+    "lastPeriod": "2026M06",
+    "discontinued": null
+   },
+   {
+    "id": "TAB2852",
+    "label": "Arbetsmarknadsstatus efter region, huvudsaklig inkomstkälla, kön, ålder och födelseregion. Slutlig statistik. Månad 2020M01-2024M12",
+    "updated": "2025-11-28T07:00:00Z",
+    "firstPeriod": "2020M01",
+    "lastPeriod": "2024M12",
+    "discontinued": null
+   },
+   {
+    "id": "TAB2841",
+    "label": "Arbetsmarknadsstatus efter region, arbetsrelaterad inkomstnivå, kön, ålder och födelseregion. Slutlig statistik. Månad 2020M01-2024M12",
+    "updated": "2025-11-28T07:00:00Z",
+    "firstPeriod": "2020M01",
+    "lastPeriod": "2024M12",
+    "discontinued": null
    }
   ]
  },
- "unemployment_deso": {
-  "query": "arbetsmarknadsstatus DeSO",
-  "why": "same at DeSO/RegSO level (was AM0210G)",
-  "hits": []
- },
  "mortgage_rates": {
-  "query": "utlåningsränta bindningstid",
-  "why": "lending rates by fixation period (was FM5001C/RantaT01N)",
-  "hits": []
+  "query": "utlåningsränta",
+  "why": "lending rates by fixation period",
+  "hits": [
+   {
+    "id": "TAB5781",
+    "label": "Utlåningsräntor fördelat på återstående räntebindningstid. Månad 2010M09-2026M07",
+    "updated": "2026-08-27T06:00:00Z",
+    "firstPeriod": "2010M09",
+    "lastPeriod": "2026M07",
+    "discontinued": null
+   },
+   {
+    "id": "TAB5782",
+    "label": "Utlåningsräntor fördelat på ändamål.  Månad 2005M09-2026M07",
+    "updated": "2026-08-27T06:00:00Z",
+    "firstPeriod": "2005M09",
+    "lastPeriod": "2026M07",
+    "discontinued": null
+   },
+   {
+    "id": "TAB5780",
+    "label": "Utlåningsräntor till hushåll och icke-finansiella företag fördelat på räntebindningstid. Månad 1987M03-2026M07",
+    "updated": "2026-08-27T06:00:00Z",
+    "firstPeriod": "1987M03",
+    "lastPeriod": "2026M07",
+    "discontinued": null
+   },
+   {
+    "id": "TAB5783",
+    "label": "Bolåneräntor till hushåll fördelat på räntebindningstid. Månad 2005M09-2026M07",
+    "updated": "2026-08-27T06:00:00Z",
+    "firstPeriod": "2005M09",
+    "lastPeriod": "2026M07",
+    "discontinued": null
+   },
+   {
+    "id": "TAB4386",
+    "label": "Bankernas inlåningsräntor. Månad 1989M01-2026M07",
+    "updated": "2026-08-27T06:00:00Z",
+    "firstPeriod": "1989M01",
+    "lastPeriod": "2026M07",
+    "discontinued": null
+   },
+   {
+    "id": "TAB6535",
+    "label": "Bolåneräntor för räntekomponenten i KPI-beräkning fördelat efter säkerhet, avtal och räntebindningstid. Månad 2014M11-2026M07",
+    "updated": "2026-08-27T06:00:00Z",
+    "firstPeriod": "2014M11",
+    "lastPeriod": "2026M07",
+    "discontinued": null
+   },
+   {
+    "id": "TAB6773",
+    "label": "Andel av utlåningsvolymer och räntor till hushåll efter belåningsgrad, typ av hushåll, säkerhet och avtal. Månad 2023M03-2026M07",
+    "updated": "2026-08-27T06:00:00Z",
+    "firstPeriod": "2023M03",
+    "lastPeriod": "2026M07",
+    "discontinued": null
+   }
+  ]
  },
  "mortgage_volumes": {
-  "query": "utlåning hushåll bostadsändamål",
-  "why": "housing lending volumes (was FM5001A)",
-  "hits": []
+  "query": "utlåning bostadsändamål",
+  "why": "housing lending volumes",
+  "hits": [
+   {
+    "id": "TAB2811",
+    "label": "Utlåning till hushåll för bostadsändamål fördelat på räntebindningstid. Månad 2010M09-2026M07",
+    "updated": "2026-08-27T06:00:00Z",
+    "firstPeriod": "2010M09",
+    "lastPeriod": "2026M07",
+    "discontinued": null
+   }
+  ]
  },
  "ltv": {
   "query": "belåningsgrad",
-  "why": "loan-to-value bands (was FM5001Belaningsgrad)",
-  "hits": []
+  "why": "loan-to-value bands",
+  "hits": [
+   {
+    "id": "TAB6773",
+    "label": "Andel av utlåningsvolymer och räntor till hushåll efter belåningsgrad, typ av hushåll, säkerhet och avtal. Månad 2023M03-2026M07",
+    "updated": "2026-08-27T06:00:00Z",
+    "firstPeriod": "2023M03",
+    "lastPeriod": "2026M07",
+    "discontinued": null
+   }
+  ]
  },
  "gdp": {
-  "query": "bruttonationalprodukt kvartal säsongrensad",
-  "why": "quarterly GDP (was NR0103B)",
-  "hits": []
+  "query": "bruttonationalprodukt",
+  "why": "quarterly GDP",
+  "hits": [
+   {
+    "id": "TAB1952",
+    "label": "Jordbrukets bidrag till bruttonationalprodukten till marknadspris. Löpande priser, milj. kr. År 1950-2007",
+    "updated": "2012-05-11T07:30:00Z",
+    "firstPeriod": "1950",
+    "lastPeriod": "2007",
+    "discontinued": null
+   },
+   {
+    "id": "TAB3575",
+    "label": "Inkomster och utgifter samt kapitaltransaktioner (ENS2010), säsongrensad, löpande priser. Kv 1993K1-2026K2",
+    "updated": "2026-08-28T06:00:00Z",
+    "firstPeriod": "1993K1",
+    "lastPeriod": "2026K2",
+    "discontinued": null
+   },
+   {
+    "id": "TAB3579",
+    "label": "Inkomster och utgifter samt kapitaltransaktioner (ENS95), kontoindelning, totala  ekonomin, efter transaktionspost, löpande priser. År 1980-2013",
+    "updated": "2014-05-30T08:14:00Z",
+    "firstPeriod": "1980",
+    "lastPeriod": "2013",
+    "discontinued": null
+   },
+   {
+    "id": "TAB4366",
+    "label": "Inkomster, utgifter och sparande (ENS2010), civila samhället, enligt institutionell sektor, löpande priser, mnkr. År 2012-2023",
+    "updated": "2025-10-23T06:00:00Z",
+    "firstPeriod": "2012",
+    "lastPeriod": "2023",
+    "discontinued": null
+   },
+   {
+    "id": "TAB4379",
+    "label": "Inkomster, utgifter och sparande (ENS2010), civila samhället exklusive dotterbolag, enligt ICNPO, löpande priser, mnkr. År 2012-2023",
+    "updated": "2025-10-23T06:00:00Z",
+    "firstPeriod": "2012",
+    "lastPeriod": "2023",
+    "discontinued": null
+   },
+   {
+    "id": "TAB4335",
+    "label": "Inkomster, utgifter och sparande (ENS2010), civila samhället, enligt ICNPO, löpande priser, mnkr. År 2012-2023",
+    "updated": "2025-10-23T06:00:00Z",
+    "firstPeriod": "2012",
+    "lastPeriod": "2023",
+    "discontinued": null
+   },
+   {
+    "id": "TAB3574",
+    "label": "Inkomster och utgifter samt kapitaltransaktioner (ENS2010), efter institutionell sektor och transaktionspost, löpande priser. Kv 1980K1-2026K2",
+    "updated": "2026-08-28T06:00:00Z",
+    "firstPeriod": "1980K1",
+    "lastPeriod": "2026K2",
+    "discontinued": null
+   },
+   {
+    "id": "TAB3573",
+    "label": "Inkomster och utgifter samt kapitaltransaktioner (ENS2010), efter institutionell sektor och transaktionspost, löpande priser. År 1950-2025",
+    "updated": "2026-08-28T06:00:00Z",
+    "firstPeriod": "1950",
+    "lastPeriod": "2025",
+    "discontinued": null
+   }
+  ]
  },
  "wages": {
   "query": "löneindex",
-  "why": "wage index (was AM0301B)",
-  "hits": []
+  "why": "wage index",
+  "hits": [
+   {
+    "id": "TAB2546",
+    "label": "Löneindex för arbetare, privat sektor (LÖI) efter näringsgren SNI 2007. Månad 2008M01-2026M06",
+    "updated": "2026-08-31T06:00:00Z",
+    "firstPeriod": "2008M01",
+    "lastPeriod": "2026M06",
+    "discontinued": null
+   },
+   {
+    "id": "TAB2549",
+    "label": "Löneindex för tjänstemän, privat sektor (LÖI) efter näringsgren SNI 2007. Månad 2008M01-2026M06",
+    "updated": "2026-08-31T06:00:00Z",
+    "firstPeriod": "2008M01",
+    "lastPeriod": "2026M06",
+    "discontinued": null
+   }
+  ]
  },
  "assessed_smahus": {
-  "query": "genomsnittligt taxeringsvärde småhus",
-  "why": "assessed values, småhus, by kommun (was BO0601A)",
-  "hits": []
+  "query": "taxeringsvärde småhus",
+  "why": "assessed values, småhus, by kommun",
+  "hits": [
+   {
+    "id": "TAB1167",
+    "label": "Försålda permanenta småhus efter region (län, riksområden, riket). Kvartal 1998K1-2026K2",
+    "updated": "2026-08-21T06:00:00Z",
+    "firstPeriod": "1998K1",
+    "lastPeriod": "2026K2",
+    "discontinued": null
+   },
+   {
+    "id": "TAB1166",
+    "label": "Försålda permanenta småhus efter region (län, riksområden, riket). År 2000-2025",
+    "updated": "2026-06-05T06:00:00Z",
+    "firstPeriod": "2000",
+    "lastPeriod": "2025",
+    "discontinued": null
+   },
+   {
+    "id": "TAB403",
+    "label": "Taxeringsenheter (typkod 200–299), totalt taxeringsvärde och areal efter region, typkod och ägarkategori. År 2003-2024",
+    "updated": "2025-02-27T07:00:00Z",
+    "firstPeriod": "2003",
+    "lastPeriod": "2024",
+    "discontinued": null
+   },
+   {
+    "id": "TAB5149",
+    "label": "Fastighetstaxering för småhus (typkod 220, 221). Taxeringsvärden och genomsnittliga taxeringsvärden efter region och typkod . År 1998-2025",
+    "updated": "2025-12-11T07:00:00Z",
+    "firstPeriod": "1998",
+    "lastPeriod": "2025",
+    "discontinued": null
+   },
+   {
+    "id": "TAB1169",
+    "label": "Försålda småhus efter region (kommun, län, riket) och fastighetstyp. År 1981-2025",
+    "updated": "2026-06-05T06:00:00Z",
+    "firstPeriod": "1981",
+    "lastPeriod": "2025",
+    "discontinued": null
+   },
+   {
+    "id": "TAB410",
+    "label": "Ägare/ägarandelar (med ägarandel minst 1procent) till taxeringsenheter (typkod 200–299) ägda av fysiska personer och totalt taxeringsvärde för ägd andel efter typkod, taxeringsvärdeklass, kön och ägarens ålder. År 2003-2024",
+    "updated": "2025-02-27T07:00:00Z",
+    "firstPeriod": "2003",
+    "lastPeriod": "2024",
+    "discontinued": null
+   },
+   {
+    "id": "TAB1165",
+    "label": "Försålda fastigheter efter förvärvsmånad och fastighetstyp. År 1992-2025",
+    "updated": "2026-06-05T06:00:00Z",
+    "firstPeriod": "1992",
+    "lastPeriod": "2025",
+    "discontinued": null
+   },
+   {
+    "id": "TAB1155",
+    "label": "Försålda hyreshus. Kvartal 1994K1-2026K2",
+    "updated": "2026-08-21T06:00:00Z",
+    "firstPeriod": "1994K1",
+    "lastPeriod": "2026K2",
+    "discontinued": null
+   },
+   {
+    "id": "TAB1157",
+    "label": "Försålda industrier (tillverkningsindustrier). Kvartal 1994K1-2026K2",
+    "updated": "2026-08-21T06:00:00Z",
+    "firstPeriod": "1994K1",
+    "lastPeriod": "2026K2",
+    "discontinued": null
+   },
+   {
+    "id": "TAB3795",
+    "label": "Fastighetstaxering för småhus-, hyreshus- och industrienheter efter region och typkod. År 1975-1997",
+    "updated": "2003-06-10T08:02:00Z",
+    "firstPeriod": "1975",
+    "lastPeriod": "1997",
+    "discontinued": null
+   },
+   {
+    "id": "TAB6225",
+    "label": "Taxeringsenheter (typkod 220, 223, 225, 230), totalt taxeringsvärde år 2020, totalt taxeringsvärde år 2021 samt vägd och ovägd förändring efter region och typkod. År 2021",
+    "updated": "2022-02-24T07:00:00Z",
+    "firstPeriod": "2021",
+    "lastPeriod": "2021",
+    "discontinued": null
+   },
+   {
+    "id": "TAB6537",
+    "label": "Taxeringsenheter (typkod 220, 223, 225, 230), totalt taxeringsvärde år 2023, totalt taxeringsvärde år 2024 samt vägd och ovägd förändring efter region och typkod. År 2024",
+    "updated": "2025-03-05T07:00:00Z",
+    "firstPeriod": "2024",
+    "lastPeriod": "2024",
+    "discontinued": null
+   },
+   {
+    "id": "TAB524",
+    "label": "Taxeringsenheter med uppgift om areal (typkod 200–299) och areal efter region och typkod. År 2003-2024",
+    "updated": "2025-02-27T07:00:00Z",
+    "firstPeriod": "2003",
+    "lastPeriod": "2024",
+    "discontinued": null
+   },
+   {
+    "id": "TAB1153",
+    "label": "Försålda fritidshus efter region (riksområden, riket). Kvartal 1998K1-2026K2",
+    "updated": "2026-08-21T06:00:00Z",
+    "firstPeriod": "1998K1",
+    "lastPeriod": "2026K2",
+    "discontinued": null
+   },
+   {
+    "id": "TAB1152",
+    "label": "Försålda fritidshus efter region (riksområden, riket). År 2000-2025",
+    "updated": "2026-06-05T06:00:00Z",
+    "firstPeriod": "2000",
+    "lastPeriod": "2025",
+    "discontinued": null
+   }
+  ]
  },
  "assessed_other": {
   "query": "taxeringsvärde hyreshus",
-  "why": "assessed values incl. hyreshus by typkod",
-  "hits": []
+  "why": "assessed values incl. hyreshus",
+  "hits": [
+   {
+    "id": "TAB1155",
+    "label": "Försålda hyreshus. Kvartal 1994K1-2026K2",
+    "updated": "2026-08-21T06:00:00Z",
+    "firstPeriod": "1994K1",
+    "lastPeriod": "2026K2",
+    "discontinued": null
+   },
+   {
+    "id": "TAB1156",
+    "label": "Försålda hyreshus efter region (län, riket) och fastighetstyp. År 1989-2025",
+    "updated": "2026-06-05T06:00:00Z",
+    "firstPeriod": "1989",
+    "lastPeriod": "2025",
+    "discontinued": null
+   },
+   {
+    "id": "TAB3808",
+    "label": "Taxeringsvärdeförändring för hyreshus vid allmän fastighetstaxering 2007 efter region (län, hela landet) och fastighetstyp. År 2007",
+    "updated": "2008-09-02T07:30:00Z",
+    "firstPeriod": "2007",
+    "lastPeriod": "2007",
+    "discontinued": null
+   },
+   {
+    "id": "TAB3807",
+    "label": "Taxeringsvärdeförändring för hyreshus vid förenklad fastighetstaxering 2004 efter region (län, hela landet) och fastighetstyp. År 2004",
+    "updated": "2005-09-19T11:00:00Z",
+    "firstPeriod": "2004",
+    "lastPeriod": "2004",
+    "discontinued": null
+   },
+   {
+    "id": "TAB3810",
+    "label": "Taxeringsvärdeförändring för hyreshus vid allmän fastighetstaxering 1994 efter region (län, hela landet) och fastighetstyp. År 1994",
+    "updated": "2008-02-08T08:31:00Z",
+    "firstPeriod": "1994",
+    "lastPeriod": "1994",
+    "discontinued": null
+   },
+   {
+    "id": "TAB1165",
+    "label": "Försålda fastigheter efter förvärvsmånad och fastighetstyp. År 1992-2025",
+    "updated": "2026-06-05T06:00:00Z",
+    "firstPeriod": "1992",
+    "lastPeriod": "2025",
+    "discontinued": null
+   },
+   {
+    "id": "TAB1157",
+    "label": "Försålda industrier (tillverkningsindustrier). Kvartal 1994K1-2026K2",
+    "updated": "2026-08-21T06:00:00Z",
+    "firstPeriod": "1994K1",
+    "lastPeriod": "2026K2",
+    "discontinued": null
+   },
+   {
+    "id": "TAB3795",
+    "label": "Fastighetstaxering för småhus-, hyreshus- och industrienheter efter region och typkod. År 1975-1997",
+    "updated": "2003-06-10T08:02:00Z",
+    "firstPeriod": "1975",
+    "lastPeriod": "1997",
+    "discontinued": null
+   },
+   {
+    "id": "TAB1153",
+    "label": "Försålda fritidshus efter region (riksområden, riket). Kvartal 1998K1-2026K2",
+    "updated": "2026-08-21T06:00:00Z",
+    "firstPeriod": "1998K1",
+    "lastPeriod": "2026K2",
+    "discontinued": null
+   },
+   {
+    "id": "TAB1152",
+    "label": "Försålda fritidshus efter region (riksområden, riket). År 2000-2025",
+    "updated": "2026-06-05T06:00:00Z",
+    "firstPeriod": "2000",
+    "lastPeriod": "2025",
+    "discontinued": null
+   },
+   {
+    "id": "TAB1158",
+    "label": "Försålda industrier efter region (län, riket) och fastighetstyp. År 1994-2025",
+    "updated": "2026-06-05T06:00:00Z",
+    "firstPeriod": "1994",
+    "lastPeriod": "2025",
+    "discontinued": null
+   },
+   {
+    "id": "TAB1163",
+    "label": "Försålda lantbruk efter region (län, riket) och andel jordbruksvärde. År 1999-2025",
+    "updated": "2026-06-05T06:00:00Z",
+    "firstPeriod": "1999",
+    "lastPeriod": "2025",
+    "discontinued": null
+   },
+   {
+    "id": "TAB1164",
+    "label": "Försålda lantbruk efter region (län, riket) och andel skogsbruksvärde. År 1999-2025",
+    "updated": "2026-06-05T06:00:00Z",
+    "firstPeriod": "1999",
+    "lastPeriod": "2025",
+    "discontinued": null
+   },
+   {
+    "id": "TAB1161",
+    "label": "Försålda lantbruk efter region (län, riket) och bebyggelseförhållande. År 1999-2025",
+    "updated": "2026-06-05T06:00:00Z",
+    "firstPeriod": "1999",
+    "lastPeriod": "2025",
+    "discontinued": null
+   },
+   {
+    "id": "TAB519",
+    "label": "Taxeringsenheter med uppgift om areal (typkod 300–890) och areal efter län och typkod. År 2000-2025",
+    "updated": "2026-02-19T07:00:00Z",
+    "firstPeriod": "2000",
+    "lastPeriod": "2025",
+    "discontinued": null
+   }
+  ]
  },
  "building_permits": {
-  "query": "bygglov nybyggnad lägenheter",
-  "why": "building permits (was BO0101G)",
-  "hits": []
+  "query": "bygglov",
+  "why": "building permits",
+  "hits": [
+   {
+    "id": "TAB796",
+    "label": "Bygglov för nybyggnad, antal och bruttoarea efter region och hustyp. Kvartal 1996K1-2026K2",
+    "updated": "2026-08-24T06:00:00Z",
+    "firstPeriod": "1996K1",
+    "lastPeriod": "2026K2",
+    "discontinued": null
+   },
+   {
+    "id": "TAB513",
+    "label": "Bygglov för nybyggnad, bruttoarea efter hustyp. Kvartal 1996K1-2026K2",
+    "updated": "2026-08-24T06:00:00Z",
+    "firstPeriod": "1996K1",
+    "lastPeriod": "2026K2",
+    "discontinued": null
+   },
+   {
+    "id": "TAB2534",
+    "label": "Bygglov för nybyggnad, antal lägenheter i bostadshus och fritidshus efter region och hustyp. Kvartal 1996K1-2026K2",
+    "updated": "2026-08-24T06:00:00Z",
+    "firstPeriod": "1996K1",
+    "lastPeriod": "2026K2",
+    "discontinued": null
+   },
+   {
+    "id": "TAB4572",
+    "label": "Lägenheter i nybyggda hus efter region och hustyp. Kvartal 1975K1-2026K2",
+    "updated": "2026-08-24T06:00:00Z",
+    "firstPeriod": "1975K1",
+    "lastPeriod": "2026K2",
+    "discontinued": null
+   },
+   {
+    "id": "TAB6925",
+    "label": "Lägenheter i nybyggda hus efter region och hustyp (specialbostäder uppdelat). Kvartal 2007K1-2026K2",
+    "updated": "2026-08-24T06:00:00Z",
+    "firstPeriod": "2007K1",
+    "lastPeriod": "2026K2",
+    "discontinued": null
+   },
+   {
+    "id": "TAB2538",
+    "label": "Färdigställda lägenheter och rumsenheter i nybyggda hus efter region och hustyp. År 1938-2025",
+    "updated": "2026-05-11T06:00:00Z",
+    "firstPeriod": "1938",
+    "lastPeriod": "2025",
+    "discontinued": null
+   },
+   {
+    "id": "TAB4193",
+    "label": "Färdigställda lägenheter i nybyggda hus efter region, hustyp och upplåtelseform. År 1991-2025",
+    "updated": "2026-05-11T06:00:00Z",
+    "firstPeriod": "1991",
+    "lastPeriod": "2025",
+    "discontinued": null
+   },
+   {
+    "id": "TAB4194",
+    "label": "Färdigställda lägenheter i nybyggda hus efter region, hustyp och ägarkategori. År 1991-2025",
+    "updated": "2026-05-11T06:00:00Z",
+    "firstPeriod": "1991",
+    "lastPeriod": "2025",
+    "discontinued": null
+   },
+   {
+    "id": "TAB4195",
+    "label": "Färdigställda lägenheter i nybyggda hus efter region, hustyp och lägenhetstyp. År 1975-2025",
+    "updated": "2026-05-11T06:00:00Z",
+    "firstPeriod": "1975",
+    "lastPeriod": "2025",
+    "discontinued": null
+   },
+   {
+    "id": "TAB4196",
+    "label": "Färdigställda lägenheter (i specialbostäder) i nybyggda hus efter region, typ av specialbostad. År 1996-2025",
+    "updated": "2026-05-11T06:00:00Z",
+    "firstPeriod": "1996",
+    "lastPeriod": "2025",
+    "discontinued": null
+   },
+   {
+    "id": "TAB2531",
+    "label": "Färdigställda lägenheter i nybyggda hus efter hustyp, upplåtelseform och lägenhetstyp. År 1991-2025",
+    "updated": "2026-05-11T06:00:00Z",
+    "firstPeriod": "1991",
+    "lastPeriod": "2025",
+    "discontinued": null
+   },
+   {
+    "id": "TAB4830",
+    "label": "Nettoförändring av lägenheter i ombyggda flerbostadshus efter region. Preliminära uppgifter. Kvartal 1989K1-2026K2",
+    "updated": "2026-08-24T06:00:00Z",
+    "firstPeriod": "1989K1",
+    "lastPeriod": "2026K2",
+    "discontinued": null
+   },
+   {
+    "id": "TAB5862",
+    "label": "Nettoförändring av lägenheter i ombyggda flerbostadshus efter region och byggnadsperiod. År 1989-2025",
+    "updated": "2026-05-11T06:00:00Z",
+    "firstPeriod": "1989",
+    "lastPeriod": "2025",
+    "discontinued": null
+   },
+   {
+    "id": "TAB2814",
+    "label": "Nettoförändring av lägenheter i ombyggda flerbostadshus efter region och ombyggnadsåtgärd. År 1989-2025",
+    "updated": "2026-05-11T06:00:00Z",
+    "firstPeriod": "1989",
+    "lastPeriod": "2025",
+    "discontinued": null
+   },
+   {
+    "id": "TAB3012",
+    "label": "Nettoförändring av lägenheter i ombyggda flerbostadshus efter region och upplåtelseform.  År 1989-2025",
+    "updated": "2026-05-11T06:00:00Z",
+    "firstPeriod": "1989",
+    "lastPeriod": "2025",
+    "discontinued": null
+   }
+  ]
  },
  "conversions": {
-  "query": "ombyggnad flerbostadshus",
-  "why": "conversions/ombyggnad",
-  "hits": []
+  "query": "ombyggnad",
+  "why": "conversions",
+  "hits": [
+   {
+    "id": "TAB2814",
+    "label": "Nettoförändring av lägenheter i ombyggda flerbostadshus efter region och ombyggnadsåtgärd. År 1989-2025",
+    "updated": "2026-05-11T06:00:00Z",
+    "firstPeriod": "1989",
+    "lastPeriod": "2025",
+    "discontinued": null
+   },
+   {
+    "id": "TAB4830",
+    "label": "Nettoförändring av lägenheter i ombyggda flerbostadshus efter region. Preliminära uppgifter. Kvartal 1989K1-2026K2",
+    "updated": "2026-08-24T06:00:00Z",
+    "firstPeriod": "1989K1",
+    "lastPeriod": "2026K2",
+    "discontinued": null
+   },
+   {
+    "id": "TAB5862",
+    "label": "Nettoförändring av lägenheter i ombyggda flerbostadshus efter region och byggnadsperiod. År 1989-2025",
+    "updated": "2026-05-11T06:00:00Z",
+    "firstPeriod": "1989",
+    "lastPeriod": "2025",
+    "discontinued": null
+   },
+   {
+    "id": "TAB2143",
+    "label": "Nettoförändring av lägenheter i ombyggda flerbostadshus efter region och ägarkategori. År 1989-2025",
+    "updated": "2026-05-11T06:00:00Z",
+    "firstPeriod": "1989",
+    "lastPeriod": "2025",
+    "discontinued": null
+   },
+   {
+    "id": "TAB3012",
+    "label": "Nettoförändring av lägenheter i ombyggda flerbostadshus efter region och upplåtelseform.  År 1989-2025",
+    "updated": "2026-05-11T06:00:00Z",
+    "firstPeriod": "1989",
+    "lastPeriod": "2025",
+    "discontinued": null
+   },
+   {
+    "id": "TAB513",
+    "label": "Bygglov för nybyggnad, bruttoarea efter hustyp. Kvartal 1996K1-2026K2",
+    "updated": "2026-08-24T06:00:00Z",
+    "firstPeriod": "1996K1",
+    "lastPeriod": "2026K2",
+    "discontinued": null
+   },
+   {
+    "id": "TAB2534",
+    "label": "Bygglov för nybyggnad, antal lägenheter i bostadshus och fritidshus efter region och hustyp. Kvartal 1996K1-2026K2",
+    "updated": "2026-08-24T06:00:00Z",
+    "firstPeriod": "1996K1",
+    "lastPeriod": "2026K2",
+    "discontinued": null
+   },
+   {
+    "id": "TAB796",
+    "label": "Bygglov för nybyggnad, antal och bruttoarea efter region och hustyp. Kvartal 1996K1-2026K2",
+    "updated": "2026-08-24T06:00:00Z",
+    "firstPeriod": "1996K1",
+    "lastPeriod": "2026K2",
+    "discontinued": null
+   },
+   {
+    "id": "TAB4572",
+    "label": "Lägenheter i nybyggda hus efter region och hustyp. Kvartal 1975K1-2026K2",
+    "updated": "2026-08-24T06:00:00Z",
+    "firstPeriod": "1975K1",
+    "lastPeriod": "2026K2",
+    "discontinued": null
+   },
+   {
+    "id": "TAB6925",
+    "label": "Lägenheter i nybyggda hus efter region och hustyp (specialbostäder uppdelat). Kvartal 2007K1-2026K2",
+    "updated": "2026-08-24T06:00:00Z",
+    "firstPeriod": "2007K1",
+    "lastPeriod": "2026K2",
+    "discontinued": null
+   },
+   {
+    "id": "TAB2538",
+    "label": "Färdigställda lägenheter och rumsenheter i nybyggda hus efter region och hustyp. År 1938-2025",
+    "updated": "2026-05-11T06:00:00Z",
+    "firstPeriod": "1938",
+    "lastPeriod": "2025",
+    "discontinued": null
+   },
+   {
+    "id": "TAB4193",
+    "label": "Färdigställda lägenheter i nybyggda hus efter region, hustyp och upplåtelseform. År 1991-2025",
+    "updated": "2026-05-11T06:00:00Z",
+    "firstPeriod": "1991",
+    "lastPeriod": "2025",
+    "discontinued": null
+   },
+   {
+    "id": "TAB4194",
+    "label": "Färdigställda lägenheter i nybyggda hus efter region, hustyp och ägarkategori. År 1991-2025",
+    "updated": "2026-05-11T06:00:00Z",
+    "firstPeriod": "1991",
+    "lastPeriod": "2025",
+    "discontinued": null
+   },
+   {
+    "id": "TAB4195",
+    "label": "Färdigställda lägenheter i nybyggda hus efter region, hustyp och lägenhetstyp. År 1975-2025",
+    "updated": "2026-05-11T06:00:00Z",
+    "firstPeriod": "1975",
+    "lastPeriod": "2025",
+    "discontinued": null
+   },
+   {
+    "id": "TAB4196",
+    "label": "Färdigställda lägenheter (i specialbostäder) i nybyggda hus efter region, typ av specialbostad. År 1996-2025",
+    "updated": "2026-05-11T06:00:00Z",
+    "firstPeriod": "1996",
+    "lastPeriod": "2025",
+    "discontinued": null
+   }
+  ]
  },
  "regional_gdp": {
   "query": "bruttoregionprodukt",
-  "why": "regional GDP per län (BRP)",
-  "hits": []
+  "why": "regional GDP per län",
+  "hits": [
+   {
+    "id": "TAB3143",
+    "label": "Bruttoregionprodukt (BRP), (ENS2010) efter region (kommun). År 2012-2024",
+    "updated": "2026-06-24T06:00:00Z",
+    "firstPeriod": "2012",
+    "lastPeriod": "2024",
+    "discontinued": null
+   },
+   {
+    "id": "TAB3138",
+    "label": "Bruttoregionprodukt (BRP), sysselsatta och löner (ENS2010) efter region (län, riksområde). År 2000-2024",
+    "updated": "2026-06-24T06:00:00Z",
+    "firstPeriod": "2000",
+    "lastPeriod": "2024",
+    "discontinued": null
+   },
+   {
+    "id": "TAB3140",
+    "label": "Bruttoregionprodukt (BRP), sysselsatta och löner (ENS2010) efter region (län, riksområde) och näringsgren SNI 2007. År 2000-2024",
+    "updated": "2026-06-24T06:00:00Z",
+    "firstPeriod": "2000",
+    "lastPeriod": "2024",
+    "discontinued": null
+   },
+   {
+    "id": "TAB3141",
+    "label": "Bruttoregionprodukt (BRP), sysselsatta och löner (ENS2010) efter region (riksområde) och näringsgren SNI 2007. År 2000-2024",
+    "updated": "2026-06-24T06:00:00Z",
+    "firstPeriod": "2000",
+    "lastPeriod": "2024",
+    "discontinued": null
+   },
+   {
+    "id": "TAB857",
+    "label": "Bruttoregionprodukt (BRP), sysselsatta och löner (ENS95) efter region (län, riksområde) och näringsgren SNI 2007. År 2000-2011",
+    "updated": "2013-12-12T08:30:00Z",
+    "firstPeriod": "2000",
+    "lastPeriod": "2011",
+    "discontinued": null
+   },
+   {
+    "id": "TAB859",
+    "label": "Bruttoregionprodukt (BRP), sysselsatta och löner (ENS95) efter region (riksområde) och näringsgren SNI 2007. År 2000-2011",
+    "updated": "2013-12-12T08:30:00Z",
+    "firstPeriod": "2000",
+    "lastPeriod": "2011",
+    "discontinued": null
+   },
+   {
+    "id": "TAB856",
+    "label": "Bruttoregionprodukt (BRP), sysselsatta och löner (ENS95) efter region (län, riksområde). År 1993-2011",
+    "updated": "2016-07-08T07:30:00Z",
+    "firstPeriod": "1993",
+    "lastPeriod": "2011",
+    "discontinued": null
+   },
+   {
+    "id": "TAB858",
+    "label": "Bruttoregionprodukt (BRP), sysselsatta och löner (ENS95) efter region (län, riksområde) och näringsgren SNI 2002. År 1993-2008",
+    "updated": "2010-12-17T13:59:00Z",
+    "firstPeriod": "1993",
+    "lastPeriod": "2008",
+    "discontinued": null
+   },
+   {
+    "id": "TAB860",
+    "label": "Bruttoregionprodukt (BRP), sysselsatta och löner (ENS95) efter region (riksområde) och näringsgren SNI 2002. År 1993-2008",
+    "updated": "2010-12-22T08:30:00Z",
+    "firstPeriod": "1993",
+    "lastPeriod": "2008",
+    "discontinued": null
+   }
+  ]
  },
- "forced_sales": {
-  "query": "exekutiv försäljning fastighet",
-  "why": "forced sales, if SCB carries any",
-  "hits": []
+ "rent_check": {
+  "query": "hyra",
+  "why": "sanity check — must return hits or the search is broken",
+  "hits": [
+   {
+    "id": "TAB4590",
+    "label": "Hyra i hyreslägenheter efter län och kommun. År 2016-2025",
+    "updated": "2025-10-03T06:00:00Z",
+    "firstPeriod": "2016",
+    "lastPeriod": "2025",
+    "discontinued": null
+   },
+   {
+    "id": "TAB4549",
+    "label": "Hyra i hyreslägenheter efter stadsdelsområden i storstäder. År 2016-2025",
+    "updated": "2025-10-03T06:00:00Z",
+    "firstPeriod": "2016",
+    "lastPeriod": "2025",
+    "discontinued": null
+   },
+   {
+    "id": "TAB4612",
+    "label": "Hyra i hyreslägenheter efter region, antal rum och byggår. År 2016-2025",
+    "updated": "2025-10-03T06:00:00Z",
+    "firstPeriod": "2016",
+    "lastPeriod": "2025",
+    "discontinued": null
+   },
+   {
+    "id": "TAB4610",
+    "label": "Hyra i hyreslägenheter efter region, byggår och ägarkategori. År 2016-2025",
+    "updated": "2025-10-03T06:00:00Z",
+    "firstPeriod": "2016",
+    "lastPeriod": "2025",
+    "discontinued": null
+   },
+   {
+    "id": "TAB4618",
+    "label": "Hyra i hyreslägenheter efter region, antal rum och ägarkategori. År 2016-2025",
+    "updated": "2025-10-03T06:00:00Z",
+    "firstPeriod": "2016",
+    "lastPeriod": "2025",
+    "discontinued": null
+   },
+   {
+    "id": "TAB4619",
+    "label": "Hyra i hyreslägenheter efter antal rum, byggår och ägarkategori. År 2016-2025",
+    "updated": "2025-10-03T06:00:00Z",
+    "firstPeriod": "2016",
+    "lastPeriod": "2025",
+    "discontinued": null
+   },
+   {
+    "id": "TAB4603",
+    "label": "Hyra i hyreslägenheter efter antal rum för större kommuner samt stadsområden i Stockholm. År 2016-2025",
+    "updated": "2025-10-03T06:00:00Z",
+    "firstPeriod": "2016",
+    "lastPeriod": "2025",
+    "discontinued": null
+   },
+   {
+    "id": "TAB4611",
+    "label": "Hyra i hyreslägenheter efter byggår för större kommuner samt stadsområden i Stockholm. År 2016-2025",
+    "updated": "2025-10-03T06:00:00Z",
+    "firstPeriod": "2016",
+    "lastPeriod": "2025",
+    "discontinued": null
+   },
+   {
+    "id": "TAB753",
+    "label": "Hyror i hyreslägenheter (BHU) efter region, ägarkategori, nybyggår/värdeår, årsintervall och lägenhetstyp. (Urvalsundersökning, se fotnoter.) År 1999-2002",
+    "updated": "2003-11-12T09:06:00Z",
+    "firstPeriod": "1999",
+    "lastPeriod": "2002",
+    "discontinued": null
+   },
+   {
+    "id": "TAB6417",
+    "label": "Hyror i nybyggda hus (hyresrätt) efter region, antal rum och modell för hyressättning. År 2022-2024",
+    "updated": "2025-10-14T06:00:00Z",
+    "firstPeriod": "2022",
+    "lastPeriod": "2024",
+    "discontinued": null
+   },
+   {
+    "id": "TAB6418",
+    "label": "Hyror i nybyggda hus (hyresrätt) efter byggherre, antal rum och modell för hyressättning. År 2022-2024",
+    "updated": "2025-10-14T06:00:00Z",
+    "firstPeriod": "2022",
+    "lastPeriod": "2024",
+    "discontinued": null
+   },
+   {
+    "id": "TAB6419",
+    "label": "Hyror i nybyggda hus (hyresrätt) efter regional indelning NUTS, byggherre och antal rum. År 2022-2024",
+    "updated": "2025-10-14T06:00:00Z",
+    "firstPeriod": "2022",
+    "lastPeriod": "2024",
+    "discontinued": null
+   },
+   {
+    "id": "TAB6421",
+    "label": "Hyror i nybyggda hus (hyresrätt) efter region, byggherre och antal rum. År 2022-2024",
+    "updated": "2025-10-14T06:00:00Z",
+    "firstPeriod": "2022",
+    "lastPeriod": "2024",
+    "discontinued": null
+   },
+   {
+    "id": "TAB758",
+    "label": "Ny månadshyra, hyresförändring efter ägarkategori, nybyggår/värdeår, årsintervall och lägenhetstyp. (Urvalsundersökning, se fotnoter.) År 2004-2015",
+    "updated": "2015-10-01T07:30:00Z",
+    "firstPeriod": "2004",
+    "lastPeriod": "2015",
+    "discontinued": null
+   },
+   {
+    "id": "TAB756",
+    "label": "Ny månadshyra, hyresförändring efter region, nybyggår/värdeår, årsintervall och lägenhetstyp. (Urvalsundersökning, se fotnoter.) År 2004-2015",
+    "updated": "2015-10-01T07:30:00Z",
+    "firstPeriod": "2004",
+    "lastPeriod": "2015",
+    "discontinued": null
+   }
+  ]
  }
 }
