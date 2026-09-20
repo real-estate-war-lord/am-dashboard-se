@@ -2,7 +2,7 @@
 # Targets that exist today. `build` and `serve` tell you what is missing
 # rather than failing cryptically — the build scripts land after the data pull.
 
-.PHONY: help selftest geo discover dry fetch status build serve
+.PHONY: help selftest geo discover dry fetch status validate build serve
 
 help:
 	@echo "make selftest   offline checks, no network (1 s)"
@@ -11,6 +11,7 @@ help:
 	@echo "make dry        plan the pull: calls and cells, no data"
 	@echo "make fetch      THE DATA PULL — 45-90 min, resumable, keeps the Mac awake"
 	@echo "make status     what is on disk right now"
+	@echo "make validate   check config/indicators.json against the metadata on disk"
 	@echo "make build      build the dashboard (needs the pull + the registry)"
 	@echo "make serve      serve dist/ at http://localhost:8080"
 
@@ -30,11 +31,14 @@ fetch:
 	caffeinate -i python3 scripts/fetch_scb.py 2>&1 | tee data/raw/_console.txt
 
 status:
-	@echo "data files : $$(ls data/raw/*.jsonl.gz 2>/dev/null | wc -l | tr -d ' ') of 75 pulls"
+	@echo "data files : $$(ls data/raw/*.jsonl.gz 2>/dev/null | wc -l | tr -d ' ') of $$(python3 -c 'import json;c=json.load(open("config/tables_se.json"));print(sum(len(t.get("levels") or ["all"]) for t in c["tables"]))') pulls"
 	@echo "metadata   : $$(ls data/raw/*.meta.json 2>/dev/null | wc -l | tr -d ' ') tables"
 	@echo "boundaries : $$(ls data/geo/raw/*.geojson 2>/dev/null | wc -l | tr -d ' ') layers"
-	@echo "registry   : $$(test -f config/indicators.json && echo yes || echo 'not written yet')"
+	@echo "registry   : $$(test -f config/indicators.json && python3 -c 'import json;print(len(json.load(open("config/indicators.json"))["indicators"]),"indicators")' || echo 'not written yet')"
 	@echo "dashboard  : $$(test -f dist/index.html && echo built || echo 'not built yet')"
+
+validate:
+	python3 scripts/validate_indicators.py
 
 build:
 	@test -f config/indicators.json || { echo "config/indicators.json missing — the indicator registry has not been written yet."; exit 1; }

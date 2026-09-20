@@ -1,0 +1,2123 @@
+{
+ "_doc": "Indicator registry for the Swedish edition. One entry per indicator; app.js reads this and never hard-codes a number. Every code here was read out of data/raw/scb_*.meta.json — scripts/validate_indicators.py re-checks all of them against that metadata and fails on a code the source does not have. `level` = the finest geography the indicator natively exists at; `levels` = every level it is built for. `sources[].geo` names the level of that one pull and `sources[].pull` names the raw file it comes from (data/raw/<pull>.jsonl.gz). `sources[].vintage` records which SCB region re-cut the codes belong to — RegSO2025/DeSO2025 for the 2025-01-01 division, RegSO2020/DeSO2018 for the older one. Never join across vintages. `sources[].vars` is the exact selection inside that pull; `share.of` lists the codes of the same dimension that form the denominator, `share.of_contents` a denominator that is a different ContentsCode. `moe` is present only where the source publishes a margin of error, and names the ContentsCode that carries it — render the ±, and suppress values whose margin is wider than `suppress_if_rel_gt` of the value. Suppressed source values (`..`/null) stay null and render as '–'; they are never imputed and never 0. `hue` is the RGB target of the choropleth ramp. Attribution: Källa: SCB, licence CC0.",
+ "vintage_note": "SCB re-cut RegSO and DeSO on 2025-01-01. Tables carrying both vintages are pulled on the 2025 codes (suffixed _RegSO2025 / _DeSO2025), which is what the downloaded geometry uses. TAB5750, TAB5956 and TAB6258 exist only on the older codes and are therefore not used by any indicator below.",
+ "indicators": [
+  {
+   "key": "growth",
+   "label": "Population growth",
+   "short": "Growth",
+   "unit": "% / yr",
+   "level": "deso",
+   "levels": [
+    "kommun",
+    "regso",
+    "deso"
+   ],
+   "hue": [
+    10,
+    88,
+    70
+   ],
+   "sources": [
+    {
+     "db": "scb",
+     "table": "TAB6574",
+     "geo": "kommun",
+     "vars": {
+      "Alder": [
+       "totalt"
+      ],
+      "Kon": [
+       "1+2"
+      ],
+      "ContentsCode": [
+       "000007Y7"
+      ]
+     },
+     "vintage": "kommun",
+     "pull": "scb_TAB6574_kommun"
+    },
+    {
+     "db": "scb",
+     "table": "TAB6574",
+     "geo": "regso",
+     "vars": {
+      "Alder": [
+       "totalt"
+      ],
+      "Kon": [
+       "1+2"
+      ],
+      "ContentsCode": [
+       "000007Y7"
+      ]
+     },
+     "vintage": "RegSO2025",
+     "pull": "scb_TAB6574_regso"
+    },
+    {
+     "db": "scb",
+     "table": "TAB6574",
+     "geo": "deso",
+     "vars": {
+      "Alder": [
+       "totalt"
+      ],
+      "Kon": [
+       "1+2"
+      ],
+      "ContentsCode": [
+       "000007Y7"
+      ]
+     },
+     "vintage": "DeSO2025",
+     "pull": "scb_TAB6574_deso"
+    },
+    {
+     "db": "scb",
+     "table": "TAB6473",
+     "geo": "all",
+     "vars": {
+      "Forandringar": [
+       "100"
+      ],
+      "Kon": [
+       "TotSa"
+      ],
+      "ContentsCode": [
+       "000007SR"
+      ]
+     },
+     "vintage": "kommun",
+     "pull": "scb_TAB6473_all",
+     "role": "monthly"
+    }
+   ],
+   "calc": "yoy_pct",
+   "fmt": "signpct1",
+   "moe": null,
+   "desc": "Population change over the last 12 months, % of the population a year earlier.",
+   "source": "SCB TAB6574 (population by region, age and sex, 31 Dec) · TAB6473 (monthly, kommun)",
+   "group": "Demographics"
+  },
+  {
+   "key": "young",
+   "label": "Share aged 20–34",
+   "short": "Young",
+   "unit": "% of population",
+   "level": "deso",
+   "levels": [
+    "kommun",
+    "regso",
+    "deso"
+   ],
+   "hue": [
+    10,
+    88,
+    70
+   ],
+   "sources": [
+    {
+     "db": "scb",
+     "table": "TAB6574",
+     "geo": "kommun",
+     "vars": {
+      "Alder": [
+       "20-24",
+       "25-29",
+       "30-34"
+      ],
+      "Kon": [
+       "1+2"
+      ],
+      "ContentsCode": [
+       "000007Y7"
+      ]
+     },
+     "vintage": "kommun",
+     "pull": "scb_TAB6574_kommun",
+     "share": {
+      "of": [
+       "totalt"
+      ]
+     }
+    },
+    {
+     "db": "scb",
+     "table": "TAB6574",
+     "geo": "regso",
+     "vars": {
+      "Alder": [
+       "20-24",
+       "25-29",
+       "30-34"
+      ],
+      "Kon": [
+       "1+2"
+      ],
+      "ContentsCode": [
+       "000007Y7"
+      ]
+     },
+     "vintage": "RegSO2025",
+     "pull": "scb_TAB6574_regso",
+     "share": {
+      "of": [
+       "totalt"
+      ]
+     }
+    },
+    {
+     "db": "scb",
+     "table": "TAB6574",
+     "geo": "deso",
+     "vars": {
+      "Alder": [
+       "20-24",
+       "25-29",
+       "30-34"
+      ],
+      "Kon": [
+       "1+2"
+      ],
+      "ContentsCode": [
+       "000007Y7"
+      ]
+     },
+     "vintage": "DeSO2025",
+     "pull": "scb_TAB6574_deso",
+     "share": {
+      "of": [
+       "totalt"
+      ]
+     }
+    }
+   ],
+   "calc": "share_of_total",
+   "fmt": "pct0",
+   "moe": null,
+   "desc": "Persons aged 20–34 as % of the total population (ages 20–24 + 25–29 + 30–34 ÷ total).",
+   "source": "SCB TAB6574",
+   "group": "Demographics"
+  },
+  {
+   "key": "single",
+   "label": "One-person households",
+   "short": "1-person hh",
+   "unit": "% of households",
+   "level": "deso",
+   "levels": [
+    "kommun",
+    "regso",
+    "deso"
+   ],
+   "hue": [
+    10,
+    88,
+    70
+   ],
+   "sources": [
+    {
+     "db": "scb",
+     "table": "TAB6568",
+     "geo": "kommun",
+     "vars": {
+      "Hushallstyp": [
+       "ESUB"
+      ],
+      "ContentsCode": [
+       "000007Y1"
+      ]
+     },
+     "vintage": "kommun",
+     "pull": "scb_TAB6568_kommun",
+     "share": {
+      "of": [
+       "TOTALT"
+      ]
+     }
+    },
+    {
+     "db": "scb",
+     "table": "TAB6568",
+     "geo": "regso",
+     "vars": {
+      "Hushallstyp": [
+       "ESUB"
+      ],
+      "ContentsCode": [
+       "000007Y1"
+      ]
+     },
+     "vintage": "RegSO2025",
+     "pull": "scb_TAB6568_regso",
+     "share": {
+      "of": [
+       "TOTALT"
+      ]
+     }
+    },
+    {
+     "db": "scb",
+     "table": "TAB6568",
+     "geo": "deso",
+     "vars": {
+      "Hushallstyp": [
+       "ESUB"
+      ],
+      "ContentsCode": [
+       "000007Y1"
+      ]
+     },
+     "vintage": "DeSO2025",
+     "pull": "scb_TAB6568_deso",
+     "share": {
+      "of": [
+       "TOTALT"
+      ]
+     }
+    }
+   ],
+   "calc": "share_of_total",
+   "fmt": "pct0",
+   "moe": null,
+   "desc": "Single persons without children (ESUB) as % of all households.",
+   "source": "SCB TAB6568",
+   "warn": "ESUB is 'single without children'. ESMB — single WITH children — is not a one-person household and is deliberately excluded.",
+   "group": "Demographics"
+  },
+  {
+   "key": "foreign",
+   "label": "Foreign background",
+   "short": "Foreign bg.",
+   "unit": "% of population",
+   "level": "deso",
+   "levels": [
+    "kommun",
+    "regso",
+    "deso"
+   ],
+   "hue": [
+    10,
+    88,
+    70
+   ],
+   "sources": [
+    {
+     "db": "scb",
+     "table": "TAB6571",
+     "geo": "kommun",
+     "vars": {
+      "UtlBakgrund": [
+       "1"
+      ],
+      "Kon": [
+       "1+2"
+      ],
+      "ContentsCode": [
+       "000007Y4"
+      ]
+     },
+     "vintage": "kommun",
+     "pull": "scb_TAB6571_kommun",
+     "share": {
+      "of": [
+       "SA"
+      ]
+     }
+    },
+    {
+     "db": "scb",
+     "table": "TAB6571",
+     "geo": "regso",
+     "vars": {
+      "UtlBakgrund": [
+       "1"
+      ],
+      "Kon": [
+       "1+2"
+      ],
+      "ContentsCode": [
+       "000007Y4"
+      ]
+     },
+     "vintage": "RegSO2025",
+     "pull": "scb_TAB6571_regso",
+     "share": {
+      "of": [
+       "SA"
+      ]
+     }
+    },
+    {
+     "db": "scb",
+     "table": "TAB6571",
+     "geo": "deso",
+     "vars": {
+      "UtlBakgrund": [
+       "1"
+      ],
+      "Kon": [
+       "1+2"
+      ],
+      "ContentsCode": [
+       "000007Y4"
+      ]
+     },
+     "vintage": "DeSO2025",
+     "pull": "scb_TAB6571_deso",
+     "share": {
+      "of": [
+       "SA"
+      ]
+     }
+    }
+   ],
+   "calc": "share_of_total",
+   "fmt": "pct1",
+   "moe": null,
+   "desc": "Persons with foreign background (born abroad, or born in Sweden to two foreign-born parents) as % of the population.",
+   "source": "SCB TAB6571",
+   "group": "Demographics"
+  },
+  {
+   "key": "income",
+   "label": "Net income, mean per person",
+   "short": "Income",
+   "unit": "kSEK / yr",
+   "level": "deso",
+   "levels": [
+    "kommun",
+    "regso",
+    "deso"
+   ],
+   "hue": [
+    10,
+    88,
+    70
+   ],
+   "sources": [
+    {
+     "db": "scb",
+     "table": "TAB6683",
+     "geo": "kommun",
+     "vars": {
+      "Inkomstkomponenter": [
+       "240"
+      ],
+      "Kon": [
+       "1+2"
+      ],
+      "ContentsCode": [
+       "000008A4"
+      ]
+     },
+     "vintage": "kommun",
+     "pull": "scb_TAB6683_kommun"
+    },
+    {
+     "db": "scb",
+     "table": "TAB6683",
+     "geo": "regso",
+     "vars": {
+      "Inkomstkomponenter": [
+       "240"
+      ],
+      "Kon": [
+       "1+2"
+      ],
+      "ContentsCode": [
+       "000008A4"
+      ]
+     },
+     "vintage": "RegSO2025",
+     "pull": "scb_TAB6683_regso"
+    },
+    {
+     "db": "scb",
+     "table": "TAB6683",
+     "geo": "deso",
+     "vars": {
+      "Inkomstkomponenter": [
+       "240"
+      ],
+      "Kon": [
+       "1+2"
+      ],
+      "ContentsCode": [
+       "000008A4"
+      ]
+     },
+     "vintage": "DeSO2025",
+     "pull": "scb_TAB6683_deso"
+    }
+   ],
+   "calc": "passthrough",
+   "fmt": "ksek",
+   "moe": null,
+   "desc": "Mean net income per person, SEK thousands per year, constant prices (income component 240 = net income).",
+   "source": "SCB TAB6683",
+   "warn": "Published with a ~13-month lag; latest year is 2024. Constant prices — not comparable with nominal series.",
+   "group": "Income & jobs"
+  },
+  {
+   "key": "income_med",
+   "label": "Median disposable income",
+   "short": "Median inc.",
+   "unit": "kSEK / yr",
+   "level": "deso",
+   "levels": [
+    "kommun",
+    "regso",
+    "deso"
+   ],
+   "hue": [
+    10,
+    88,
+    70
+   ],
+   "sources": [
+    {
+     "db": "scb",
+     "table": "TAB6684",
+     "geo": "kommun",
+     "vars": {
+      "ContentsCode": [
+       "000008AB"
+      ]
+     },
+     "vintage": "kommun",
+     "pull": "scb_TAB6684_kommun"
+    },
+    {
+     "db": "scb",
+     "table": "TAB6684",
+     "geo": "regso",
+     "vars": {
+      "ContentsCode": [
+       "000008AB"
+      ]
+     },
+     "vintage": "RegSO2025",
+     "pull": "scb_TAB6684_regso"
+    },
+    {
+     "db": "scb",
+     "table": "TAB6684",
+     "geo": "deso",
+     "vars": {
+      "ContentsCode": [
+       "000008AB"
+      ]
+     },
+     "vintage": "DeSO2025",
+     "pull": "scb_TAB6684_deso"
+    }
+   ],
+   "calc": "passthrough",
+   "fmt": "ksek",
+   "moe": null,
+   "desc": "Median equivalised disposable income, SEK thousands per year.",
+   "source": "SCB TAB6684 (equivalised disposable income by region)",
+   "note": "TAB5750 also carries a RegSO median, but in price base amounts, RegSO only, frozen at 2023 and on the RegSO2020 vintage — TAB6684 is preferred because it is current, on the 2025 vintage and exists at all three levels.",
+   "group": "Income & jobs"
+  },
+  {
+   "key": "capital_inc",
+   "label": "Persons with capital income",
+   "short": "Capital inc.",
+   "unit": "% of persons",
+   "level": "deso",
+   "levels": [
+    "kommun",
+    "regso",
+    "deso"
+   ],
+   "hue": [
+    10,
+    88,
+    70
+   ],
+   "sources": [
+    {
+     "db": "scb",
+     "table": "TAB6683",
+     "geo": "kommun",
+     "vars": {
+      "Inkomstkomponenter": [
+       "230"
+      ],
+      "Kon": [
+       "1+2"
+      ],
+      "ContentsCode": [
+       "000008A2"
+      ]
+     },
+     "vintage": "kommun",
+     "pull": "scb_TAB6683_kommun"
+    },
+    {
+     "db": "scb",
+     "table": "TAB6683",
+     "geo": "regso",
+     "vars": {
+      "Inkomstkomponenter": [
+       "230"
+      ],
+      "Kon": [
+       "1+2"
+      ],
+      "ContentsCode": [
+       "000008A2"
+      ]
+     },
+     "vintage": "RegSO2025",
+     "pull": "scb_TAB6683_regso"
+    },
+    {
+     "db": "scb",
+     "table": "TAB6683",
+     "geo": "deso",
+     "vars": {
+      "Inkomstkomponenter": [
+       "230"
+      ],
+      "Kon": [
+       "1+2"
+      ],
+      "ContentsCode": [
+       "000008A2"
+      ]
+     },
+     "vintage": "DeSO2025",
+     "pull": "scb_TAB6683_deso"
+    }
+   ],
+   "calc": "passthrough",
+   "fmt": "pct0",
+   "moe": null,
+   "desc": "Share of persons with any capital income, % — a wealth proxy, since Sweden publishes no small-area wealth statistic.",
+   "source": "SCB TAB6683 (income component 230, share with income)",
+   "warn": "Presence of capital income, not its size. A krona of bank interest counts the same as a large capital gain.",
+   "group": "Income & jobs"
+  },
+  {
+   "key": "low_econ",
+   "label": "Low economic standard",
+   "short": "Low econ.",
+   "unit": "% of persons",
+   "level": "deso",
+   "levels": [
+    "kommun",
+    "regso",
+    "deso"
+   ],
+   "hue": [
+    166,
+    42,
+    22
+   ],
+   "sources": [
+    {
+     "db": "scb",
+     "table": "TAB6685",
+     "geo": "kommun",
+     "vars": {
+      "Alder": [
+       "tot"
+      ],
+      "ContentsCode": [
+       "000008AC"
+      ]
+     },
+     "vintage": "kommun",
+     "pull": "scb_TAB6685_kommun"
+    },
+    {
+     "db": "scb",
+     "table": "TAB6685",
+     "geo": "regso",
+     "vars": {
+      "Alder": [
+       "tot"
+      ],
+      "ContentsCode": [
+       "000008AC"
+      ]
+     },
+     "vintage": "RegSO2025",
+     "pull": "scb_TAB6685_regso"
+    },
+    {
+     "db": "scb",
+     "table": "TAB6685",
+     "geo": "deso",
+     "vars": {
+      "Alder": [
+       "tot"
+      ],
+      "ContentsCode": [
+       "000008AC"
+      ]
+     },
+     "vintage": "DeSO2025",
+     "pull": "scb_TAB6685_deso"
+    }
+   ],
+   "calc": "passthrough",
+   "fmt": "pct0",
+   "moe": null,
+   "desc": "At-risk-of-poverty rate: share of persons in households below 60 % of the national median equivalised disposable income.",
+   "source": "SCB TAB6685",
+   "note": "Stands in for the Danish housing-benefit indicator. Försäkringskassan publishes no verified kommun breakdown of bostadsbidrag, so this is the affordability proxy.",
+   "group": "Income & jobs"
+  },
+  {
+   "key": "unemp",
+   "label": "Unemployment rate",
+   "short": "Unemp.",
+   "unit": "% of labour force",
+   "level": "deso",
+   "levels": [
+    "kommun",
+    "regso",
+    "deso"
+   ],
+   "hue": [
+    150,
+    90,
+    30
+   ],
+   "sources": [
+    {
+     "db": "scb",
+     "table": "TAB6260",
+     "geo": "kommun",
+     "vars": {
+      "Kon": [
+       "1+2"
+      ],
+      "Alder": [
+       "20-64"
+      ],
+      "Fodelseregion": [
+       "tot"
+      ],
+      "ContentsCode": [
+       "000006II"
+      ]
+     },
+     "vintage": "kommun",
+     "pull": "scb_TAB6260_kommun",
+     "role": "monthly"
+    },
+    {
+     "db": "scb",
+     "table": "TAB6680",
+     "geo": "regso",
+     "vars": {
+      "Kon": [
+       "1+2"
+      ],
+      "Alder": [
+       "20-64"
+      ],
+      "ContentsCode": [
+       "0000089W"
+      ]
+     },
+     "vintage": "RegSO2025",
+     "pull": "scb_TAB6680_regso",
+     "share": {
+      "of_contents": [
+       "0000089V"
+      ]
+     }
+    },
+    {
+     "db": "scb",
+     "table": "TAB6680",
+     "geo": "deso",
+     "vars": {
+      "Kon": [
+       "1+2"
+      ],
+      "Alder": [
+       "20-64"
+      ],
+      "ContentsCode": [
+       "0000089W"
+      ]
+     },
+     "vintage": "DeSO2025",
+     "pull": "scb_TAB6680_deso",
+     "share": {
+      "of_contents": [
+       "0000089V"
+      ]
+     }
+    }
+   ],
+   "calc": "ratio_pct",
+   "fmt": "pct1",
+   "moe": null,
+   "desc": "Unemployed as % of the labour force, ages 20–64. Kommun figure is the monthly register series; RegSO/DeSO is the annual register.",
+   "source": "SCB TAB6260 (monthly, kommun, preliminary) · TAB6680 (annual register, RegSO/DeSO)",
+   "warn": "Register-based (BAS), not the ILO-definition AKU survey — levels differ from the headline national unemployment rate. Kommun series is preliminary and revised.",
+   "group": "Income & jobs"
+  },
+  {
+   "key": "employment",
+   "label": "Employment rate",
+   "short": "Employment",
+   "unit": "% of population 20–64",
+   "level": "deso",
+   "levels": [
+    "kommun",
+    "regso",
+    "deso"
+   ],
+   "hue": [
+    150,
+    90,
+    30
+   ],
+   "sources": [
+    {
+     "db": "scb",
+     "table": "TAB6260",
+     "geo": "kommun",
+     "vars": {
+      "Kon": [
+       "1+2"
+      ],
+      "Alder": [
+       "20-64"
+      ],
+      "Fodelseregion": [
+       "tot"
+      ],
+      "ContentsCode": [
+       "000006IK"
+      ]
+     },
+     "vintage": "kommun",
+     "pull": "scb_TAB6260_kommun",
+     "role": "monthly"
+    },
+    {
+     "db": "scb",
+     "table": "TAB6680",
+     "geo": "regso",
+     "vars": {
+      "Kon": [
+       "1+2"
+      ],
+      "Alder": [
+       "20-64"
+      ],
+      "ContentsCode": [
+       "0000089X"
+      ]
+     },
+     "vintage": "RegSO2025",
+     "pull": "scb_TAB6680_regso",
+     "share": {
+      "of_contents": [
+       "0000089Y"
+      ]
+     }
+    },
+    {
+     "db": "scb",
+     "table": "TAB6680",
+     "geo": "deso",
+     "vars": {
+      "Kon": [
+       "1+2"
+      ],
+      "Alder": [
+       "20-64"
+      ],
+      "ContentsCode": [
+       "0000089X"
+      ]
+     },
+     "vintage": "DeSO2025",
+     "pull": "scb_TAB6680_deso",
+     "share": {
+      "of_contents": [
+       "0000089Y"
+      ]
+     }
+    }
+   ],
+   "calc": "ratio_pct",
+   "fmt": "pct1",
+   "moe": null,
+   "desc": "Employed as % of the population aged 20–64.",
+   "source": "SCB TAB6260 (monthly, kommun) · TAB6680 (annual register, RegSO/DeSO)",
+   "group": "Income & jobs"
+  },
+  {
+   "key": "higher_ed",
+   "label": "Post-secondary education",
+   "short": "Higher ed.",
+   "unit": "% of 25–65",
+   "level": "deso",
+   "levels": [
+    "kommun",
+    "regso",
+    "deso"
+   ],
+   "hue": [
+    10,
+    88,
+    70
+   ],
+   "sources": [
+    {
+     "db": "scb",
+     "table": "TAB6534",
+     "geo": "kommun",
+     "vars": {
+      "UtbildningsNiva": [
+       "5",
+       "6"
+      ],
+      "ContentsCode": [
+       "000007Z6"
+      ]
+     },
+     "vintage": "kommun",
+     "pull": "scb_TAB6534_kommun",
+     "share": {
+      "of": [
+       "21",
+       "3+4",
+       "5",
+       "6"
+      ]
+     }
+    },
+    {
+     "db": "scb",
+     "table": "TAB6534",
+     "geo": "regso",
+     "vars": {
+      "UtbildningsNiva": [
+       "5",
+       "6"
+      ],
+      "ContentsCode": [
+       "000007Z6"
+      ]
+     },
+     "vintage": "RegSO2025",
+     "pull": "scb_TAB6534_regso",
+     "share": {
+      "of": [
+       "21",
+       "3+4",
+       "5",
+       "6"
+      ]
+     }
+    },
+    {
+     "db": "scb",
+     "table": "TAB6534",
+     "geo": "deso",
+     "vars": {
+      "UtbildningsNiva": [
+       "5",
+       "6"
+      ],
+      "ContentsCode": [
+       "000007Z6"
+      ]
+     },
+     "vintage": "DeSO2025",
+     "pull": "scb_TAB6534_deso",
+     "share": {
+      "of": [
+       "21",
+       "3+4",
+       "5",
+       "6"
+      ]
+     }
+    }
+   ],
+   "calc": "share_of_total",
+   "fmt": "pct0",
+   "moe": null,
+   "desc": "Population 25–65 with post-secondary education (levels 5 and 6) as % of those with a known level of education.",
+   "source": "SCB TAB6534",
+   "warn": "Denominator excludes 'US' (level of education unknown) — including it would understate every area, and the unknown share is far larger in areas with recent immigration.",
+   "group": "Income & jobs"
+  },
+  {
+   "key": "rent",
+   "label": "Rent, median",
+   "short": "Rent",
+   "unit": "SEK / m² / yr",
+   "level": "kommun",
+   "levels": [
+    "kommun"
+   ],
+   "hue": [
+    40,
+    84,
+    128
+   ],
+   "sources": [
+    {
+     "db": "scb",
+     "table": "TAB4590",
+     "geo": "all",
+     "vars": {
+      "Hyresuppg": [
+       "Ah_kvm"
+      ],
+      "ContentsCode": [
+       "000000J4",
+       "000000J3"
+      ]
+     },
+     "vintage": "kommun",
+     "pull": "scb_TAB4590_all"
+    }
+   ],
+   "calc": "passthrough",
+   "fmt": "sek0",
+   "moe": {
+    "contents": "000000J3",
+    "kind": "absolute",
+    "unit": "SEK / m² / yr",
+    "render": "± value",
+    "suppress_if_rel_gt": 0.15
+   },
+   "desc": "Median annual rent per square metre in rented dwellings, all owner categories, including heating and water.",
+   "source": "SCB TAB4590 (BO0406 Hyror i bostadslägenheter)",
+   "warn": "Sample survey of ~16 000 apartments. Every value carries a margin of error (000000J3) — render the ±, and grey kommuner whose margin exceeds 15 % of the value. Fully suppressed kommuner (e.g. Malå 2418) stay null and render as '–', never 0.",
+   "group": "Rents"
+  },
+  {
+   "key": "rent_mean",
+   "label": "Rent, mean",
+   "short": "Rent (mean)",
+   "unit": "SEK / m² / yr",
+   "level": "kommun",
+   "levels": [
+    "kommun"
+   ],
+   "hue": [
+    40,
+    84,
+    128
+   ],
+   "sources": [
+    {
+     "db": "scb",
+     "table": "TAB4590",
+     "geo": "all",
+     "vars": {
+      "Hyresuppg": [
+       "Ah_kvm"
+      ],
+      "ContentsCode": [
+       "000000RZ",
+       "000000MQ"
+      ]
+     },
+     "vintage": "kommun",
+     "pull": "scb_TAB4590_all"
+    }
+   ],
+   "calc": "passthrough",
+   "fmt": "sek0",
+   "moe": {
+    "contents": "000000MQ",
+    "kind": "absolute",
+    "unit": "SEK / m² / yr",
+    "render": "± value",
+    "suppress_if_rel_gt": 0.15
+   },
+   "desc": "Mean annual rent per square metre in rented dwellings, all owner categories.",
+   "source": "SCB TAB4590",
+   "warn": "Same sample survey and the same suppression rules as the median. Reference: Stockholm (0180) 2025 = 1 734 ±19; median 1 710 ±28.",
+   "group": "Rents"
+  },
+  {
+   "key": "rent_owner",
+   "label": "Rent by owner category",
+   "short": "Rent, allm./priv.",
+   "unit": "SEK / m² / yr",
+   "level": "none",
+   "levels": [
+    "none"
+   ],
+   "hue": [
+    40,
+    84,
+    128
+   ],
+   "sources": [
+    {
+     "db": "scb",
+     "table": "TAB4618",
+     "geo": "all",
+     "vars": {
+      "AntalRum": [
+       "00"
+      ],
+      "Agarkategori": [
+       "ALLMNB",
+       "PrivOovriga"
+      ],
+      "Hyresuppg": [
+       "Ah_kvm"
+      ],
+      "ContentsCode": [
+       "00000145",
+       "00000142"
+      ]
+     },
+     "vintage": "six national groups",
+     "pull": "scb_TAB4618_all"
+    }
+   ],
+   "calc": "passthrough",
+   "fmt": "sek0",
+   "moe": {
+    "contents": "00000142",
+    "kind": "absolute",
+    "unit": "SEK / m² / yr",
+    "render": "± value"
+   },
+   "desc": "Median rent per m² split between allmännyttiga (municipal) and private landlords.",
+   "source": "SCB TAB4618",
+   "warn": "PANEL ONLY, NEVER A MAP. This split exists for six aggregate region groups — Stockholm/Göteborg/Malmö and three size classes — not per kommun. Sweden publishes no private-vs-allmännytta rent split below that.",
+   "group": "Rents"
+  },
+  {
+   "key": "cpi_rent",
+   "label": "CPI, actual rents paid",
+   "short": "Rent index",
+   "unit": "index 2020=100",
+   "level": "none",
+   "levels": [
+    "none"
+   ],
+   "hue": [
+    40,
+    84,
+    128
+   ],
+   "sources": [
+    {
+     "db": "scb",
+     "table": "TAB6598",
+     "geo": "none",
+     "vars": {
+      "VaruTjanstegrupp": [
+       "04.1"
+      ],
+      "ContentsCode": [
+       "0000080H",
+       "00000805"
+      ]
+     },
+     "vintage": "national",
+     "pull": "scb_TAB6598_none"
+    }
+   ],
+   "calc": "passthrough",
+   "fmt": "idx",
+   "moe": null,
+   "desc": "Consumer price index, COICOP 04.1 'actual rental payments made for housing', monthly, 2020=100.",
+   "source": "SCB TAB6598 (CPI by COICOP)",
+   "warn": "CPI was rebased to 2020=100 in January 2026 — store the base year with the value. Sweden's leases index is CPI for October, not a net price index; the Danish NPI has no counterpart (the Swedish net price index died in 2013M12).",
+   "group": "Rents"
+  },
+  {
+   "key": "renters",
+   "label": "Rented dwellings",
+   "short": "Rented",
+   "unit": "% of dwellings",
+   "level": "deso",
+   "levels": [
+    "kommun",
+    "regso",
+    "deso"
+   ],
+   "hue": [
+    40,
+    84,
+    128
+   ],
+   "sources": [
+    {
+     "db": "scb",
+     "table": "TAB824",
+     "geo": "kommun",
+     "vars": {
+      "Upplatelseform": [
+       "1"
+      ],
+      "Hustyp": [
+       "SMÅHUS",
+       "FLERBOST",
+       "ÖVRHUS",
+       "SPEC"
+      ],
+      "ContentsCode": [
+       "BO0104AH"
+      ]
+     },
+     "vintage": "kommun",
+     "pull": "scb_TAB824_kommun",
+     "share": {
+      "of": [
+       "1",
+       "2",
+       "3",
+       "ÖVRIGT"
+      ]
+     },
+     "geo_note": "kommun"
+    },
+    {
+     "db": "scb",
+     "table": "TAB6638",
+     "geo": "regso",
+     "vars": {
+      "Upplatelseform": [
+       "1"
+      ],
+      "ContentsCode": [
+       "00000864"
+      ]
+     },
+     "vintage": "RegSO2025",
+     "pull": "scb_TAB6638_regso",
+     "share": {
+      "of": [
+       "1",
+       "2",
+       "3",
+       "ÖVRIGT"
+      ]
+     }
+    },
+    {
+     "db": "scb",
+     "table": "TAB6638",
+     "geo": "deso",
+     "vars": {
+      "Upplatelseform": [
+       "1"
+      ],
+      "ContentsCode": [
+       "00000864"
+      ]
+     },
+     "vintage": "DeSO2025",
+     "pull": "scb_TAB6638_deso",
+     "share": {
+      "of": [
+       "1",
+       "2",
+       "3",
+       "ÖVRIGT"
+      ]
+     }
+    }
+   ],
+   "calc": "share_of_total",
+   "fmt": "pct0",
+   "moe": null,
+   "desc": "Hyresrätt (rented) dwellings as % of all dwellings.",
+   "source": "SCB TAB824 (kommun, 1990–2025) · TAB6638 (RegSO/DeSO, 2024–2025)",
+   "warn": "'ÖVRIGT' (tenure unknown) stays in the denominator — dropping it would inflate every share. TAB6638 starts in 2024, so there is no sub-municipal history.",
+   "group": "Housing stock"
+  },
+  {
+   "key": "flats",
+   "label": "Flerbostadshus share",
+   "short": "Flats",
+   "unit": "% of dwellings",
+   "level": "deso",
+   "levels": [
+    "kommun",
+    "regso",
+    "deso"
+   ],
+   "hue": [
+    40,
+    84,
+    128
+   ],
+   "sources": [
+    {
+     "db": "scb",
+     "table": "TAB824",
+     "geo": "kommun",
+     "vars": {
+      "Hustyp": [
+       "FLERBOST"
+      ],
+      "Upplatelseform": [
+       "1",
+       "2",
+       "3",
+       "ÖVRIGT"
+      ],
+      "ContentsCode": [
+       "BO0104AH"
+      ]
+     },
+     "vintage": "kommun",
+     "pull": "scb_TAB824_kommun",
+     "share": {
+      "of": [
+       "SMÅHUS",
+       "FLERBOST",
+       "ÖVRHUS",
+       "SPEC"
+      ]
+     },
+     "geo_note": "kommun"
+    },
+    {
+     "db": "scb",
+     "table": "TAB6065",
+     "geo": "regso",
+     "vars": {
+      "Hustyp": [
+       "FLERBOST"
+      ],
+      "ContentsCode": [
+       "0000077F"
+      ]
+     },
+     "vintage": "RegSO2025",
+     "pull": "scb_TAB6065_regso",
+     "share": {
+      "of": [
+       "TOTALT"
+      ]
+     }
+    },
+    {
+     "db": "scb",
+     "table": "TAB6065",
+     "geo": "deso",
+     "vars": {
+      "Hustyp": [
+       "FLERBOST"
+      ],
+      "ContentsCode": [
+       "0000077F"
+      ]
+     },
+     "vintage": "DeSO2025",
+     "pull": "scb_TAB6065_deso",
+     "share": {
+      "of": [
+       "TOTALT"
+      ]
+     }
+    }
+   ],
+   "calc": "share_of_total",
+   "fmt": "pct0",
+   "moe": null,
+   "desc": "Dwellings in multi-dwelling buildings as % of the stock (kommun); persons living in multi-dwelling buildings as % of the population (RegSO/DeSO).",
+   "source": "SCB TAB824 (dwellings, kommun) · TAB6065 (persons, RegSO/DeSO)",
+   "warn": "The two levels measure different things — dwellings at kommun, persons below it. Label the sub-municipal value accordingly.",
+   "group": "Housing stock"
+  },
+  {
+   "key": "avg_m2",
+   "label": "Floor space per person",
+   "short": "m²/person",
+   "unit": "m² / person",
+   "level": "kommun",
+   "levels": [
+    "kommun"
+   ],
+   "hue": [
+    40,
+    84,
+    128
+   ],
+   "sources": [
+    {
+     "db": "scb",
+     "table": "TAB1541",
+     "geo": "all",
+     "vars": {
+      "Hushallstyp": [
+       "SAMTLH"
+      ],
+      "Boendeform": [
+       "TOT"
+      ],
+      "ContentsCode": [
+       "HE0111DJ"
+      ]
+     },
+     "vintage": "kommun",
+     "pull": "scb_TAB1541_all"
+    }
+   ],
+   "calc": "passthrough",
+   "fmt": "m2",
+   "moe": null,
+   "desc": "Average useful floor space per person, m², all households and all types of housing.",
+   "source": "SCB TAB1541",
+   "note": "Stands in for the Danish average dwelling size. TAB826 (dwellings by floor-space band, kommun) supports a band-weighted mean dwelling size if that is wanted instead; TAB5291 was checked and covers only three regions, so it cannot carry a map.",
+   "group": "Housing stock"
+  },
+  {
+   "key": "kt_tal",
+   "label": "K/T-tal, småhus",
+   "short": "K/T-tal",
+   "unit": "purchase price ÷ assessed value",
+   "level": "kommun",
+   "levels": [
+    "kommun"
+   ],
+   "hue": [
+    30,
+    60,
+    140
+   ],
+   "sources": [
+    {
+     "db": "scb",
+     "table": "TAB1169",
+     "geo": "all",
+     "vars": {
+      "Fastighetstyp": [
+       "220"
+      ],
+      "ContentsCode": [
+       "BO0501C4"
+      ]
+     },
+     "vintage": "kommun",
+     "pull": "scb_TAB1169_all"
+    }
+   ],
+   "calc": "passthrough",
+   "fmt": "ratio2",
+   "moe": null,
+   "desc": "Köpeskillingskoefficient: purchase price divided by assessed value for sold permanent småhus, unweighted annual mean.",
+   "source": "SCB TAB1169",
+   "warn": "THIS IS NOT A PRICE PER SQUARE METRE and must never be labelled as one. Sweden publishes no open realised price per m² at any geography. K/T-tal also drifts with the assessment cycle: assessed values are re-set every three years, so the ratio jumps downward in a general assessment year regardless of what prices did.",
+   "group": "Prices & market"
+  },
+  {
+   "key": "price_avg",
+   "label": "Mean purchase price, småhus",
+   "short": "Price",
+   "unit": "kSEK",
+   "level": "kommun",
+   "levels": [
+    "kommun"
+   ],
+   "hue": [
+    30,
+    60,
+    140
+   ],
+   "sources": [
+    {
+     "db": "scb",
+     "table": "TAB1169",
+     "geo": "all",
+     "vars": {
+      "Fastighetstyp": [
+       "220"
+      ],
+      "ContentsCode": [
+       "BO0501C2",
+       "BO0501C1"
+      ]
+     },
+     "vintage": "kommun",
+     "pull": "scb_TAB1169_all"
+    }
+   ],
+   "calc": "passthrough",
+   "fmt": "ksek",
+   "moe": null,
+   "desc": "Mean purchase price of sold permanent småhus, SEK thousands, with the number of sales (BO0501C1) alongside it.",
+   "source": "SCB TAB1169",
+   "warn": "Not size-adjusted — a kommun of large houses reads high for that reason alone. Kommuner with very few sales in a year are noisy; show the sales count with the price.",
+   "group": "Prices & market"
+  },
+  {
+   "key": "sales_n",
+   "label": "Småhus sales",
+   "short": "Sales",
+   "unit": "sales / yr",
+   "level": "kommun",
+   "levels": [
+    "kommun"
+   ],
+   "hue": [
+    30,
+    60,
+    140
+   ],
+   "sources": [
+    {
+     "db": "scb",
+     "table": "TAB1169",
+     "geo": "all",
+     "vars": {
+      "Fastighetstyp": [
+       "220"
+      ],
+      "ContentsCode": [
+       "BO0501C1"
+      ]
+     },
+     "vintage": "kommun",
+     "pull": "scb_TAB1169_all"
+    }
+   ],
+   "calc": "passthrough",
+   "fmt": "int",
+   "moe": null,
+   "desc": "Number of sold permanent småhus in the year.",
+   "source": "SCB TAB1169",
+   "group": "Prices & market"
+  },
+  {
+   "key": "taxv",
+   "label": "Assessed value, all property",
+   "short": "Assessed val.",
+   "unit": "MSEK",
+   "level": "kommun",
+   "levels": [
+    "kommun"
+   ],
+   "hue": [
+    30,
+    60,
+    140
+   ],
+   "sources": [
+    {
+     "db": "scb",
+     "table": "TAB3797",
+     "geo": "kommun",
+     "vars": {
+      "ContentsCode": [
+       "BO0601B3",
+       "BO0601B2",
+       "BO0601B1",
+       "BO0601S1"
+      ]
+     },
+     "vintage": "kommun",
+     "pull": "scb_TAB3797_kommun"
+    }
+   ],
+   "calc": "passthrough",
+   "fmt": "msek",
+   "moe": null,
+   "desc": "Total assessed value with its land (BO0601B1) and building (BO0601B2) components, and the number of assessed units, by kommun and typkod — hyreshus included.",
+   "source": "SCB TAB3797 (BO0601 Fastighetstaxeringar)",
+   "note": "Resolved from the old BO0601A path by scripts/discover_scb.py. Typkod 320–325 are the hyreshus classes; 220/221 are småhus, also available per-unit in TAB5149.",
+   "group": "Prices & market"
+  },
+  {
+   "key": "taxv_smahus",
+   "label": "Assessed value per småhus",
+   "short": "Assessed/unit",
+   "unit": "kSEK",
+   "level": "kommun",
+   "levels": [
+    "kommun"
+   ],
+   "hue": [
+    30,
+    60,
+    140
+   ],
+   "sources": [
+    {
+     "db": "scb",
+     "table": "TAB5149",
+     "geo": "kommun",
+     "vars": {
+      "Typkod": [
+       "220"
+      ],
+      "ContentsCode": [
+       "000002X0"
+      ]
+     },
+     "vintage": "kommun",
+     "pull": "scb_TAB5149_kommun"
+    }
+   ],
+   "calc": "passthrough",
+   "fmt": "ksek",
+   "moe": null,
+   "desc": "Average total assessed value per småhus assessment unit (typkod 220), SEK thousands.",
+   "source": "SCB TAB5149",
+   "group": "Prices & market"
+  },
+  {
+   "key": "completions",
+   "label": "Dwellings completed, last 4Q",
+   "short": "Completions",
+   "unit": "per 1,000 dwellings",
+   "level": "kommun",
+   "levels": [
+    "kommun"
+   ],
+   "hue": [
+    10,
+    88,
+    70
+   ],
+   "sources": [
+    {
+     "db": "scb",
+     "table": "TAB4572",
+     "geo": "kommun",
+     "vars": {
+      "Hustyp": [
+       "FLERBO",
+       "SMÅHUS"
+      ],
+      "ContentsCode": [
+       "BO0101A3"
+      ]
+     },
+     "vintage": "kommun",
+     "pull": "scb_TAB4572_kommun"
+    },
+    {
+     "db": "scb",
+     "table": "TAB824",
+     "geo": "kommun",
+     "vars": {
+      "Hustyp": [
+       "SMÅHUS",
+       "FLERBOST",
+       "ÖVRHUS",
+       "SPEC"
+      ],
+      "Upplatelseform": [
+       "1",
+       "2",
+       "3",
+       "ÖVRIGT"
+      ],
+      "ContentsCode": [
+       "BO0104AH"
+      ]
+     },
+     "vintage": "kommun",
+     "pull": "scb_TAB824_kommun",
+     "role": "denominator"
+    }
+   ],
+   "calc": "sum4q_per_1000",
+   "fmt": "per1000",
+   "moe": null,
+   "desc": "Dwellings completed in newly constructed buildings over the last four quarters, per 1 000 existing dwellings.",
+   "source": "SCB TAB4572 (quarterly, kommun) · denominator TAB824",
+   "warn": "Not adjusted for reporting delays — the most recent quarters are revised upward.",
+   "group": "Construction"
+  },
+  {
+   "key": "starts",
+   "label": "Dwelling starts, last 4Q",
+   "short": "Starts",
+   "unit": "per 1,000 dwellings",
+   "level": "kommun",
+   "levels": [
+    "kommun"
+   ],
+   "hue": [
+    10,
+    88,
+    70
+   ],
+   "sources": [
+    {
+     "db": "scb",
+     "table": "TAB4572",
+     "geo": "kommun",
+     "vars": {
+      "Hustyp": [
+       "FLERBO",
+       "SMÅHUS"
+      ],
+      "ContentsCode": [
+       "BO0101A4"
+      ]
+     },
+     "vintage": "kommun",
+     "pull": "scb_TAB4572_kommun"
+    },
+    {
+     "db": "scb",
+     "table": "TAB824",
+     "geo": "kommun",
+     "vars": {
+      "Hustyp": [
+       "SMÅHUS",
+       "FLERBOST",
+       "ÖVRHUS",
+       "SPEC"
+      ],
+      "Upplatelseform": [
+       "1",
+       "2",
+       "3",
+       "ÖVRIGT"
+      ],
+      "ContentsCode": [
+       "BO0104AH"
+      ]
+     },
+     "vintage": "kommun",
+     "pull": "scb_TAB824_kommun",
+     "role": "denominator"
+    }
+   ],
+   "calc": "sum4q_per_1000",
+   "fmt": "per1000",
+   "moe": null,
+   "desc": "Dwellings started in newly constructed buildings over the last four quarters, per 1 000 existing dwellings — the leading half of the pipeline.",
+   "source": "SCB TAB4572 · denominator TAB824",
+   "warn": "Starts are revised more heavily than completions. TAB6925 carries the same measure with specialbostäder split out, from 2007 only.",
+   "group": "Construction"
+  },
+  {
+   "key": "completions_n",
+   "label": "Dwellings completed, last 4Q (count)",
+   "short": "Completed n",
+   "unit": "dwellings",
+   "level": "kommun",
+   "levels": [
+    "kommun"
+   ],
+   "hue": [
+    10,
+    88,
+    70
+   ],
+   "sources": [
+    {
+     "db": "scb",
+     "table": "TAB4572",
+     "geo": "kommun",
+     "vars": {
+      "Hustyp": [
+       "FLERBO",
+       "SMÅHUS"
+      ],
+      "ContentsCode": [
+       "BO0101A3"
+      ]
+     },
+     "vintage": "kommun",
+     "pull": "scb_TAB4572_kommun"
+    }
+   ],
+   "calc": "sum4q",
+   "fmt": "int",
+   "moe": null,
+   "desc": "Dwellings completed over the last four quarters, absolute count.",
+   "source": "SCB TAB4572",
+   "group": "Construction"
+  },
+  {
+   "key": "new_rental",
+   "label": "New dwellings that are hyresrätt",
+   "short": "New rental",
+   "unit": "% of completions",
+   "level": "kommun",
+   "levels": [
+    "kommun"
+   ],
+   "hue": [
+    10,
+    88,
+    70
+   ],
+   "sources": [
+    {
+     "db": "scb",
+     "table": "TAB4193",
+     "geo": "kommun",
+     "vars": {
+      "Upplatelseform": [
+       "1"
+      ],
+      "Hustyp": [
+       "FLERBO",
+       "SMÅHUS"
+      ],
+      "ContentsCode": [
+       "0000005O"
+      ]
+     },
+     "vintage": "kommun",
+     "pull": "scb_TAB4193_kommun",
+     "share": {
+      "of": [
+       "1",
+       "2",
+       "3"
+      ]
+     }
+    }
+   ],
+   "calc": "share_of_total",
+   "fmt": "pct0",
+   "moe": null,
+   "desc": "Share of completed new dwellings built as hyresrätt, latest full year.",
+   "source": "SCB TAB4193",
+   "warn": "Annual, and small kommuner complete nothing in many years — a null year is 'no completions', not 0 %.",
+   "group": "Construction"
+  },
+  {
+   "key": "permits",
+   "label": "Building permits, dwellings",
+   "short": "Permits",
+   "unit": "dwellings / quarter",
+   "level": "none",
+   "levels": [
+    "none"
+   ],
+   "hue": [
+    10,
+    88,
+    70
+   ],
+   "sources": [
+    {
+     "db": "scb",
+     "table": "TAB2534",
+     "geo": "all",
+     "vars": {
+      "Hustyp": [
+       "1113",
+       "21",
+       "2224",
+       "19"
+      ],
+      "ContentsCode": [
+       "BO0701A1"
+      ]
+     },
+     "vintage": "riket / metro / län",
+     "pull": "scb_TAB2534_all"
+    }
+   ],
+   "calc": "sum4q",
+   "fmt": "int",
+   "moe": null,
+   "desc": "Dwellings granted a building permit for new construction, quarterly.",
+   "source": "SCB TAB2534 (BO0701 Bygglov) · gross floor area in TAB796",
+   "warn": "PANEL ONLY, NEVER A MAP AT KOMMUN. Verified 2026-09-20: this table's Region dimension holds 30 codes — riket, the three metro areas, four riksområden and the 21 län. There is no kommun level for building permits. DATA_MAP_SE.md §1b previously implied one; it does not exist.",
+   "group": "Construction"
+  },
+  {
+   "key": "socio",
+   "label": "Socio-economic index",
+   "short": "Socio index",
+   "unit": "index",
+   "level": "regso",
+   "levels": [
+    "regso"
+   ],
+   "hue": [
+    166,
+    42,
+    22
+   ],
+   "sources": [
+    {
+     "db": "scb",
+     "table": "TAB6586",
+     "geo": "regso",
+     "vars": {
+      "ContentsCode": [
+       "000008IT",
+       "000008IU"
+      ]
+     },
+     "vintage": "RegSO2025",
+     "pull": "scb_TAB6586_regso"
+    }
+   ],
+   "calc": "passthrough",
+   "fmt": "idx1",
+   "moe": null,
+   "desc": "SCB's socio-economic index for the RegSO, with the area type classification (000008IU) alongside it.",
+   "source": "SCB TAB6586",
+   "warn": "RegSO only — there is no DeSO or kommun value. A composite of education, economic standard and benefit dependence; read it as a classification, not a measurement.",
+   "group": "Area quality"
+  },
+  {
+   "key": "bme",
+   "label": "Housing-market balance",
+   "short": "Market balance",
+   "unit": "shortage / balance / surplus",
+   "level": "kommun",
+   "levels": [
+    "kommun"
+   ],
+   "hue": [
+    166,
+    42,
+    22
+   ],
+   "sources": [
+    {
+     "db": "boverket",
+     "table": "bostadsmarknadsenkaten",
+     "geo": "kommun",
+     "vintage": "kommun",
+     "pull": null,
+     "format": "xlsx"
+    }
+   ],
+   "calc": "categorical",
+   "fmt": "cat",
+   "moe": null,
+   "desc": "Boverket's Bostadsmarknadsenkät: each kommun's own assessment of whether it has a shortage, balance or surplus of housing.",
+   "source": "Boverket Bostadsmarknadsenkäten (annual, May)",
+   "warn": "NOT YET ON DISK. The files are JS-rendered and need a browser pass; this entry is a placeholder so the registry matches DATA_MAP_SE.md §1b. Self-reported by the kommuner, not measured. Attribution to Boverket is required.",
+   "group": "Area quality"
+  },
+  {
+   "key": "mortgage_rate",
+   "label": "Mortgage rate, new agreements",
+   "short": "Mortgage rate",
+   "unit": "%",
+   "level": "none",
+   "levels": [
+    "none"
+   ],
+   "hue": [
+    30,
+    60,
+    140
+   ],
+   "sources": [
+    {
+     "db": "scb",
+     "table": "TAB5783",
+     "geo": "none",
+     "vars": {
+      "Referenssektor": [
+       "1"
+      ],
+      "Motpartssektor": [
+       "2c"
+      ],
+      "Avtal": [
+       "0100"
+      ],
+      "Rantebindningstid": [
+       "1",
+       "1.1.1",
+       "1.1.2.1",
+       "1.1.2.2",
+       "1.1.2.3"
+      ],
+      "ContentsCode": [
+       "000004ZW"
+      ]
+     },
+     "vintage": "national",
+     "pull": "scb_TAB5783_none"
+    }
+   ],
+   "calc": "passthrough",
+   "fmt": "pct2",
+   "moe": null,
+   "desc": "Lending rate to households for housing loans, by original rate fixation period, monthly.",
+   "source": "SCB TAB5783 (FM5001 Finansmarknadsstatistik)",
+   "note": "Resolved from the old FM5001C path by scripts/discover_scb.py. TAB5780 carries the wider lending-rate series back to 1987M03. Avtal 0100/0200 distinguish new agreements from outstanding stock — check the label before charting.",
+   "group": "Macro"
+  },
+  {
+   "key": "gdp",
+   "label": "GDP, volume change",
+   "short": "GDP",
+   "unit": "% / yr",
+   "level": "none",
+   "levels": [
+    "none"
+   ],
+   "hue": [
+    10,
+    88,
+    70
+   ],
+   "sources": [
+    {
+     "db": "scb",
+     "table": "TAB3100",
+     "geo": "none",
+     "vars": {
+      "EkoIndikator": [
+       "BNP10"
+      ],
+      "ContentsCode": [
+       "NR0103A!",
+       "NR0103A¤"
+      ]
+     },
+     "vintage": "national",
+     "pull": "scb_TAB3100_none"
+    }
+   ],
+   "calc": "passthrough",
+   "fmt": "signpct1",
+   "moe": null,
+   "desc": "GDP at market prices, change in volume against the same quarter a year earlier, and the seasonally adjusted quarter-on-quarter change.",
+   "source": "SCB TAB3100 (NR0103 Nationalräkenskaper)",
+   "note": "Resolved from the old NR0103B path by scripts/discover_scb.py.",
+   "group": "Macro"
+  },
+  {
+   "key": "policy_rate",
+   "label": "Policy rate",
+   "short": "Policy rate",
+   "unit": "%",
+   "level": "none",
+   "levels": [
+    "none"
+   ],
+   "hue": [
+    30,
+    60,
+    140
+   ],
+   "sources": [
+    {
+     "db": "riksbank",
+     "series": "SECBREPOEFF",
+     "geo": "none",
+     "vintage": "national",
+     "pull": null,
+     "api": "https://api.riksbank.se/swea/v1/Observations"
+    }
+   ],
+   "calc": "passthrough",
+   "fmt": "pct2",
+   "moe": null,
+   "desc": "Riksbank policy rate (styrränta), daily.",
+   "source": "Riksbank SWEA API, series SECBREPOEFF",
+   "warn": "NOT YET ON DISK — the Riksbank fetcher is not written. Verified live 2026-09-14: 1.75 % as of 2026-08. STIBOR series closed in 2020 and must not be used.",
+   "group": "Macro"
+  },
+  {
+   "key": "bond_10y",
+   "label": "Government bond, 10 yr",
+   "short": "10-yr yield",
+   "unit": "%",
+   "level": "none",
+   "levels": [
+    "none"
+   ],
+   "hue": [
+    30,
+    60,
+    140
+   ],
+   "sources": [
+    {
+     "db": "riksbank",
+     "series": "SEGVB10YC",
+     "geo": "none",
+     "vintage": "national",
+     "pull": null,
+     "api": "https://api.riksbank.se/swea/v1/Observations"
+    }
+   ],
+   "calc": "passthrough",
+   "fmt": "pct2",
+   "moe": null,
+   "desc": "10-year Swedish government bond yield, daily.",
+   "source": "Riksbank SWEA API, series SEGVB10YC",
+   "warn": "NOT YET ON DISK. Verified live 2026-09-14: 3.15 % at 2026-09-09.",
+   "group": "Macro"
+  },
+  {
+   "key": "cpi",
+   "label": "CPI",
+   "short": "CPI",
+   "unit": "index 2020=100",
+   "level": "none",
+   "levels": [
+    "none"
+   ],
+   "hue": [
+    10,
+    88,
+    70
+   ],
+   "sources": [
+    {
+     "db": "scb",
+     "table": "TAB6598",
+     "geo": "none",
+     "vars": {
+      "VaruTjanstegrupp": [
+       "00"
+      ],
+      "ContentsCode": [
+       "0000080H",
+       "00000805"
+      ]
+     },
+     "vintage": "national",
+     "pull": "scb_TAB6598_none"
+    },
+    {
+     "db": "scb",
+     "table": "TAB6602",
+     "geo": "none",
+     "vars": {
+      "VaruTjanstegrupp": [
+       "00"
+      ],
+      "ContentsCode": [
+       "00000813",
+       "00000810"
+      ]
+     },
+     "vintage": "national",
+     "pull": "scb_TAB6602_none",
+     "role": "kpif"
+    }
+   ],
+   "calc": "passthrough",
+   "fmt": "idx",
+   "moe": null,
+   "desc": "Consumer price index, total, and KPIF (CPI with fixed interest rate), monthly.",
+   "source": "SCB TAB6598 (CPI) · TAB6602 (KPIF)",
+   "warn": "Rebased to 2020=100 in January 2026 — always store the base year with the value.",
+   "group": "Macro"
+  }
+ ]
+}
