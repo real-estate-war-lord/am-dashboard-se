@@ -18,14 +18,25 @@ Done:
 - `scripts/scb.py` — SCB PxWebApi v2 client (metadata, selection planning, chunking, json-stat2 flattening). All offline logic covered by `scripts/selftest.py`.
 - `scripts/fetch_scb.py` — deep raw pull driven by `config/tables_se.json`; resumable, gzip output.
 - `scripts/fetch_geo_scb.py` — boundaries. **Already downloaded**: `data/geo/raw/regso_2025.geojson` (3 363 features) and `deso_2025.geojson` (6 160), both EPSG:4326, plus `kommun_lan.zip` (needs `ogr2ogr`, i.e. `brew install gdal`, or derive kommun outlines by dissolving RegSO on `kommunkod`).
-- `data/raw/*.meta.json` — metadata for 65 tables **already on disk**. Every value code, label, unit and update timestamp is there; resolve indicator codes from these files, never by guessing and never by re-fetching.
+- `data/raw/*.meta.json` — metadata for 74 tables **already on disk**. Every value code, label, unit and update timestamp is there; resolve indicator codes from these files, never by guessing and never by re-fetching.
+- `make discover` — done. The five tables known only by their old v1 path resolved to
+  `TAB6260` (arbetsmarknadsstatus, kommun, monthly), `TAB5783` (utlåningsränta/bolåneränta),
+  `TAB3100` (BNP, quarterly), `TAB3797` (taxeringsvärde, land/building split) and `TAB5149`
+  (taxeringsvärde per småhus). All five are in `config/tables_se.json`.
+  **Bygglov has no kommun level** — `TAB2534`/`TAB796` carry 30 region codes only (riket, three
+  metro areas, four riksområden, 21 län). Do not promise a permits map.
+- `config/indicators.json` — 35 indicators covering `docs/DATA_MAP_SE.md` §1 and §1b plus the
+  national macro panel. `make validate` re-checks every table, dimension, value code, level,
+  vintage and margin-of-error code against the metadata on disk and fails on an invented one.
 
 Next, in order:
-1. `python3 scripts/discover_scb.py` — resolves the tables known only by their old v1 path (unemployment, mortgage rates, GDP, assessed values, building permits) into v2 `TABxxxx` ids. Searches in Swedish.
-2. `caffeinate -i python3 scripts/fetch_scb.py 2>&1 | tee data/raw/_console.txt` — the full pull, ~37.5 M cells, 864 calls, 45–90 min, ~450 MB gzipped. Resumable: re-running skips finished pulls and retries failed ones.
-3. Build `config/indicators.json` (registry) from the metadata on disk + `docs/DATA_MAP_SE.md` §1.
-4. Port `build_makro.py` / `build_market.py` / `build_dashboard.py` / `app.js` from the Danish repo.
-5. `make build && make serve`, spot-check, publish.
+1. `caffeinate -i python3 scripts/fetch_scb.py 2>&1 | tee data/raw/_console.txt` — the full pull,
+   ~42 M cells, ~1 350 calls. Resumable: re-running skips finished pulls and retries failed ones.
+   Re-run it once after any change to `config/tables_se.json`; it only fetches what is new.
+2. Port `build_makro.py` / `build_market.py` / `build_dashboard.py` / `app.js` from the Danish repo.
+3. `make build && make serve`, spot-check, publish.
+4. Still missing, and not from SCB: Boverket BME (`bme`), Riksbank SWEA (`policy_rate`,
+   `bond_10y`). Their registry entries exist and are marked NOT YET ON DISK.
 
 ## Geography — three levels, and the vocabulary differs from Denmark
 
@@ -75,6 +86,7 @@ Base `https://api.scb.se/OV0104/v2beta/api/v2/`, no key, licence CC0 (attribute
 - English everywhere in code, docs and UI. Swedish source terms kept verbatim where they are
   the precise ones: kommun, hyresrätt, bostadsrätt, allmännytta, bruksvärde, K/T-tal, RegSO, DeSO.
 - One indicator = one entry in `config/indicators.json`; no numbers hard-coded in `app.js`.
+  Run `make validate` after every edit to it — it is what stops an invented code reaching the build.
 - Every processed number carries its period and the source's `updated` stamp.
 - **Margins of error are first-class.** `TAB4590` (rent) is a ~16 000-apartment sample survey and
   ships `± Felmarginal` as its own ContentsCode; SCB also perturbs small-area values for disclosure

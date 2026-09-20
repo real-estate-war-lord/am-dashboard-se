@@ -1,6 +1,6 @@
 # AM Dashboard — Sweden Edition: Open Data Map
 
-**Status:** v0.2 · 2026-09-20 · sources verified, metadata for 65 tables on disk, geometry downloaded, data pull pending
+**Status:** v0.3 · 2026-09-20 · all table ids resolved, `config/indicators.json` written and validated, deep pull running
 **Scope:** the *Macro / Market* layer, same as the Danish edition. Portfolio data stays out of scope.
 **Principle:** same design as the Danish edition (v1.9), every number from **Swedish open sources**.
 
@@ -34,18 +34,18 @@ Everything in the Danish chip row can be reproduced in Sweden, most of it at a f
 |---|---|---|---|---|---|---|
 | 1 | `growth` | Population growth %/yr | Population growth %/yr | `TAB6574` population by region/age/sex, ContentsCode `000007Y7`, Alder `totalt`, Kon `1+2`; `TAB6473` monthly | **DeSO**, RegSO, kommun | annual · 2025 |
 | 2 | `income` | Disposable income avg/person | Net income, mean (tkr) | `TAB6683` ContentsCode `000008A4` (mean), Kon `1+2`, pick the total income component | **DeSO**, RegSO | annual · 2024 |
-| 2b | `income_med` | — | Median disposable income | `TAB5750` ContentsCode `000004X4`, Bakgrund `tot20-64` — RegSO only, **price base amounts**, frozen 2023 | RegSO | annual · 2023 |
+| 2b | `income_med` | — | Median disposable income | **`TAB6684`** ContentsCode `000008AB` — kSEK, **all three levels**, RegSO2025 vintage, to 2024. Supersedes `TAB5750` (RegSO only, price base amounts, frozen 2023, RegSO2020 vintage) | **DeSO**, RegSO, kommun | annual · 2024 |
 | 3 | `young` | Share aged 20–34 | Share aged 20–34 | `TAB6574` age bands `20-24`+`25-29`+`30-34` ÷ `totalt` | **DeSO**, RegSO, kommun | annual · 2025 |
 | 4 | `yks` | Single-person households % | One-person households % | `TAB6568` `ESUB` (ensamstående utan barn) ÷ `TOTALT`. `ESMB` is single *with* children — not one-person | **DeSO**, RegSO, kommun | annual · 2025 |
 | 5 | `kela` | Housing-benefit households % | **Substitute:** share with low economic standard | `TAB6685` — Försäkringskassan has no verified kommun breakdown | **DeSO**, RegSO | annual · 2024 |
 | 6 | `rent` | Private rent DKK/m²/yr | Rent SEK/m²/yr, all tenures | `TAB4590` Hyresuppg `Ah_kvm`, ContentsCode `000000J4` median (± `000000J3`), `000000RZ` mean (± `000000MQ`) | **kommun (290)** | annual, Oct · 2025 |
 | 6b | `rent_priv` | — | allmännyttiga vs privata | `TAB4618` / `TAB4610` — 6 aggregate groups only, **panel not map** | 6 groups | annual |
 | 7 | `vuok` | Renter households % | hyresrätt share of dwellings | `TAB6638` Upplatelseform `1` ÷ all (DeSO/RegSO); `TAB824` at kommun (`1` hyresrätt, `2` bostadsrätt, `3` äganderätt, `ÖVRIGT`) | **DeSO**, RegSO, kommun | annual · 2025 |
-| 8 | `tyott` | Unemployment % | Unemployment, register-based | `TAB6680` `0000089W` unemployed ÷ `0000089V` labour force, Alder `20-64` (DeSO/RegSO, annual); kommun monthly from the AM0210 table found by `discover_scb.py` | **DeSO/RegSO** annual, kommun monthly | 2024 / 2026M06 |
+| 8 | `tyott` | Unemployment % | Unemployment, register-based | `TAB6680` `0000089W` unemployed ÷ `0000089V` labour force, Alder `20-64` (DeSO/RegSO, annual); kommun monthly from **`TAB6260`** (`000006II` unemployment %, `000006IK` employment rate) | **DeSO/RegSO** annual, kommun monthly | 2024 / 2026M06 |
 | 9 | `kork` | Tertiary education % | Post-secondary share of 25–65 | `TAB6534` levels `5` + `6` ÷ total excl. `US` | **DeSO**, RegSO, kommun | annual · 2025 |
 | 10 | `kt` | Multi-dwelling share | Flerbostadshus share | `TAB824` Hustyp `FLERBOST` ÷ all (kommun); `TAB6065` persons by building type (RegSO) | kommun; RegSO | annual · 2025 |
 | 11 | `vk` | Immigrants + descendants % | Foreign background % | `TAB6571` | **DeSO**, RegSO | annual · 2025 |
-| 12 | `akoko` | Average dwelling size | Floor space per dwelling | `TAB826` / `TAB5291` / `TAB1541` — geography **unverified**, may be regional | ? | annual |
+| 12 | `avg_m2` | Average dwelling size | Floor space per person | **`TAB1541`** `HE0111DJ`, Hushallstyp `SAMTLH`, Boendeform `TOT` — **kommun verified 290**. `TAB826` (floor-space bands, kommun) supports a weighted mean dwelling size; `TAB5291` is **3 regions only**, unusable | kommun | annual · 2025 |
 
 ### 1b. Sweden-only indicators
 
@@ -59,7 +59,11 @@ Everything in the Danish chip row can be reproduced in Sweden, most of it at a f
 | `new_rental` | Share of completions that are hyresrätt | `TAB4193` by upplåtelseform | kommun | annual · 2025 |
 | `labour` | Employment rate | `TAB6680` `0000089X` ÷ `0000089Y` | DeSO/RegSO | annual |
 | `capital_inc` | Share of persons with capital income (wealth proxy) | `TAB6683` component `230`, ContentsCode `000008A2` | DeSO, RegSO | annual |
-| `taxv` | Assessed value, hyreshus, building/land split | BO0601A table via `discover_scb.py` | kommun | annual |
+| `taxv` | Assessed value, land/building split, all typkod incl. hyreshus | **`TAB3797`** `BO0601B1` land, `BO0601B2` building, `BO0601B3` total, `BO0601S1` units | kommun (290) | annual · 2025 |
+| `taxv_smahus` | Average assessed value per småhus unit | **`TAB5149`** `000002X0`, Typkod `220` | kommun (290) | annual · 2025 |
+| `permits` | Building permits, dwellings | **`TAB2534`** `BO0701A1` (area in `TAB796`) | **riket / 3 metro / 4 riksområden / 21 län — NO kommun level** | quarterly · 2026K2 |
+| `mortgage_rate` | Mortgage rate by fixation period | **`TAB5783`** `000004ZW` (wider series `TAB5780`) | national | monthly · 2026M07 |
+| `gdp` | GDP, volume change | **`TAB3100`** `NR0103A!` y/y, `NR0103A¤` sa q/q | national | quarterly · 2026K2 |
 
 ### 1c. What Denmark has and Sweden does not
 
@@ -112,10 +116,10 @@ Glossary: **bruksvärdessystemet** — rents negotiated collectively, capped by 
 `TAB5602–5605` 6 groups, triennial, no next publication planned. `TAB3208` allmännytta, regional. Panel only, never a map.
 
 ### 3.6 Macro
-Riksbank SWEA `https://api.riksbank.se/swea/v1/Observations/{series}/{from}/{to}` — `SECBREPOEFF` policy rate (1.75 verified 2026-08), `SEGVB10YC` 10-yr (3.15 at 2026-09-09), FX `SEKEURPMI`. STIBOR series closed 2020. SCB: `TAB6598` CPI COICOP (`04.1` = actual rents), `TAB6602` KPIF, `TAB6612` detailed CPI; mortgage rates `FM5001C/RantaT01N` and GDP `NR0103B` via `discover_scb.py`. Eurostat `nama_10r_3gdp` geo `SE110…SE332` for regional GDP. **KPI rebased to 2020=100 in Jan 2026** — store the base year.
+Riksbank SWEA `https://api.riksbank.se/swea/v1/Observations/{series}/{from}/{to}` — `SECBREPOEFF` policy rate (1.75 verified 2026-08), `SEGVB10YC` 10-yr (3.15 at 2026-09-09), FX `SEKEURPMI`. STIBOR series closed 2020. SCB: `TAB6598` CPI COICOP (`04.1` = actual rents), `TAB6602` KPIF, `TAB6612` detailed CPI; mortgage rates **`TAB5783`** (FM5001, bolåneräntor by fixation period; `TAB5780` back to 1987M03) and GDP **`TAB3100`** (NR0103, quarterly volume change). Eurostat `nama_10r_3gdp` geo `SE110…SE332` for regional GDP. **KPI rebased to 2020=100 in Jan 2026** — store the base year.
 
 ### 3.7 Registers
-No BBR. Lantmäteriet Byggnad Inspire: year built, use, footprint — free but purpose-vetted, no floor area. Lägenhetsregistret not public. Boverket EPC API: key required, not enumerable (kommun + address mandatory, 1 500 calls/day), `byggnadsar` always null. SCB `BO0601A`: assessed values per kommun with building/land split, incl. hyreshus.
+No BBR. Lantmäteriet Byggnad Inspire: year built, use, footprint — free but purpose-vetted, no floor area. Lägenhetsregistret not public. Boverket EPC API: key required, not enumerable (kommun + address mandatory, 1 500 calls/day), `byggnadsar` always null. SCB **`TAB3797`** (BO0601): assessed values per kommun with land/building split, all 108 typkod incl. the hyreshus classes; **`TAB5149`** adds the average per småhus unit.
 
 ---
 
@@ -135,5 +139,12 @@ No BBR. Lantmäteriet Byggnad Inspire: year built, use, footprint — free but p
 | 2026-09-18 | `TAB4590` Stockholm 1 710 ±28 / 1 734 ±19; Malå `..` | ✅ |
 | 2026-09-18 | geometry downloaded: RegSO 50.7 MB, DeSO 62.1 MB | ✅ |
 | 2026-09-18 | metadata for 65 tables | ✅ on disk |
+| 2026-09-20 | `discover_scb.py` resolved all five outstanding ids | ✅ TAB6260, TAB5783, TAB3100, TAB3797, TAB5149 |
+| 2026-09-20 | `TAB6260` Region dimension | ✅ 290 kommuner, monthly to 2026M06 |
+| 2026-09-20 | `TAB2534`/`TAB796` Region dimension | ❌ **30 codes, no kommun** — building permits are regional only |
+| 2026-09-20 | `TAB6684` carries a median at kommun + RegSO + DeSO, 2025 vintage | ✅ replaces `TAB5750` for `income_med` |
+| 2026-09-20 | `TAB6683`/`TAB6685`/`TAB6571`/`TAB6065`/`TAB6253`/`TAB6766`/`TAB5956`/`TAB6684` carry kommun too | ✅ kommun level added to the pull list |
+| 2026-09-20 | `TAB1541` floor space per person at kommun; `TAB5291` only 3 regions | ✅ / ❌ |
+| 2026-09-20 | `config/indicators.json`, 35 indicators, every code checked against metadata | ✅ `make validate` |
 | — | `*_DeSO2025` mask live, POST fallback | not yet — first real pull proves them |
 | — | Boverket BME files, Försäkringskassan kommun level, Kronofogden kommun column | browser pass pending |
