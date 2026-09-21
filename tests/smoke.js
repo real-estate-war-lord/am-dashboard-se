@@ -320,6 +320,32 @@ assert("equity ratio may be negative and is not clipped",
        `${D.kommuner.filter(m => m.kommun_equity < 0).length} kommuner below zero`);
 assert("Kolada is credited", fin.every(i => /Kolada \(RKA\)/.test(i.source)));
 
+console.log("\nunused-on-disk tables, now used:");
+const kd = byCode["0180"].dist || {};
+assert("industry mix on the kommun page", (kd.industry || []).length > 10,
+       `${(kd.industry || []).length} SNI groups`);
+const someR = D.regso.find(r => r.kommun === "0180" && r.dist && r.dist.industry);
+assert("and on RegSO", !!someR, someR ? someR.name : "none");
+assert("industry rolls up exactly from RegSO",
+       Math.abs(kd.industry.reduce((a, b) => a + b, 0) -
+                D.regso.filter(r => r.kommun === "0180" && r.dist && r.dist.industry)
+                  .reduce((s_, r) => s_ + r.dist.industry.reduce((a, b) => a + b, 0), 0)) < 1,
+       `${kd.industry.reduce((a, b) => a + b, 0)} employed`);
+assert("self-sufficiency by region of birth", (kd.selfsuff || []).length === 3,
+       (kd.selfsuff || []).map(v => `${v} %`).join(" / "));
+assert("brf price is a län figure repeated over kommuner",
+       new Set(D.kommuner.map(k => k.brf_price).filter(v => v != null)).size === 21,
+       `${new Set(D.kommuner.map(k => k.brf_price).filter(v => v != null)).size} distinct`);
+for (const k of ["newbuild_rent", "vacancy"])
+  assert(`${k} is a macro series`, !!(D.macro.series || {})[k],
+         `${((D.macro.series || {})[k] || []).length} points`);
+assert("vacancy carries its breakdown", Object.keys((D.macro.breakdown || {}).vacancy || {}).length === 3);
+assert("and is flagged stale", /STALE/.test((D.macro.latest.vacancy || {}).warn || ""));
+S.view = "market";
+const mkt = A.vMarket();
+assert("both new panels render", /New-build rent by rent-setting model/.test(mkt) && /Vacant dwellings/.test(mkt));
+assert("the staleness is on the page, not just in the registry", /<b>Stale\.<\/b>/.test(mkt));
+
 console.log("\nmarket cards:");
 const mk = (S.view = "market", A.vMarket());
 for (const gone of ["DST HUS1", "DST EJ56", "Finans Danmark", "Nationalbank", "Homes for sale"])

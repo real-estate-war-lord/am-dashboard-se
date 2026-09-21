@@ -715,6 +715,22 @@ function barsBlock(title, labels, values, unitPct, ref) {
   return `<div class="distblk"><h4>${esc(title)}</h4>${rows}</div>`;
 }
 
+/* Self-sufficiency (SCB's own measure: an income above a threshold set from the
+   national median) split by where people were born — three bars, not a share of
+   one whole, so it gets its own block rather than barsBlock's normalisation. */
+function selfsuffBlock(e, meta) {
+  const d = e.o.dist && e.o.dist.selfsuff;
+  if (!d || !meta.labels) return "";
+  const ref = e.kommun && e.kommun.dist && e.kommun.dist.selfsuff;
+  const mx = Math.max(1, ...d.filter(v => v != null), ...((ref || []).filter(v => v != null)));
+  const rows = meta.labels.map((l, i) => {
+    if (d[i] == null) return "";
+    const w = d[i] / mx * 100, r = ref && ref[i] != null ? ref[i] / mx * 100 : null;
+    return `<div class="distrow"><span>${esc(l)}</span><em><i style="width:${w.toFixed(1)}%"></i>${r != null ? `<u style="left:${r.toFixed(1)}%"></u>` : ""}</em><b>${nf(d[i], 0)} %</b></div>`;
+  }).join("");
+  return `<div class="distblk"><h4>Self-sufficient 20–64 · ${esc(meta.period || "")}</h4>${rows}</div>`;
+}
+
 function distCard(e) {
   const d = e.o.dist; if (!d) return "";
   const meta = DM();
@@ -725,8 +741,10 @@ function distCard(e) {
       ${pyramidBlock(e)}
       ${barsBlock(`Income by type · ${inc.period || ""} · kSEK/yr, mean`, inc.labels || [], d.income, false, kd && kd.income)}
       ${barsBlock(`Tenure · ${ten.period || ""}`, ten.labels || [], d.tenure, true, kd && kd.tenure)}
+      ${barsBlock(`Employment by industry · ${(meta.industry || {}).period || ""}`, (meta.industry || {}).labels || [], d.industry, true, kd && kd.industry)}
+      ${selfsuffBlock(e, meta.selfsuff || {})}
     </div>
-    <p class="cap">Källa: SCB — population by age and sex (TAB6574), income structure (TAB6683), dwellings by tenure (${e.type === "kommun" ? "TAB824" : "TAB6638"}). Mean amounts are per person over the whole population, so components most people do not receive read low.</p>`;
+    <p class="cap">Källa: SCB — population by age and sex (TAB6574), income structure (TAB6683), dwellings by tenure (${e.type === "kommun" ? "TAB824" : "TAB6638"}), employment by industry (TAB6681, summed from RegSO at kommun level), self-sufficiency (TAB6766). Mean amounts are per person over the whole population, so components most people do not receive read low.</p>`;
 }
 function vArea() {
   const e = areaEntity();
@@ -1083,6 +1101,7 @@ const AGE_GROUPS = [["0–19", ["-4", "5-9", "10-14", "15-19"]], ["20–34", ["2
                     ["35–64", ["35-39", "40-44", "45-49", "50-54", "55-59", "60-64"]],
                     ["65+", ["65-69", "70-74", "75-79", "80-"]]];
 const INC_TOP = 5;
+const IND_TOP = 6;
 function distDefs() {
   const m = (D.meta && D.meta.dist) || {};
   const inc = (m.income && m.income.labels) || [];
@@ -1090,6 +1109,7 @@ function distDefs() {
     age: ["Age structure", AGE_GROUPS.map(g => g[0])],
     tenure: ["Tenure", (m.tenure && m.tenure.labels) || []],
     income: ["Income by type", inc.slice(0, INC_TOP)],
+    industry: ["Employment by industry", ((m.industry && m.industry.labels) || []).slice(0, IND_TOP)],
   };
 }
 const DIST_DEFS = new Proxy({}, { get: (_, k) => distDefs()[k] });
@@ -1098,6 +1118,7 @@ function distValues(e, kind) {
   const d = e.o && e.o.dist; if (!d) return null;
   if (kind === "tenure") return d.tenure || null;
   if (kind === "income") return d.income ? d.income.slice(0, INC_TOP) : null;
+  if (kind === "industry") return d.industry ? d.industry.slice(0, IND_TOP) : null;
   if (kind === "age") {
     const meta = (D.meta && D.meta.dist && D.meta.dist.age) || {}; const bands = meta.bands || [];
     if (!d.age) return null;
@@ -1239,6 +1260,17 @@ function lineChart(key, opts = {}) {
     ${xl.map(i => `<text class="ax" x="${x(i).toFixed(1)}" y="${H - (series.length > 1 ? 20 : 6)}" text-anchor="${i === 0 ? "start" : i === times.length - 1 ? "end" : "middle"}">${esc(times[i] || "")}</text>`).join("")}
     ${paths}${legend}</svg>`;
 }
+/* the named sub-series a macro indicator carries, as a small table — used where
+   the breakdown is the point (owner category, rent-setting model) */
+function bdTable(key, unit, dec) {
+  const bd = ((D.macro && D.macro.breakdown) || {})[key];
+  if (!bd) return "";
+  const names = Object.keys(bd);
+  if (names.length < 2) return "";
+  const times = bd[names[0]].map(p => p.t);
+  return `<div class="scrollx"><table class="tbl compact"><thead><tr><th>${esc(unit)}</th>${times.map(t => `<th class="num">${esc(t)}</th>`).join("")}</tr></thead>
+    <tbody>${names.map(n => `<tr><th>${esc(n)}</th>${times.map(t => { const p = bd[n].find(x => x.t === t); return `<td class="num">${p ? nf(p.v, dec) : "–"}</td>`; }).join("")}</tr>`).join("")}</tbody></table></div>`;
+}
 function vMarket() {
   const mac = D.macro || {}, lt = mac.latest || {};
   if (!Object.keys(lt).length) return `<div class="card"><p class="empty">No macro series built yet — run the pipeline (see Sources).</p></div>`;
@@ -1259,6 +1291,14 @@ function vMarket() {
       { key: "bond_10y", label: "10-yr government bond" },
       { key: "mortgage_rate", label: "Mortgage, new agreements" }], { dec: 2 })}
       <p class="cap">Policy rate and 10-year yield from the Riksbank (daily, thinned to month-end); the mortgage rate is SCB's lending rate to households for housing loans, all fixation periods.</p></div>
+    <div class="card"><div class="card-head"><h3>New-build rent by rent-setting model</h3><span class="hint">SCB TAB6417 · six national groups</span></div>${lineChart([
+      { key: "newbuild_rent", label: "All models" }], { dec: 0 })}
+      ${bdTable("newbuild_rent", "SEK / m² / yr", 0)}
+      <p class="cap">Presumtionshyra exempts a new build from the bruksvärde cap for 15 years, which is why these sit far above the stock next door. Six national groups, 2022–2024 — no kommun breakdown exists.</p></div>
+    <div class="card"><div class="card-head"><h3>Vacant dwellings, multi-dwelling buildings</h3><span class="hint">SCB TAB5602 · 1 March</span></div>${lineChart([
+      { key: "vacancy", label: "All owners" }], { dec: 1 })}
+      ${bdTable("vacancy", "% of dwellings", 1)}
+      <p class="cap"><b>Stale.</b> Triennial and the series stops at 2024 (2019, 2021, 2024); SCB has announced no next publication, so this does not track the current market. Sample survey — the published margin of error is wider than most of the differences between the groups.</p></div>
   </div>
   <div class="card"><div class="card-head"><h3>Macro indicators</h3><span class="hint">latest available period per series</span></div>
     <table class="tbl compact" data-sortable><thead><tr><th>Indicator</th><th class="num">Value</th><th class="num">y/y</th><th>Period</th><th>Source</th></tr></thead>

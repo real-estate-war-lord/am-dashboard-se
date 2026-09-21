@@ -111,6 +111,11 @@ def check_source(key: str, source: dict) -> None:
             elif source.get("vintage") not in ("kommun", vintage) and geo != "kommun":
                 errors.append(f"{key}/{table}: vintage says '{source.get('vintage')}' "
                               f"but the pull would select '{vintage}'")
+    elif geo == "lan":
+        # a county figure spread over its kommuner; the Region dimension must have
+        # two-digit codes for that to be possible at all
+        if rdim is None or not [c for c in scb.codes(meta, rdim) if len(c) == 2 and c.isdigit()]:
+            errors.append(f"{key}/{table}: geo 'lan' but no two-digit län codes in Region")
     elif geo not in ("all", "none"):
         errors.append(f"{key}: unknown geo '{geo}'")
 

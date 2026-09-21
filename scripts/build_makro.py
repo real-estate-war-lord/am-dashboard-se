@@ -48,6 +48,7 @@ OUT = PROC / "makro.json"
 DESO_DIR = PROC / "deso"
 
 RE_KOMMUN = re.compile(r"^\d{4}$")
+RE_LAN = re.compile(r"^\d{2}$")
 
 warnings: list[str] = []
 
@@ -114,6 +115,8 @@ def aggregate(source: dict, ind: dict) -> tuple[dict, dict, dict]:
             region = "SE"                       # national table, no Region dimension
         elif geo == "kommun" and not RE_KOMMUN.match(region):
             continue                            # mixed-level pull, keep the 290
+        elif geo == "lan" and not RE_LAN.match(region):
+            continue                            # keep the 21 counties
         v = r.get("value")
         t = r["Tid"]
         cc = r.get("ContentsCode")
@@ -377,6 +380,66 @@ def tenure_mix(pull: str, keep: set, dim: str, codes: list, table: str, cc: str)
             "data": {a: v for a, v in data.items() if any(v)}}
 
 
+def industry_mix(pull: str, keep: set) -> dict:
+    """Employed by industry, latest live year (TAB6681). The 16 SNI groups
+    without the total and the 'not available' bucket."""
+    labels = dim_labels("TAB6681", "SNI2007")
+    codes = [c for c in labels if c not in ("A-U+US", "US")]
+    by: dict = collections.defaultdict(lambda: collections.defaultdict(dict))
+    best = None
+    for r in stream(pull):
+        if r.get("Kon") != "1+2" or r.get("ContentsCode") != "000008A0":
+            continue
+        if r.get("SNI2007") not in codes or not r["value"]:
+            continue
+        a = r["Region"]
+        if a not in keep:
+            continue
+        t = r["Tid"]
+        if best is None or period_key(t) > period_key(best):
+            best = t
+        by[t][a][r["SNI2007"]] = r["value"]
+    if best is None:
+        return {}
+    data = {a: [cells.get(c, 0) for c in codes] for a, cells in by[best].items()}
+    return {"period": best, "codes": codes,
+            "labels": [labels.get(c, c) for c in codes],
+            "data": {a: v for a, v in data.items() if any(v)}}
+
+
+def selfsuff(pull: str, keep: set) -> dict:
+    """Share of self-sufficient persons 20-64 by region of birth (TAB6766).
+
+    Self-sufficiency is SCB's own measure: an income above a threshold set from
+    the national median, so it says something about labour-market attachment
+    that the unemployment rate alone does not.
+    """
+    labels = dim_labels("TAB6766", "Fodelseregion")
+    codes = ["samt", "in", "ut"]
+    by: dict = collections.defaultdict(lambda: collections.defaultdict(dict))
+    best = None
+    for r in stream(pull):
+        if r.get("ContentsCode") != "000008GN" or r.get("Kon") != "1+2":
+            continue
+        if r.get("Alder") != "20-64" or r.get("Fodelseregion") not in codes:
+            continue
+        if r["value"] in (None, 0):
+            continue
+        a = r["Region"]
+        if a not in keep:
+            continue
+        t = r["Tid"]
+        if best is None or period_key(t) > period_key(best):
+            best = t
+        by[t][a][r["Fodelseregion"]] = r["value"]
+    if best is None:
+        return {}
+    data = {a: [cells.get(c) for c in codes] for a, cells in by[best].items()}
+    return {"period": best, "codes": codes,
+            "labels": [labels.get(c, c) for c in codes],
+            "data": {a: v for a, v in data.items() if any(x for x in v if x is not None)}}
+
+
 # ---------------------------------------------------------------- main
 
 def main() -> int:
@@ -496,7 +559,8 @@ def main() -> int:
         done_geo: set = set()
         for s in srcs:
             geo = s.get("geo")
-            geo = "kommun" if geo == "all" else geo
+            spread_lan = geo == "lan" or s.get("spread") == "lan"
+            geo = "kommun" if geo in ("all", "lan") else geo
             if geo not in ENT or geo in done_geo:
                 continue
             try:
@@ -518,10 +582,23 @@ def main() -> int:
                     p = latest_in(list(dn), None)
                     dvals = dn.get(p) or {}
 
+            def to_kommuner(vals: dict) -> dict:
+                """A län figure repeated over each of its kommuner — the geography
+                the source actually has, said plainly by the indicator's warn."""
+                if not spread_lan:
+                    return vals
+                out = {}
+                for a, e in kommuner.items():
+                    v = vals.get(e.get("lan"))
+                    if v is not None:
+                        out[a] = v
+                return out
+
             years = sorted({period_year(p) for p in num}, key=int)[-n_hist:]
             all_years.update(years)
             for y in years:
                 vals, per = values_for(ind, s, num, den, y)
+                vals = to_kommuner(vals)
                 if not vals or per is None:
                     continue
                 if ind["calc"] == "sum4q_per_1000":
@@ -539,6 +616,7 @@ def main() -> int:
 
             # latest
             vals, per = values_for(ind, s, num, den, None)
+            vals = to_kommuner(vals)
             if per is None:
                 continue
             if ind["calc"] == "sum4q_per_1000":
@@ -573,10 +651,28 @@ def main() -> int:
                        if level == "kommun" else
                        tenure_mix(f"scb_TAB6638_{level}", keep, "Upplatelseform",
                                   ["1", "2", "3", "ÖVRIGT"], "TAB6638", "00000864")),
+            # TAB6681 is published for RegSO and DeSO only; the kommun mix is
+            # summed from its RegSO, which is exact for counts.
+            "industry": (industry_mix(f"scb_TAB6681_regso", set(regso)) if level == "kommun"
+                         else industry_mix(f"scb_TAB6681_{level}", keep)
+                         if level == "regso" else {}),
+            # TAB6766 has kommun and RegSO, no DeSO.
+            "selfsuff": (selfsuff(f"scb_TAB6766_{level}", keep)
+                         if level in ("kommun", "regso") else {}),
         }
         for what, d in dists[level].items():
             print(f"  {level:7s} {what:7s} {len(d.get('data') or {}):5d} areas · {d.get('period', '–')}")
 
+    ind_regso = dists["kommun"].get("industry") or {}
+    if ind_regso.get("data"):
+        rolled: dict = collections.defaultdict(lambda: [0.0] * len(ind_regso["codes"]))
+        for a, v in ind_regso["data"].items():
+            k = regso[a]["kommun"] if a in regso else None
+            if k:
+                for i, x in enumerate(v):
+                    rolled[k][i] += x
+        dists["kommun"]["industry"] = {**ind_regso, "data": {k: [round(x) for x in v]
+                                                             for k, v in rolled.items()}}
     for level in ("kommun", "regso", "deso"):
         for what, d in dists[level].items():
             for a, v in (d.get("data") or {}).items():
@@ -587,7 +683,7 @@ def main() -> int:
                         "bands": dists["kommun"][what].get("bands"),
                         "comps": dists["kommun"][what].get("comps"),
                         "codes": dists["kommun"][what].get("codes")}
-                 for what in ("age", "income", "tenure")}
+                 for what in ("age", "income", "tenure", "industry", "selfsuff")}
 
     # ---- DeSO goes to one file per kommun, loaded on demand
     DESO_DIR.mkdir(parents=True, exist_ok=True)

@@ -1103,6 +1103,101 @@
    "group": "Rents"
   },
   {
+   "key": "newbuild_rent",
+   "label": "New-build rent by rent-setting model",
+   "short": "New-build rent",
+   "unit": "SEK / m² / yr",
+   "level": "none",
+   "levels": [
+    "none"
+   ],
+   "hue": [
+    40,
+    84,
+    128
+   ],
+   "sources": [
+    {
+     "db": "scb",
+     "table": "TAB6417",
+     "geo": "none",
+     "vars": {
+      "AntalRum": [
+       "00"
+      ],
+      "Hyresattningsmod": [
+       "1",
+       "2",
+       "3",
+       "4"
+      ],
+      "ContentsCode": [
+       "000007GJ"
+      ]
+     },
+     "vintage": "six national groups",
+     "pull": "scb_TAB6417_all"
+    }
+   ],
+   "calc": "passthrough",
+   "fmt": "sek0",
+   "moe": null,
+   "desc": "Annual rent per m² in newly built rented dwellings, split by how the rent was set: negotiated bruksvärde, presumtionshyra (with or without an investment subsidy) or individually negotiated.",
+   "source": "SCB TAB6417",
+   "warn": "PANEL ONLY. Six national groups, three years (2022–2024) — there is no kommun breakdown. Presumtionshyra exempts a new build from the bruksvärde cap for 15 years, which is why new-build rents sit far above the stock they are built next to.",
+   "group": "Rents"
+  },
+  {
+   "key": "vacancy",
+   "label": "Vacant dwellings, multi-dwelling buildings",
+   "short": "Vacancy",
+   "unit": "% of dwellings",
+   "level": "none",
+   "levels": [
+    "none"
+   ],
+   "hue": [
+    166,
+    42,
+    22
+   ],
+   "sources": [
+    {
+     "db": "scb",
+     "table": "TAB5602",
+     "geo": "none",
+     "vars": {
+      "Agarkategori": [
+       "TOT",
+       "ALLMN",
+       "PRIV"
+      ],
+      "Fardigstallandear": [
+       "99"
+      ],
+      "ContentsCode": [
+       "000004A1",
+       "000004A6"
+      ]
+     },
+     "vintage": "six national groups",
+     "pull": "scb_TAB5602_all"
+    }
+   ],
+   "calc": "passthrough",
+   "fmt": "pct1",
+   "moe": {
+    "contents": "000004A6",
+    "kind": "absolute",
+    "unit": "percentage points",
+    "render": "± value"
+   },
+   "desc": "Share of dwellings in multi-dwelling buildings standing vacant and available for rent on 1 March, by owner category.",
+   "source": "SCB TAB5602",
+   "warn": "STALE AND PANEL ONLY. Triennial, six national groups, and the series stops at 2024 (2019, 2021, 2024) — SCB has announced no next publication, so this does not track the current market. It is a sample survey and carries a margin of error.",
+   "group": "Rents"
+  },
+  {
    "key": "cpi_rent",
    "label": "CPI, actual rents paid",
    "short": "Rent index",
@@ -1496,6 +1591,43 @@
    "moe": null,
    "desc": "Number of sold permanent småhus in the year.",
    "source": "SCB TAB1169",
+   "group": "Prices & market"
+  },
+  {
+   "key": "brf_price",
+   "label": "Bostadsrätt price, mean",
+   "short": "BRF price",
+   "unit": "kSEK",
+   "level": "kommun",
+   "levels": [
+    "kommun"
+   ],
+   "hue": [
+    30,
+    60,
+    140
+   ],
+   "sources": [
+    {
+     "db": "scb",
+     "table": "TAB1151",
+     "geo": "lan",
+     "vars": {
+      "ContentsCode": [
+       "BO0501R7"
+      ]
+     },
+     "vintage": "län, repeated over its kommuner",
+     "spread": "lan",
+     "pull": "scb_TAB1151_all"
+    }
+   ],
+   "calc": "passthrough",
+   "fmt": "ksek",
+   "moe": null,
+   "desc": "Mean purchase price of sold bostadsrätter, SEK thousands, by län.",
+   "source": "SCB TAB1151",
+   "warn": "A LÄN FIGURE, NOT A KOMMUN ONE. Sweden publishes no bostadsrätt prices below county level, so every kommun in a län shows the same figure — 21 values on a 290-kommun map. It is also a price, not a price per m²: nothing adjusts for the size of what was sold.",
    "group": "Prices & market"
   },
   {
