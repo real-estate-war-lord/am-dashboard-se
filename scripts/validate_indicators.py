@@ -55,7 +55,7 @@ def check_source(key: str, source: dict) -> None:
         if not p.exists():
             warnings.append(f"{key}: {p.name} not on disk — run scripts/fetch_riksbank.py")
         return
-    if db in ("boverket", "kronofogden"):
+    if db in ("boverket", "kronofogden", "kolada"):
         p = ROOT / "data" / "external" / f"{source.get('file')}.csv"
         if not p.exists():
             warnings.append(f"{key}: data/external/{p.name} not on disk — run the matching scripts/import_*.py")

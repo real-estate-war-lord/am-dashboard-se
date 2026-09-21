@@ -441,12 +441,15 @@ def main() -> int:
         if ind.get("level") == "none":
             continue                                   # national series → market.json
         srcs = [s for s in ind["sources"] if s.get("role") != "denominator"]
-        ext = next((s for s in srcs if s.get("db") in ("boverket", "kronofogden")), None)
+        ext = next((s for s in srcs if s.get("db") in ("boverket", "kronofogden", "kolada")), None)
         if ext:
             ext_name = ext.get("file")
             byyear = external_csv(ext_name, val_col=int(ext.get("value_col", 2)))
             spread = ext.get("spread")          # "lan": one figure repeated over its kommuner
             per = ext.get("per")                # normalise by dwellings, e.g. per 10 000
+            scale = float(ext.get("scale", 1))  # Kolada publishes kr/inhabitant, the page wants kSEK
+            if scale != 1:
+                byyear = {y: {a: v * scale for a, v in vals.items()} for y, vals in byyear.items()}
             if spread == "lan":
                 dw = dwellings_by_lan()
                 by_lan: dict = collections.defaultdict(list)

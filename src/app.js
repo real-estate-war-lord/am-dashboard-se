@@ -326,7 +326,7 @@ function legendHtml(sc, ind, key, note) {
     `<div class="lgrow"><i style="background:#C4CBC4"></i>no data</div>${note ? `<div class="lgnote">${note}</div>` : ""}`;
 }
 function setLegend(id, sc, ind, key, note) { const el = document.getElementById(id); if (el) el.innerHTML = legendHtml(sc, ind, key, note); }
-const GROUP_ORDER = ["Demographics", "Income & jobs", "Housing stock", "Rents", "Prices & market", "Construction", "Area quality"];
+const GROUP_ORDER = ["Demographics", "Income & jobs", "Housing stock", "Rents", "Prices & market", "Construction", "Municipal finances", "Area quality"];
 function indSelect() {
   const L = curInds();
   const groups = GROUP_ORDER.filter(gname => L.some(i => (i.group || "Other") === gname)).concat(L.some(i => !GROUP_ORDER.includes(i.group || "Other")) ? ["Other"] : []);

@@ -2208,6 +2208,137 @@
    "source": "SCB TAB6598 (CPI) · TAB6602 (KPIF)",
    "warn": "Rebased to 2020=100 in January 2026 — always store the base year with the value.",
    "group": "Macro"
+  },
+  {
+   "key": "kommun_tax",
+   "label": "Municipal tax rate",
+   "short": "Tax rate",
+   "unit": "% of taxable income",
+   "level": "kommun",
+   "levels": [
+    "kommun"
+   ],
+   "hue": [
+    92,
+    110,
+    140
+   ],
+   "sources": [
+    {
+     "db": "kolada",
+     "file": "kolada_tax",
+     "kpi": "N00901",
+     "geo": "kommun",
+     "vintage": "kommun",
+     "api": "https://api.kolada.se/v3"
+    }
+   ],
+   "calc": "passthrough",
+   "fmt": "pct2",
+   "moe": null,
+   "desc": "The kommun's own income-tax rate for the year, excluding the regional and burial levies.",
+   "source": "Kolada (RKA), KPI N00901",
+   "warn": "Comparable across kommuner, but it is a rate, not a burden: what a household pays also depends on the regional rate, which this excludes. Gotland reads 33.6 % against a national median of 21.9 % because it is both a kommun and a region and levies both rates — that is the data being right, not an outlier to clean.",
+   "group": "Municipal finances"
+  },
+  {
+   "key": "kommun_netcost",
+   "label": "Net operating cost per inhabitant",
+   "short": "Net cost",
+   "unit": "kSEK / inhabitant",
+   "level": "kommun",
+   "levels": [
+    "kommun"
+   ],
+   "hue": [
+    92,
+    110,
+    140
+   ],
+   "sources": [
+    {
+     "db": "kolada",
+     "file": "kolada_netcost",
+     "kpi": "N03011",
+     "geo": "kommun",
+     "vintage": "kommun",
+     "api": "https://api.kolada.se/v3",
+     "scale": -0.001
+    }
+   ],
+   "calc": "passthrough",
+   "fmt": "ksek",
+   "moe": null,
+   "desc": "Verksamhetens nettokostnader from the kommun's income statement, per inhabitant.",
+   "source": "Kolada (RKA), KPI N03011",
+   "warn": "Driven as much by what a kommun is obliged to provide — a scattered or ageing population costs more per head — as by how it is run.",
+   "group": "Municipal finances",
+   "note": "Kolada carries this with the income statement's sign, i.e. negative because it is a cost; the sign is flipped here so the indicator reads as the cost it is."
+  },
+  {
+   "key": "kommun_debt",
+   "label": "Long-term debt per inhabitant",
+   "short": "Debt / inhab.",
+   "unit": "kSEK / inhabitant",
+   "level": "kommun",
+   "levels": [
+    "kommun"
+   ],
+   "hue": [
+    92,
+    110,
+    140
+   ],
+   "sources": [
+    {
+     "db": "kolada",
+     "file": "kolada_debt",
+     "kpi": "N03046",
+     "geo": "kommun",
+     "vintage": "kommun",
+     "api": "https://api.kolada.se/v3",
+     "scale": 0.001
+    }
+   ],
+   "calc": "passthrough",
+   "fmt": "ksek",
+   "moe": null,
+   "desc": "Långfristiga skulder of the kommun (not the group), per inhabitant.",
+   "source": "Kolada (RKA), KPI N03046",
+   "warn": "The kommun alone, not the kommunkoncern: a kommun that holds its housing company's borrowing in a subsidiary reads low here. Compare with the equity ratio before drawing conclusions.",
+   "group": "Municipal finances"
+  },
+  {
+   "key": "kommun_equity",
+   "label": "Equity ratio incl. pension liability",
+   "short": "Equity ratio",
+   "unit": "%",
+   "level": "kommun",
+   "levels": [
+    "kommun"
+   ],
+   "hue": [
+    92,
+    110,
+    140
+   ],
+   "sources": [
+    {
+     "db": "kolada",
+     "file": "kolada_equity",
+     "kpi": "N03002",
+     "geo": "kommun",
+     "vintage": "kommun",
+     "api": "https://api.kolada.se/v3"
+    }
+   ],
+   "calc": "passthrough",
+   "fmt": "pct1",
+   "moe": null,
+   "desc": "Soliditet including the pension commitment — own capital as a share of total assets.",
+   "source": "Kolada (RKA), KPI N03002",
+   "warn": "Can be negative when the pension commitment exceeds own capital, which is normal for many kommuner and not by itself a distress signal.",
+   "group": "Municipal finances"
   }
  ]
 }

@@ -302,6 +302,24 @@ assert("neighbouring kommuner in one län match",
 const fsInd = D.indicators.find(i => i.key === "forced_sales");
 assert("and says so loudly", /LÄN FIGURE, NOT A KOMMUN ONE/.test(fsInd.warn || ""));
 
+console.log("\nKolada municipal finances:");
+const fin = D.indicators.filter(i => i.group === "Municipal finances");
+assert("four indicators in their own group", fin.length === 4, fin.map(i => i.key).join(", "));
+for (const k of ["kommun_tax", "kommun_netcost", "kommun_debt", "kommun_equity"])
+  assert(`${k} covers all 290`, D.kommuner.filter(m => m[k] != null).length === 290);
+assert("tax rates look like municipal rates",
+       byCode["0180"].kommun_tax > 16 && byCode["0180"].kommun_tax < 20,
+       `Stockholm ${byCode["0180"].kommun_tax} %`);
+assert("Gotland levies both rates and is left alone",
+       byCode["0980"].kommun_tax > 30, `Gotland ${byCode["0980"].kommun_tax} %`);
+assert("net cost reads as a cost, not a negative",
+       D.kommuner.every(m => m.kommun_netcost == null || m.kommun_netcost > 0),
+       `median ${byCode["0180"].kommun_netcost} kSEK`);
+assert("equity ratio may be negative and is not clipped",
+       D.kommuner.some(m => m.kommun_equity < 0),
+       `${D.kommuner.filter(m => m.kommun_equity < 0).length} kommuner below zero`);
+assert("Kolada is credited", fin.every(i => /Kolada \(RKA\)/.test(i.source)));
+
 console.log("\nmarket cards:");
 const mk = (S.view = "market", A.vMarket());
 for (const gone of ["DST HUS1", "DST EJ56", "Finans Danmark", "Nationalbank", "Homes for sale"])

@@ -59,6 +59,11 @@ Everything in the Danish chip row can be reproduced in Sweden, most of it at a f
 | `new_rental` | Share of completions that are hyresrätt | `TAB4193` by upplåtelseform | kommun | annual · 2025 |
 | `labour` | Employment rate | `TAB6680` `0000089X` ÷ `0000089Y` | DeSO/RegSO | annual |
 | `capital_inc` | Share of persons with capital income (wealth proxy) | `TAB6683` component `230`, ContentsCode `000008A2` | DeSO, RegSO | annual |
+| `kommun_tax` | Municipal tax rate | Kolada `N00901` | kommun | annual · 2026 |
+| `kommun_netcost` | Net operating cost per inhabitant | Kolada `N03011` (sign flipped) | kommun | annual · 2025 |
+| `kommun_debt` | Long-term debt per inhabitant | Kolada `N03046` — the kommun, not the koncern | kommun | annual · 2025 |
+| `kommun_equity` | Equity ratio incl. pension liability | Kolada `N03002` | kommun | annual · 2025 |
+| `forced_sales` | Forced sales per 10 000 dwellings | Kronofogden xlsx — **län only** | län → kommuner | annual · 2025 |
 | `taxv` | Assessed value, land/building split, all typkod incl. hyreshus | **`TAB3797`** `BO0601B1` land, `BO0601B2` building, `BO0601B3` total, `BO0601S1` units | kommun (290) | annual · 2025 |
 | `taxv_smahus` | Average assessed value per småhus unit | **`TAB5149`** `000002X0`, Typkod `220` | kommun (290) | annual · 2025 |
 | `permits` | Building permits, dwellings | **`TAB2534`** `BO0701A1` (area in `TAB796`) | **riket / 3 metro / 4 riksområden / 21 län — NO kommun level** | quarterly · 2026K2 |
@@ -148,5 +153,8 @@ No BBR. Lantmäteriet Byggnad Inspire: year built, use, footprint — free but p
 | 2026-09-20 | `config/indicators.json`, 35 indicators, every code checked against metadata | ✅ `make validate` |
 | 2026-09-21 | Boverket BME open data 2020–2026 | ✅ 283–289 kommuner/yr; wording changed in 2022 (`Obalans - underskott` → `Underskott`) |
 | 2026-09-21 | Kronofogden forced sales | ⚠️ **län only, no kommun breakdown** — 21 values, 2010–2025 |
+| 2026-09-21 | Kolada v2 | ❌ HTTP 410 — dead, v3 only |
+| 2026-09-21 | Kolada v3 `/data/kpi/{kpi}/year/{y}` | ✅ all units in one call; N00901, N03011, N03046, N03002 for 290 kommuner 2015–2026 |
+| 2026-09-21 | Kolada population forecast | ❌ `?title=prognos` and `?title=folkmängd` both return count 0 — no such KPI |
 | — | `*_DeSO2025` mask live, POST fallback | not yet — first real pull proves them |
 | — | Boverket BME files, Försäkringskassan kommun level, Kronofogden kommun column | browser pass pending |
