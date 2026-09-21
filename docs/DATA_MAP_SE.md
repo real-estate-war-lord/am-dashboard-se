@@ -1,6 +1,6 @@
 # AM Dashboard — Sweden Edition: Open Data Map
 
-**Status:** v0.3 · 2026-09-20 · all table ids resolved, `config/indicators.json` written and validated, deep pull running
+**Status:** v0.4 · 2026-09-21 · v1.1 — Boverket BME, Kronofogden, Kolada and the unused-on-disk tables wired in
 **Scope:** the *Macro / Market* layer, same as the Danish edition. Portfolio data stays out of scope.
 **Principle:** same design as the Danish edition (v1.9), every number from **Swedish open sources**.
 
@@ -73,7 +73,7 @@ Everything in the Danish chip row can be reproduced in Sweden, most of it at a f
 | `dom` days on market | Nothing free | Drop from v1.0 |
 | `supply` homes for sale | Hemnet CSV export, no stated licence | Ask in writing first |
 | bostadsrätt prices | `TAB1151` län-level, annual | State the gap in README |
-| `forced` forced sales | Kronofogden annual xlsx, kommun column unconfirmed | Check the file once |
+| `forced` forced sales | **Checked 2026-09-21: län only, no kommun column.** `Exekutivt sålda fastigheter och bostadsrätter 2010-2025.xlsx`, sheet `Blad1` = Egendomstyp (Bostadsrätt/Fastighet) × Län × År 2010–2025, with count, market value and purchase price. (Sheet 1 is a pivot covering only 2023–2025 despite the file name.) | Shipped as `forced_sales` per 10 000 dwellings, the län rate repeated over its kommuner and labelled as such — 21 values on a 290-kommun map |
 | BBR building register | None. Byggnad Inspire: free but purpose-vetted, no floor area | Area page uses DeSO age×sex, income structure, tenure mix instead |
 | Net price index | Dead since 2013M12. Leases index on **KPI for October** | Port as "KPI October", not NPI |
 
@@ -146,5 +146,7 @@ No BBR. Lantmäteriet Byggnad Inspire: year built, use, footprint — free but p
 | 2026-09-20 | `TAB6683`/`TAB6685`/`TAB6571`/`TAB6065`/`TAB6253`/`TAB6766`/`TAB5956`/`TAB6684` carry kommun too | ✅ kommun level added to the pull list |
 | 2026-09-20 | `TAB1541` floor space per person at kommun; `TAB5291` only 3 regions | ✅ / ❌ |
 | 2026-09-20 | `config/indicators.json`, 35 indicators, every code checked against metadata | ✅ `make validate` |
+| 2026-09-21 | Boverket BME open data 2020–2026 | ✅ 283–289 kommuner/yr; wording changed in 2022 (`Obalans - underskott` → `Underskott`) |
+| 2026-09-21 | Kronofogden forced sales | ⚠️ **län only, no kommun breakdown** — 21 values, 2010–2025 |
 | — | `*_DeSO2025` mask live, POST fallback | not yet — first real pull proves them |
 | — | Boverket BME files, Försäkringskassan kommun level, Kronofogden kommun column | browser pass pending |

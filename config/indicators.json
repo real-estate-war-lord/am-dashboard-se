@@ -1499,6 +1499,41 @@
    "group": "Prices & market"
   },
   {
+   "key": "forced_sales",
+   "label": "Forced sales of homes",
+   "short": "Forced sales",
+   "unit": "per 10 000 dwellings",
+   "level": "kommun",
+   "levels": [
+    "kommun"
+   ],
+   "hue": [
+    166,
+    42,
+    22
+   ],
+   "sources": [
+    {
+     "db": "kronofogden",
+     "file": "forced_sales",
+     "geo": "kommun",
+     "vintage": "län, repeated over its kommuner",
+     "spread": "lan",
+     "per": 10000,
+     "value_col": 2,
+     "format": "xlsx",
+     "url": "https://kronofogden.se/om-kronofogden/statistik"
+    }
+   ],
+   "calc": "per_10000_dwellings",
+   "fmt": "per10k",
+   "moe": null,
+   "desc": "Properties and bostadsrätter sold by Kronofogden at executive auction, per 10 000 dwellings, both property types together.",
+   "source": "Kronofogden",
+   "warn": "A LÄN FIGURE, NOT A KOMMUN ONE. Kronofogden publishes no municipal breakdown, so every kommun in a län shows the same rate — the map has 21 values, not 290. Read it as a regional level, never as a difference between neighbouring kommuner. Nationally 753–920 homes a year recently, so a single län-year is a small count.",
+   "group": "Prices & market"
+  },
+  {
    "key": "taxv",
    "label": "Assessed value per unit",
    "short": "Assessed/unit",

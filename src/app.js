@@ -47,7 +47,7 @@ const FMT = {
   signpct1: v => sign(v, x => nf(x, 1) + " %"),
   ksek: v => nf(v, 0) + " kSEK", sek0: v => nf(v, 0) + " SEK",
   int: v => nf(v, 0), m2: v => nf(v, 0) + " m²", per1000: v => nf(v, 1) + " ‰",
-  idx: v => nf(v, 1), idx1: v => nf(v, 1), ratio2: v => nf(v, 2),
+  idx: v => nf(v, 1), idx1: v => nf(v, 1), ratio2: v => nf(v, 2), per10k: v => nf(v, 1) + " / 10k",
   /* `cat` is replaced per indicator by fmtOf, which knows its labels */
   cat: v => nf(v, 0)
 };

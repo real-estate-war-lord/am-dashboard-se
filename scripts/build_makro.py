@@ -226,8 +226,8 @@ EXT = PROC.parent / "external"
 BME_CODE = {"shortage": -1, "balance": 0, "surplus": 1}
 
 
-def external_csv(name: str) -> dict:
-    """data/external/<name>.csv -> {year: {kommun: value}}. Empty when absent."""
+def external_csv(name: str, key_col: int = 0, val_col: int = 2) -> dict:
+    """data/external/<name>.csv -> {year: {code: value}}. Empty when absent."""
     p = EXT / f"{name}.csv"
     if not p.exists():
         return {}
@@ -238,7 +238,9 @@ def external_csv(name: str) -> dict:
         for r in rows:
             if len(r) < 3:
                 continue
-            code, year, raw = r[0].strip(), r[1].strip(), r[2].strip()
+            if len(r) <= max(key_col, val_col):
+                continue
+            code, year, raw = r[key_col].strip(), r[1].strip(), r[val_col].strip()
             v = BME_CODE.get(raw)
             if v is None:
                 try:
@@ -247,6 +249,36 @@ def external_csv(name: str) -> dict:
                     continue
             out[year][code] = v
     return dict(out)
+
+
+def dwellings_by_lan() -> dict:
+    """Dwellings per län, summed from the kommun stock (TAB824, latest live year).
+
+    Kronofogden publishes forced sales per län only, so the rate has to share
+    that geography — a kommun denominator against a län numerator would invent
+    precision the source does not have.
+    """
+    best, vals = None, collections.defaultdict(lambda: collections.defaultdict(float))
+    try:
+        rows = stream("scb_TAB824_kommun")
+    except FileNotFoundError:
+        return {}
+    for r in rows:
+        if r.get("ContentsCode") != "BO0104AH" or not r.get("value"):
+            continue
+        t = r["Tid"]
+        if best is None or period_key(t) > period_key(best):
+            best = t
+        vals[t][r["Region"]] += r["value"]
+    if best is None:
+        return {}
+    out: dict = collections.defaultdict(float)
+    for code, v in vals[best].items():
+        out[_LAN_OF.get(code, "")] += v
+    return {k: v for k, v in out.items() if k}
+
+
+_LAN_OF: dict = {}
 
 
 # ---------------------------------------------------------------- geometry
@@ -377,6 +409,7 @@ def main() -> int:
                             "regso": pr["regso"], "lan": pr.get("lan", ""),
                             "rings": rings_of(f), "hist": {}}
     ENT = {"kommun": kommuner, "regso": regso, "deso": deso}
+    _LAN_OF.update({c: e.get("lan", "") for c, e in kommuner.items()})
     print(f"entities: {len(kommuner)} kommun · {len(regso)} RegSO · {len(deso)} DeSO")
 
     # ---- population (also the weight for roll-ups)
@@ -408,9 +441,29 @@ def main() -> int:
         if ind.get("level") == "none":
             continue                                   # national series → market.json
         srcs = [s for s in ind["sources"] if s.get("role") != "denominator"]
-        ext_name = next((s.get("file") for s in srcs if s.get("db") == "boverket"), None)
-        if ext_name:
-            byyear = external_csv(ext_name)
+        ext = next((s for s in srcs if s.get("db") in ("boverket", "kronofogden")), None)
+        if ext:
+            ext_name = ext.get("file")
+            byyear = external_csv(ext_name, val_col=int(ext.get("value_col", 2)))
+            spread = ext.get("spread")          # "lan": one figure repeated over its kommuner
+            per = ext.get("per")                # normalise by dwellings, e.g. per 10 000
+            if spread == "lan":
+                dw = dwellings_by_lan()
+                by_lan: dict = collections.defaultdict(list)
+                for a, e in kommuner.items():
+                    by_lan[e.get("lan")].append(a)
+                spread_years = {}
+                for y, vals in byyear.items():
+                    out_y = {}
+                    for lan, v in vals.items():
+                        d = dw.get(lan)
+                        if per and not d:
+                            continue
+                        rate = v / d * per if per else v
+                        for a in by_lan.get(lan, []):
+                            out_y[a] = round(rate, 3)
+                    spread_years[y] = out_y
+                byyear = spread_years
             if not byyear:
                 indicators_out.append(meta_of(ind, {}, {}))
                 warn(f"{key}: data/external/{ext_name}.csv not on disk — renders as 'no data'")

@@ -291,6 +291,17 @@ S.view = "makro"; MK.kommun = null; MK.ind = "bme";
 const bmap = A.vMakro();
 assert("the map renders with bme selected", bmap.length > 1000 && !/undefined/.test(bmap.slice(0, 4000)));
 
+console.log("\nKronofogden forced sales:");
+const fsVals = new Set(D.kommuner.map(k => k.forced_sales).filter(v => v != null));
+assert("covers every kommun", D.kommuner.filter(k => k.forced_sales != null).length === 290);
+assert("but carries only 21 distinct values — it is a län figure",
+       fsVals.size === 21, `${fsVals.size} distinct values`);
+assert("neighbouring kommuner in one län match",
+       byCode["0180"].forced_sales === byCode["0114"].forced_sales,
+       `Stockholm ${byCode["0180"].forced_sales} = Upplands Väsby ${byCode["0114"].forced_sales}`);
+const fsInd = D.indicators.find(i => i.key === "forced_sales");
+assert("and says so loudly", /LÄN FIGURE, NOT A KOMMUN ONE/.test(fsInd.warn || ""));
+
 console.log("\nmarket cards:");
 const mk = (S.view = "market", A.vMarket());
 for (const gone of ["DST HUS1", "DST EJ56", "Finans Danmark", "Nationalbank", "Homes for sale"])
