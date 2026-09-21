@@ -2000,6 +2000,42 @@
    "group": "Macro"
   },
   {
+   "key": "hpi",
+   "label": "Property price index, småhus",
+   "short": "FASTPI",
+   "unit": "index 1981=100",
+   "level": "none",
+   "levels": [
+    "none"
+   ],
+   "hue": [
+    30,
+    60,
+    140
+   ],
+   "sources": [
+    {
+     "db": "scb",
+     "table": "TAB1149",
+     "geo": "none",
+     "vars": {
+      "ContentsCode": [
+       "BO0501N9"
+      ]
+     },
+     "vintage": "national",
+     "pull": "scb_TAB1149_all"
+    }
+   ],
+   "calc": "passthrough",
+   "fmt": "idx1",
+   "moe": null,
+   "desc": "Fastighetsprisindex (FASTPI) for permanent småhus, Sweden, 1981 = 100, annual.",
+   "source": "SCB TAB1149",
+   "warn": "Index, not a level — it says how prices moved, never what a house costs. Sweden publishes no open realised price per m² at any geography.",
+   "group": "Macro"
+  },
+  {
    "key": "policy_rate",
    "label": "Policy rate",
    "short": "Policy rate",

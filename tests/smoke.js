@@ -220,5 +220,65 @@ if (fs.existsSync(desoFile)) {
   MK.sub = "regso"; MK.kommun = null;
 }
 
+/* ---- v1.0 fixes ---- */
+console.log("\nformats:");
+/* Every indicator's own fmt must be used. FMT used to be the Danish table, so
+   every ksek/sek0/ratio2 indicator fell through to pct1 and a median income
+   rendered as "380,8 %" — in the popup, the tiles, the table and the charts. */
+const FMTS = vm.runInContext("FMT", sandbox), fmtOf = vm.runInContext("fmtOf", sandbox);
+const missing = D.indicators.filter(i => !FMTS[i.fmt]).map(i => `${i.key}:${i.fmt}`);
+assert("every indicator's fmt exists", missing.length === 0, missing.join(", ") || "all defined");
+const medInd = D.indicators.find(i => i.key === "income_med");
+const medTxt = fmtOf(medInd)(byCode["0180"].income_med);
+assert("median income is not rendered as a percentage", !/%/.test(medTxt), `renders as "${medTxt}"`);
+
+S.view = "makro"; MK.kommun = null; MK.ind = "income_med";
+const mapHtml = A.vMakro();
+assert('no "380,8 %" anywhere on the map view', !/380[.,]8\s*%/.test(mapHtml), "checked the rendered HTML");
+S.view = "area"; AR.type = "kommun"; AR.code = "0180"; AR.tab = "ind";
+assert("nor on the area page", !/%/.test((A.vArea().match(/385[.,]3[^<]*/) || [""])[0]), "income_med cell");
+S.view = "table"; T.level = "kommun";
+assert("nor in the table", !/385[.,]3\s*%/.test(A.vTable()), "income_med column");
+
+console.log("\nmap levels and attribution:");
+const src = fs.readFileSync(path.join(ROOT, "src", "app.js"), "utf8");
+assert("map opens on Sweden", /center: \[62\.5, 16\.5\], zoom: 5/.test(src), "[62.5, 16.5] zoom 5");
+assert("no Danish centre left", !/56(\.0)?, 10\.5/.test(src), "checked src/app.js");
+assert("boundary attribution is SCB's", /Boundaries: SCB RegSO\/DeSO 2025 \(CC0\)/.test(src));
+assert("no DAGI / Klimadatastyrelsen anywhere",
+       !/DAGI|Klimadatastyrelsen/i.test(src) && !/DAGI|Klimadatastyrelsen/i.test(JSON.stringify(D.meta)));
+assert("zoom no longer decides the level", !/SUB_ZOOM/.test(src), "drilling does");
+
+/* the national map must draw the 290 kommuner, and a click must open a kommun */
+MK.kommun = null; MK.ind = "growth";
+const kpop = vm.runInContext("lfKommunPopup", sandbox)(byCode["0180"]);
+assert("national popup is a kommun popup", /area\/kommun\/0180/.test(kpop), "Open page -> kommun");
+assert("it offers the way down to RegSO", /map\/0180(\?|")/.test(kpop) && /RegSO ›/.test(kpop));
+assert("and to DeSO", /map\/0180\/deso/.test(kpop));
+
+console.log("\nboundaries clipped to land:");
+/* RegSO and DeSO tile the territory including water. Before clipping every
+   kommun dissolved to a single ring that reached out to sea; an archipelago
+   kommun should now be many parts, and an inland one still exactly one. */
+const parts = k => byCode[k].rings.length;
+assert("Värmdö is an archipelago, not one blob", parts("0120") > 20, `${parts("0120")} parts`);
+assert("Nynäshamn likewise", parts("0192") > 5, `${parts("0192")} parts`);
+assert("Gotland is the island plus its islets", parts("0980") > 1, `${parts("0980")} parts`);
+assert("inland Malå is untouched", parts("2418") === 1, `${parts("2418")} part`);
+const seaLon = byCode["0120"].rings.flat().some(p => p[1] > 19.6);
+assert("no kommun ring reaches into open Baltic", !seaLon, "Värmdö stays west of 19.6°E");
+assert("the ODbL coastline is attributed",
+       (D.meta.attribution || []).some(a => /OpenStreetMap land polygons \(ODbL\)/.test(a)),
+       (D.meta.attribution || []).join(" · "));
+
+console.log("\nmarket cards:");
+const mk = (S.view = "market", A.vMarket());
+for (const gone of ["DST HUS1", "DST EJ56", "Finans Danmark", "Nationalbank", "Homes for sale"])
+  assert(`"${gone}" is gone`, !mk.includes(gone));
+for (const want of ["Rent index (CPI 04.1)", "Property price index (FASTPI)", "Interest rates"])
+  assert(`"${want}" is present`, mk.includes(want));
+assert("the rate card draws three series", /Policy rate/.test(mk) && /10-yr government bond/.test(mk) && /Mortgage, new agreements/.test(mk));
+assert("no empty-series placeholder on the cards", !/no series for/.test(mk));
+
 console.log(failures ? `\n${failures} check(s) failed` : "\nall smoke checks passed");
 process.exit(failures ? 1 : 0);
