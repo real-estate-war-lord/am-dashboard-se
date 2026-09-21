@@ -2,12 +2,13 @@
 # Targets that exist today. `build` and `serve` tell you what is missing
 # rather than failing cryptically — the build scripts land after the data pull.
 
-.PHONY: help selftest test geo simplify riksbank discover dry fetch status validate build serve
+.PHONY: help selftest test geo land simplify riksbank discover dry fetch status validate build serve
 
 help:
 	@echo "make selftest   offline checks, no network (1 s)"
 	@echo "make geo        boundary polygons: RegSO 3363, DeSO 6160"
-	@echo "make simplify   raw boundaries -> browser-sized data/geo/*.geojson"
+	@echo "make land       Swedish land mask from the OSM land polygons (once, needs shapely)"
+	@echo "make simplify   raw boundaries -> clipped, browser-sized data/geo/*.geojson"
 	@echo "make riksbank   policy rate and 10-yr yield from the SWEA API"
 	@echo "make discover   resolve table ids known only by their old API path"
 	@echo "make dry        plan the pull: calls and cells, no data"
@@ -23,6 +24,10 @@ selftest:
 
 geo:
 	python3 scripts/fetch_geo_scb.py
+
+land:
+	@test -d data/geo/raw/osm-land || { echo "download land-polygons-complete-4326.zip from osmdata.openstreetmap.de and unzip it to data/geo/raw/osm-land/"; exit 1; }
+	python3 scripts/clip_geo.py
 
 simplify:
 	python3 scripts/build_geo.py

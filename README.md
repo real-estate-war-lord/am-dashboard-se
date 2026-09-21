@@ -23,13 +23,15 @@ Built and running.
 - [x] Full data pull — 94 pulls, 43.2 M cells, 0 failures
 - [x] Indicator registry — 27 mapped indicators + 8 national macro series
 - [x] Dashboard build (`dist/index.html`, one self-contained file)
+- [x] Boundaries clipped to the coastline; v1.0 published
 
 ## Running it
 
 ```bash
 make selftest    # offline checks, one second
 make geo         # download boundary polygons (once)
-make simplify    # -> data/geo/*.geojson, browser-sized
+make land        # Swedish land mask from OSM land polygons (once; needs shapely)
+make simplify    # clip to the coastline -> data/geo/*.geojson, browser-sized
 make discover    # resolve table ids known only by their old API path
 make fetch       # the full pull — resumable, ~70 min
 make riksbank    # policy rate and 10-yr yield
@@ -78,5 +80,10 @@ Stated plainly, because the gaps are real and a dashboard that hides them is wor
 
 Data: Statistics Sweden (CC0), SCB geodata (CC0), Boverket (attribution required),
 Riksbanken, Eurostat. Attribution is given as *Källa: SCB* even where CC0 does not require it.
+
+Coastline: **OpenStreetMap land polygons** (osmdata.openstreetmap.de), **ODbL** — used to clip
+RegSO and DeSO to land. They tile the whole national territory including water, so without the
+clip a coastal kommun reaches far out to sea; Värmdö kept 15 % of its raw area, Nynäshamn 28 %,
+inland Malå 100 %. © OpenStreetMap contributors.
 
 Code: MIT.

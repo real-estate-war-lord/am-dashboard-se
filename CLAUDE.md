@@ -36,7 +36,13 @@ Next, in order:
 
 Also done:
 - `scripts/build_geo.py` — kommun outlines dissolved out of RegSO by edge cancellation
-  (no GDAL, no shapely); all three layers simplified under 5 MB.
+  (no GDAL); all three layers clipped to the coastline and simplified under 5 MB.
+- `scripts/clip_geo.py` — the Swedish land mask out of the OSM land polygons (ODbL).
+  Reads the 1.3 GB shapefile with the standard library, skipping records by their own
+  bbox; shapely is used for the union and the clip, and only in this one step, which is
+  run once and whose output is committed. **RegSO and DeSO tile the territory including
+  water** — without the clip Värmdö is one blob reaching into the Baltic instead of 60
+  islands. Clip before simplifying; the other order leaves ragged edges.
 - `scripts/build_makro.py` / `build_market.py` / `build_dashboard.py` — the calc engine,
   ported from the Danish repo. `src/` (app.js, style.css, index.html, vendor/) ported with
   the level vocabulary renamed and the Buildings/BBR layer replaced by distribution cards.
@@ -44,6 +50,13 @@ Also done:
 - `tests/smoke.js` — renders every view headlessly against the built page and asserts the
   documented numbers (Stockholm 1 710 ±28, Malå suppressed, RegSO not inheriting).
   `make test`.
+
+**Trap:** the UI renders through `FMT`/`fmtOf` in `app.js`, and an indicator whose `fmt`
+is missing from that table used to fall back to `pct1` — so every `ksek`/`sek0`/`ratio2`
+indicator silently rendered as a percentage ("385 kSEK" as "380,8 %") in the table, the
+tiles, the popups and the charts at once. The fallback is now a plain number, and
+`tests/smoke.js` fails if any indicator's `fmt` is missing. Add the format when you add
+the indicator.
 
 **Trap found during the build, worth keeping in mind:** the 2025 RegSO/DeSO codes return
 `0`, not null, for years before the division existed. Taken at face value every sub-municipal
