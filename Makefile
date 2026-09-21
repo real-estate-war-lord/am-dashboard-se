@@ -2,7 +2,7 @@
 # Targets that exist today. `build` and `serve` tell you what is missing
 # rather than failing cryptically — the build scripts land after the data pull.
 
-.PHONY: help selftest test geo land simplify riksbank discover dry fetch status validate build serve
+.PHONY: help selftest test verify geo land simplify riksbank kolada external discover dry fetch status validate build serve
 
 help:
 	@echo "make selftest   offline checks, no network (1 s)"
@@ -16,6 +16,8 @@ help:
 	@echo "make status     what is on disk right now"
 	@echo "make validate   check config/indicators.json against the metadata on disk"
 	@echo "make test       render every view headlessly against the built page"
+	@echo "make verify     recompute 5 kommuner x 3 indicators straight from the API"
+	@echo "make external   Boverket BME, Kronofogden and Kolada -> data/external/"
 	@echo "make build      build the dashboard (needs the pull + the registry)"
 	@echo "make serve      serve dist/ at http://localhost:8080"
 
@@ -54,6 +56,12 @@ status:
 
 validate:
 	python3 scripts/validate_indicators.py
+
+verify:
+	python3 scripts/verify_scb.py
+
+external:
+	python3 scripts/import_bme.py && python3 scripts/import_kronofogden.py && python3 scripts/fetch_kolada.py
 
 test:
 	@test -f dist/index.html || { echo "dist/index.html missing — run 'make build' first."; exit 1; }

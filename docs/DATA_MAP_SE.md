@@ -158,3 +158,35 @@ No BBR. Lantmäteriet Byggnad Inspire: year built, use, footprint — free but p
 | 2026-09-21 | Kolada population forecast | ❌ `?title=prognos` and `?title=folkmängd` both return count 0 — no such KPI |
 | — | `*_DeSO2025` mask live, POST fallback | not yet — first real pull proves them |
 | — | Boverket BME files, Försäkringskassan kommun level, Kronofogden kommun column | browser pass pending |
+
+### 4b. Independent recomputation — 2026-09-21
+
+Five kommuner × three indicators, fetched **one kommun at a time with an explicit
+selection** and recomputed here, then compared with `data/processed/makro.json`.
+A different query and a different code path from the pipeline, which pulls a whole
+level at a time and aggregates offline — so a fault in the fetcher, the cache or
+`build_makro.py` cannot pass by agreeing with itself.
+
+Reproduce with `make verify` (`scripts/verify_scb.py`).
+
+| Indicator | Kommun | API (independent query) | Dashboard | ± | Verdict |
+|---|---|---|---|---|---|
+| Rent, median SEK/m²/yr | Stockholm | 1710 | 1710 | ±28 | ✅ match |
+| Rent, median SEK/m²/yr | Göteborg | 1492 | 1492 | ±25 | ✅ match |
+| Rent, median SEK/m²/yr | Malmö | 1667 | 1667 | ±48 | ✅ match |
+| Rent, median SEK/m²/yr | Umeå | 1389 | 1389 | ±46 | ✅ match |
+| Rent, median SEK/m²/yr | Kiruna | 1136 | 1136 | ±77 | ✅ match |
+| Population growth %/yr | Stockholm | 0.37 | 0.37 |  | ✅ match |
+| Population growth %/yr | Göteborg | 0.7 | 0.7 |  | ✅ match |
+| Population growth %/yr | Malmö | 0.62 | 0.62 |  | ✅ match |
+| Population growth %/yr | Umeå | 0.76 | 0.76 |  | ✅ match |
+| Population growth %/yr | Kiruna | -0.11 | -0.11 |  | ✅ match |
+| Post-secondary % of 25–65 | Stockholm | 66.57 | 66.57 |  | ✅ match |
+| Post-secondary % of 25–65 | Göteborg | 60.16 | 60.16 |  | ✅ match |
+| Post-secondary % of 25–65 | Malmö | 58.55 | 58.55 |  | ✅ match |
+| Post-secondary % of 25–65 | Umeå | 60.39 | 60.39 |  | ✅ match |
+| Post-secondary % of 25–65 | Kiruna | 34.36 | 34.36 |  | ✅ match |
+
+**15 of 15 match**, rents to the krona and their margins, growth and education to
+two decimals. Tolerances allowed 0.5 SEK, 0.006 pp and 0.06 pp respectively; every
+difference was below the printing precision.
