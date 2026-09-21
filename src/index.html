@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Macro Dashboard · Sweden</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>{{LEAFLET_CSS}}</style>
+<style>{{APP_CSS}}</style>
+</head>
+<body>
+<div class="app">
+  <aside>
+    <div class="brand"><h2>Macro Dashboard</h2></div>
+    <div id="nav"></div>
+    <div class="side-foot">
+      <button class="xbtn" data-xall>⤓ Export data</button>
+      <div class="xcap">Everything in one CSV (long format: level; code; name; parent; year; indicator; value) — open in Excel or hand to an LLM.</div>
+    </div>
+  </aside>
+  <main id="main">
+    <div class="topbar"><div id="hd"></div></div>
+    <div id="body"></div>
+  </main>
+</div>
+<script>{{LEAFLET_JS}}</script>
+<script>window.DATA = {{DATA}};</script>
+<script>{{APP_JS}}</script>
+</body>
+</html>
