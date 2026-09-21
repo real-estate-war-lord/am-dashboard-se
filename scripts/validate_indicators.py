@@ -50,9 +50,14 @@ def load_meta(table: str) -> dict | None:
 
 def check_source(key: str, source: dict) -> None:
     db = source.get("db")
+    if db == "riksbank":
+        p = RAW / f"riksbank_{source.get('series')}.json"
+        if not p.exists():
+            warnings.append(f"{key}: {p.name} not on disk — run scripts/fetch_riksbank.py")
+        return
     if db != "scb":
         if not source.get("pull"):
-            warnings.append(f"{key}: source db='{db}' has no raw file yet — placeholder")
+            warnings.append(f"{key}: source db='{db}' has no fetcher yet — renders as 'no data'")
         return
 
     table = source.get("table")

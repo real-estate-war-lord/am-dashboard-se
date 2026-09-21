@@ -1445,8 +1445,7 @@
        "220"
       ],
       "ContentsCode": [
-       "BO0501C2",
-       "BO0501C1"
+       "BO0501C2"
       ]
      },
      "vintage": "kommun",
@@ -1501,9 +1500,9 @@
   },
   {
    "key": "taxv",
-   "label": "Assessed value, all property",
-   "short": "Assessed val.",
-   "unit": "MSEK",
+   "label": "Assessed value per unit",
+   "short": "Assessed/unit",
+   "unit": "kSEK / unit",
    "level": "kommun",
    "levels": [
     "kommun"
@@ -1520,23 +1519,26 @@
      "geo": "kommun",
      "vars": {
       "ContentsCode": [
-       "BO0601B3",
-       "BO0601B2",
-       "BO0601B1",
-       "BO0601S1"
+       "BO0601B3"
       ]
      },
      "vintage": "kommun",
-     "pull": "scb_TAB3797_kommun"
+     "pull": "scb_TAB3797_kommun",
+     "share": {
+      "of_contents": [
+       "BO0601S1"
+      ]
+     }
     }
    ],
-   "calc": "passthrough",
-   "fmt": "msek",
+   "calc": "per_unit",
+   "fmt": "ksek",
    "moe": null,
-   "desc": "Total assessed value with its land (BO0601B1) and building (BO0601B2) components, and the number of assessed units, by kommun and typkod — hyreshus included.",
+   "desc": "Total assessed value divided by the number of assessed units (BO0601B3 ÷ BO0601S1), SEK thousands per unit — all typkod, hyreshus included.",
    "source": "SCB TAB3797 (BO0601 Fastighetstaxeringar)",
    "note": "Resolved from the old BO0601A path by scripts/discover_scb.py. Typkod 320–325 are the hyreshus classes; 220/221 are småhus, also available per-unit in TAB5149.",
-   "group": "Prices & market"
+   "group": "Prices & market",
+   "warn": "A kommun total would just track how much property a kommun contains; per unit is the comparable figure. Assessed values are re-set on a three-year cycle, so the level steps in a general assessment year."
   },
   {
    "key": "taxv_smahus",
@@ -1858,8 +1860,7 @@
      "geo": "regso",
      "vars": {
       "ContentsCode": [
-       "000008IT",
-       "000008IU"
+       "000008IT"
       ]
      },
      "vintage": "RegSO2025",
