@@ -10,8 +10,27 @@ statistical database is keyless and licensed **CC0**. The pipeline is plain Pyth
 (standard library only) and runs on your own machine; the output is a single
 self-contained HTML page.
 
+**Live: https://real-estate-war-lord.github.io/am-dashboard-se/**
+
 Sibling project: [am-dashboard-dk](https://github.com/real-estate-war-lord/am-dashboard-dk)
 — the Danish edition, whose design this one inherits.
+
+## What's new in v1.1
+
+- **Boverket's Bostadsmarknadsenkät** 2020–2026 — each kommun's own shortage / balance / surplus
+  assessment, as a categorical map with a time series on the area page. Kommuner reporting a
+  shortage fell from 212 to 102 over those seven years while surplus rose from 8 to 55.
+- **Municipal finances from Kolada** — tax rate, net operating cost, long-term debt and equity
+  ratio for all 290 kommuner, in a group of their own.
+- **Kronofogden forced sales** per 10 000 dwellings — published per län only, and labelled as
+  such: 21 values across a 290-kommun map.
+- **Five tables already on disk put to work**, with no new fetch: employment by industry and
+  self-sufficiency on area pages, new-build rents by rent-setting model and vacancy in Market,
+  bostadsrätt prices in Charts.
+- **`make verify`** recomputes five kommuner × three indicators straight from the API, by a
+  different query than the pipeline uses. 15 of 15 match — see `docs/DATA_MAP_SE.md` §4b.
+
+Full history in [CHANGELOG.md](CHANGELOG.md).
 
 ## Status
 
@@ -24,6 +43,8 @@ Built and running.
 - [x] Indicator registry — 27 mapped indicators + 8 national macro series
 - [x] Dashboard build (`dist/index.html`, one self-contained file)
 - [x] Boundaries clipped to the coastline; v1.0 published
+- [x] v1.1 — Boverket BME, Kronofogden, Kolada, five unused tables, independent verification
+- [ ] Next: a län layer of its own, so the län-level sources stop borrowing the kommun map
 
 ## Running it
 
@@ -35,9 +56,11 @@ make simplify    # clip to the coastline -> data/geo/*.geojson, browser-sized
 make discover    # resolve table ids known only by their old API path
 make fetch       # the full pull — resumable, ~70 min
 make riksbank    # policy rate and 10-yr yield
+make external    # Boverket BME, Kronofogden and Kolada -> data/external/
 make validate    # every code in the registry against the metadata on disk
 make build       # -> dist/index.html
 make test        # render every view headlessly and check the numbers
+make verify      # recompute 5 kommuner x 3 indicators straight from the API
 make serve       # http://localhost:8080
 ```
 
@@ -82,6 +105,10 @@ Stated plainly, because the gaps are real and a dashboard that hides them is wor
 
 Data: Statistics Sweden (CC0), SCB geodata (CC0), Boverket (attribution required),
 Riksbanken, Eurostat. Attribution is given as *Källa: SCB* even where CC0 does not require it.
+
+Municipal finances: **Kolada (RKA)**, keyless v3 API. Housing-market assessment:
+**Boverket, Bostadsmarknadsenkäten** (attribution required by the licence). Forced sales:
+**Kronofogden**.
 
 Coastline: **OpenStreetMap land polygons** (osmdata.openstreetmap.de), **ODbL** — used to clip
 RegSO and DeSO to land. They tile the whole national territory including water, so without the
