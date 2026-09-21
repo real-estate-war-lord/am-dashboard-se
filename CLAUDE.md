@@ -51,6 +51,18 @@ Also done:
   documented numbers (Stockholm 1 710 ±28, Malå suppressed, RegSO not inheriting).
   `make test`.
 
+**Trap:** simplification tolerances must be in **metres**, never degrees. A degree of
+longitude at 59°N is half a degree of latitude, so a degree-based epsilon is twice as
+coarse north-south as east-west and the result is visibly angular. `build_geo.py` works in
+a local metric frame. Its coastline clip is cached at full precision under
+`data/geo/raw/clipped/`, so changing a tolerance takes 36 s instead of another 35-minute cut.
+
+**Trap:** `clean_ring` swaps [lon,lat] to [lat,lon] itself. Feeding it already-swapped
+points swaps three times, which is how v1.0's size-reduction pass left RegSO and DeSO
+stored as [lat,lon] — `build_makro` swapped them once more and every sub-municipal polygon
+was drawn off the Somali coast, unnoticed until a screenshot was taken. `tests/smoke.js`
+now asserts every ring is inside Sweden and that a kommun's sub-areas are inside it.
+
 **Trap:** the UI renders through `FMT`/`fmtOf` in `app.js`, and an indicator whose `fmt`
 is missing from that table used to fall back to `pct1` — so every `ksek`/`sek0`/`ratio2`
 indicator silently rendered as a percentage ("385 kSEK" as "380,8 %") in the table, the

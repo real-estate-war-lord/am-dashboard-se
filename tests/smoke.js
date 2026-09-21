@@ -346,6 +346,34 @@ const mkt = A.vMarket();
 assert("both new panels render", /New-build rent by rent-setting model/.test(mkt) && /Vacant dwellings/.test(mkt));
 assert("the staleness is on the page, not just in the registry", /<b>Stale\.<\/b>/.test(mkt));
 
+console.log("\ngeometry lands in Sweden:");
+/* RegSO and DeSO rings were written [lat,lon] into the GeoJSON and swapped again
+   by build_makro, so every sub-municipal polygon was drawn off the Somali coast
+   from v1.0 until this was caught by looking at a screenshot. Rings are [lat,lon]
+   for Leaflet; anything outside Sweden's box is the swap coming back. */
+const SE = { lat: [55.0, 69.3], lon: [10.5, 24.5] };
+function ringsOk(list, label) {
+  let bad = 0, sample = null;
+  for (const o of list) for (const r of (o.rings || [])) for (const p of r) {
+    if (p[0] < SE.lat[0] || p[0] > SE.lat[1] || p[1] < SE.lon[0] || p[1] > SE.lon[1]) {
+      bad++; sample = sample || `${o.name || o.code} ${JSON.stringify(p)}`;
+    }
+  }
+  assert(`${label} rings are inside Sweden`, bad === 0, bad ? `${bad} stray points, e.g. ${sample}` : "all inside");
+}
+ringsOk(D.kommuner, "kommun");
+ringsOk(D.regso, "RegSO");
+/* and the sub-areas must sit inside their own kommun's box, not merely in Sweden */
+const sth = byCode["0180"], sthLat = sth.rings.flat().map(p => p[0]), sthLon = sth.rings.flat().map(p => p[1]);
+const box = [Math.min(...sthLat) - 0.02, Math.max(...sthLat) + 0.02, Math.min(...sthLon) - 0.02, Math.max(...sthLon) + 0.02];
+const stray = D.regso.filter(r => r.kommun === "0180")
+  .filter(r => r.rings.flat().some(p => p[0] < box[0] || p[0] > box[1] || p[1] < box[2] || p[1] > box[3]));
+assert("Stockholm's RegSO sit inside Stockholm", stray.length === 0,
+       stray.length ? `${stray.length} outside, e.g. ${stray[0].name}` : `${D.regso.filter(r => r.kommun === "0180").length} checked`);
+assert("the archipelago survived the skerry filter", byCode["0120"].rings.length > 100,
+       `Värmdö ${byCode["0120"].rings.length} parts`);
+assert("inland kommuner stay single-part", byCode["2418"].rings.length === 1, `Malå ${byCode["2418"].rings.length}`);
+
 console.log("\nmarket cards:");
 const mk = (S.view = "market", A.vMarket());
 for (const gone of ["DST HUS1", "DST EJ56", "Finans Danmark", "Nationalbank", "Homes for sale"])

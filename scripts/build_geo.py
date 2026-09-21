@@ -23,7 +23,15 @@ interior and drops out, what is left is the outline. Verified on Stockholm:
 
 Standard library only, so CI needs no geo stack.
 
-Usage: python3 scripts/build_geo.py [--tolerance 0.0005]
+Simplification is a DISTANCE tolerance in metres, not a share of vertices and
+not a tolerance in degrees. A degree of longitude at 59°N is half a degree of
+latitude, so a degree-based epsilon is twice as coarse north-south as east-west
+and the result is visibly angular; everything here works in a local metric frame.
+
+The coastline clip is cached at full precision under data/geo/raw/clipped/, so
+changing the tolerance is seconds rather than another 35-minute cut.
+
+Usage: python3 scripts/build_geo.py [--metres 40] [--reclip]
 """
 from __future__ import annotations
 
@@ -49,8 +57,19 @@ DESO_SUFFIX = "_DeSO2025"
 
 # ---------------------------------------------------------------- simplify
 
+# One degree of latitude is 111 320 m everywhere; one degree of longitude is that
+# times cos(lat), which at 59°N is about half. A tolerance expressed in degrees is
+# therefore twice as coarse north-south as east-west, and a boundary simplified
+# that way comes out visibly angular. Everything below works in metres.
+M_PER_DEG = 111320.0
+
+
+def lon_scale(lat: float) -> float:
+    return math.cos(math.radians(lat))
+
+
 def perpendicular(pt, a, b) -> float:
-    """Distance from pt to segment a–b, in degrees (good enough to rank vertices)."""
+    """Distance from pt to segment a–b, in the units the points are given in."""
     (y0, x0), (y1, x1), (y2, x2) = pt, a, b
     dy, dx = y2 - y1, x2 - x1
     if dy == 0 and dx == 0:
@@ -82,14 +101,17 @@ def simplify(points: list, eps: float) -> list:
     return [p for p, k in zip(points, keep) if k]
 
 
-def clean_ring(ring: list, eps: float, ndigits: int = 5) -> list | None:
-    """Simplify, round and close one ring.
+def clean_ring(ring: list, metres: float, ndigits: int = 5) -> list | None:
+    """Simplify to a distance tolerance in METRES, round and close one ring.
 
-    A tolerance chosen to hit a file-size target will collapse the smallest
-    polygons — two DeSO disappeared at 0.00075. An area with no polygon is a
-    hole in the map, which is worse than an area drawn coarsely, so a ring
-    that simplification would destroy keeps its rounded-but-unsimplified form.
-    None only when the source ring was degenerate to begin with.
+    Simplification runs in a local metric frame — latitude scaled by 111 320 m,
+    longitude by that times cos(lat) — so 40 m means 40 m in both directions.
+
+    A tolerance chosen to hit a file-size target will still collapse the
+    smallest polygons. An area with no polygon is a hole in the map, which is
+    worse than an area drawn coarsely, so a ring that simplification would
+    destroy keeps its rounded-but-unsimplified form. None only when the source
+    ring was degenerate to begin with.
     """
     pts = [(round(p[1], ndigits), round(p[0], ndigits)) for p in ring]   # [lon,lat] -> (lat,lon)
     out = [pts[0]]
@@ -100,25 +122,57 @@ def clean_ring(ring: list, eps: float, ndigits: int = 5) -> list | None:
         return None
     if out[0] != out[-1]:
         out.append(out[0])
-    thin = simplify(out, eps)
+    if metres <= 0:
+        return out
+    k = lon_scale(sum(p[0] for p in out) / len(out))
+    metric = [(p[0] * M_PER_DEG, p[1] * M_PER_DEG * k) for p in out]
+    keep = simplify_indices(metric, metres)
+    thin = [out[i] for i in keep]
     return thin if len(thin) >= 4 else out
 
 
-def ring_area(ring: list) -> float:
-    """Shoelace area in square degrees — only ever used to rank and threshold."""
+def simplify_indices(points: list, eps: float) -> list:
+    """Douglas–Peucker returning the indices kept, so the caller can map back."""
+    n = len(points)
+    if n < 3 or eps <= 0:
+        return list(range(n))
+    keep = [False] * n
+    keep[0] = keep[-1] = True
+    stack = [(0, n - 1)]
+    while stack:
+        lo, hi = stack.pop()
+        if hi <= lo + 1:
+            continue
+        worst, wi = -1.0, lo
+        for i in range(lo + 1, hi):
+            d = perpendicular(points[i], points[lo], points[hi])
+            if d > worst:
+                worst, wi = d, i
+        if worst > eps:
+            keep[wi] = True
+            stack.append((lo, wi))
+            stack.append((wi, hi))
+    return [i for i, k in enumerate(keep) if k]
+
+
+def ring_area_km2(ring: list) -> float:
+    """Shoelace area in km², with longitude scaled for the ring's latitude."""
+    if len(ring) < 4:
+        return 0.0
+    k = lon_scale(sum(p[0] for p in ring) / len(ring))
     a = 0.0
     for (y0, x0), (y1, x1) in zip(ring, ring[1:]):
-        a += x0 * y1 - x1 * y0
-    return abs(a) / 2
+        a += (x0 * k) * y1 - (x1 * k) * y0
+    return abs(a) / 2 * (M_PER_DEG ** 2) / 1e6
 
 
-# Clipping to the coastline turns the archipelago into thousands of skerries.
-# They are invisible at every zoom the dashboard offers and cost megabytes, so
-# rings below this are dropped — except the largest of a feature, which is kept
-# whatever its size so no area can vanish. 1 sq deg is ~6 100 km² at 60°N, so
-# 2e-5 is about 0.12 km².
-MIN_RING_AREA = 5e-5
-MAX_RINGS = 60
+# Clipping to the coastline turns the archipelago into skerries. The previous
+# threshold, 5e-5 square degrees, is 0.32 km² at 60°N — large enough to delete
+# real islands and leave the archipelago looking like scattered blobs. The
+# threshold is now in km² and small enough that an island anyone would notice
+# survives; file size is controlled by the metric tolerance instead.
+MIN_RING_KM2 = 0.05
+MAX_RINGS = 400
 
 
 def rings_of(geom: dict, eps: float, land: bool = False) -> list:
@@ -140,11 +194,11 @@ def rings_of(geom: dict, eps: float, land: bool = False) -> list:
 
 
 def prune(rings: list) -> list:
-    """Largest ring first, skerries below MIN_RING_AREA dropped, at most MAX_RINGS."""
+    """Largest ring first, skerries below MIN_RING_KM2 dropped, at most MAX_RINGS."""
     if len(rings) <= 1:
         return rings
-    ranked = sorted(rings, key=ring_area, reverse=True)
-    kept = [ranked[0]] + [r for r in ranked[1:] if ring_area(r) >= MIN_RING_AREA]
+    ranked = sorted(rings, key=ring_area_km2, reverse=True)
+    kept = [ranked[0]] + [r for r in ranked[1:] if ring_area_km2(r) >= MIN_RING_KM2]
     return kept[:MAX_RINGS]
 
 
@@ -166,6 +220,13 @@ def load_land(path: pathlib.Path):
     _LAND["parts"] = parts
     _LAND["tree"] = STRtree(parts)
     return len(parts)
+
+
+CACHE = RAW / "clipped"
+
+
+def cache_path(level: str) -> pathlib.Path:
+    return CACHE / f"{level}.geojson"
 
 
 def clip_to_land(geom: dict) -> dict | None:
@@ -285,19 +346,22 @@ def write(path: pathlib.Path, features: list) -> None:
     payload = {"type": "FeatureCollection", "features": features}
     path.write_text(json.dumps(payload, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     mb = path.stat().st_size / 1e6
-    flag = "" if mb < 5 else "   ⚠ over the 5 MB target"
+    budget = {"kommuner.geojson": 3.0, "regso.geojson": 8.0, "deso.geojson": 12.0}.get(path.name, 5.0)
+    flag = "" if mb < budget else f"   ⚠ over its {budget:g} MB budget"
     print(f"  {path.name:20s} {len(features):5d} features · {mb:5.2f} MB{flag}")
 
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--tolerance", type=float, default=0.0008,
-                    help="Douglas-Peucker epsilon in degrees for RegSO (0.0008 ~ 60 m)")
-    ap.add_argument("--kommun-tolerance", type=float, default=0.0004)
-    # DeSO polygons are small and numerous; the master file only lives in the
-    # repo (the page loads one kommun at a time), but keep it under the 5 MB
-    # target so nobody has to think about it.
-    ap.add_argument("--deso-tolerance", type=float, default=0.0015)
+    ap.add_argument("--metres", type=float, default=45.0,
+                    help="simplification tolerance for RegSO, in metres")
+    # Kommun outlines carry the whole coastline, so they are the heaviest file;
+    # 60 m keeps Göteborg at ~1 375 vertices and Stockholm at ~291, which is
+    # every bend either has, and lands the file under 3 MB.
+    ap.add_argument("--kommun-metres", type=float, default=60.0)
+    ap.add_argument("--deso-metres", type=float, default=40.0)
+    ap.add_argument("--reclip", action="store_true",
+                    help="redo the coastline clip instead of using data/geo/raw/clipped/")
     ap.add_argument("--land", default=str(RAW / "sweden_land.geojson"),
                     help="land mask from scripts/clip_geo.py; pass '' to skip clipping")
     args = ap.parse_args()
@@ -320,80 +384,110 @@ def main() -> int:
         print(f"  no land mask at {land_path} — boundaries will include open water "
               "(run scripts/clip_geo.py)", file=sys.stderr)
 
+    # Clipping 9 523 polygons against the coastline takes ~35 minutes; the
+    # result is cached at full precision so trying a different tolerance is
+    # seconds, not another half hour. The cache lives under data/geo/raw/,
+    # which is git-ignored.
+    use_cache = not args.reclip and all(cache_path(l).exists() for l in ("kommun", "regso", "deso"))
+    if use_cache:
+        print(f"using the clipped cache in {CACHE}")
+    else:
+        CACHE.mkdir(parents=True, exist_ok=True)
+
     print("reading RegSO…")
     regso = json.loads(regso_raw.read_text(encoding="utf-8"))["features"]
 
-    # --- kommun outlines, dissolved out of RegSO
-    print("dissolving kommun outlines…")
-    by_kommun: dict = collections.defaultdict(list)
-    for f in regso:
-        by_kommun[f["properties"]["kommunkod"]].append(f)
-    kom_features = []
-    for n_i, kod in enumerate(sorted(by_kommun), 1):
-        progress(n_i, len(by_kommun), "kommun")
-        rings = dissolve(by_kommun[kod])
-        # Dissolve first, clip second: cancelling shared edges needs the exact
-        # vertices of the source, which clipping would move.
-        if _LAND["tree"] is not None and rings:
+    def cached(level: str, build):
+        """Clipped geometry at full precision, from the cache or freshly cut."""
+        path = cache_path(level)
+        if use_cache and path.exists():
+            feats = json.loads(path.read_text(encoding="utf-8"))["features"]
+            print(f"  {level}: {len(feats)} clipped features from cache")
+            return feats
+        feats = build()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps({"type": "FeatureCollection", "features": feats},
+                                   ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+        print(f"  {level}: {len(feats)} clipped features cached to {path.name}")
+        return feats
+
+    def emit(level: str, feats: list, metres: float, out_name: str):
+        """Simplify cached geometry to a metric tolerance and write it out."""
+        out = []
+        for i, f in enumerate(feats, 1):
+            progress(i, len(feats), level)
+            rings = []
+            geom = f["geometry"]
+            polys = geom["coordinates"] if geom["type"] == "MultiPolygon" else [geom["coordinates"]]
+            for poly in polys:
+                if not poly:
+                    continue
+                r = clean_ring(poly[0], metres)
+                if r:
+                    rings.append([[a, b] for a, b in r])
+            rings = prune(rings)
+            if not rings:
+                continue
+            out.append({"type": "Feature", "properties": f["properties"],
+                        "geometry": {"type": "MultiPolygon",
+                                     "coordinates": [[[[q[1], q[0]] for q in r]] for r in rings]}})
+        write(OUT / out_name, out)
+        return out
+
+    # --- kommun outlines, dissolved out of RegSO then clipped
+    def build_kommun():
+        print("dissolving kommun outlines…")
+        by_kommun: dict = collections.defaultdict(list)
+        for f in regso:
+            by_kommun[f["properties"]["kommunkod"]].append(f)
+        feats = []
+        for n_i, kod in enumerate(sorted(by_kommun), 1):
+            progress(n_i, len(by_kommun), "kommun clip")
+            rings = dissolve(by_kommun[kod])
+            # Dissolve first, clip second: cancelling shared edges needs the exact
+            # vertices of the source, which clipping would move.
             geom = {"type": "MultiPolygon",
                     "coordinates": [[[[p[1], p[0]] for p in r]] for r in rings]}
-            clipped = clip_to_land(geom)
-            if clipped:
-                polys = (clipped["coordinates"] if clipped["type"] == "MultiPolygon"
-                         else [clipped["coordinates"]])
-                rings = [[(pt[1], pt[0]) for pt in poly[0]] for poly in polys if poly]
-        rings = [r for r in (clean_ring([[p[1], p[0]] for p in ring], args.kommun_tolerance) for ring in rings) if r]
-        if not rings:
-            print(f"  ! kommun {kod} dissolved to nothing", file=sys.stderr)
-            continue
-        rings = prune([[list(p) for p in r] for r in rings])
-        kom_features.append({
-            "type": "Feature",
-            "properties": {"code": kod, "name": names.get(kod, kod),
-                           "lan": by_kommun[kod][0]["properties"]["lanskod"]},
-            "geometry": {"type": "MultiPolygon",
-                         "coordinates": [[[[p[1], p[0]] for p in r]] for r in rings]},
-        })
-    write(OUT / "kommuner.geojson", kom_features)
+            if _LAND["tree"] is not None and rings:
+                clipped = clip_to_land(geom)
+                if clipped:
+                    geom = clipped
+            feats.append({"type": "Feature", "geometry": geom,
+                          "properties": {"code": kod, "name": names.get(kod, kod),
+                                         "lan": by_kommun[kod][0]["properties"]["lanskod"]}})
+        return feats
 
-    # --- RegSO
-    print("simplifying RegSO…")
-    regso_features = []
-    for n_i, f in enumerate(regso, 1):
-        progress(n_i, len(regso), "RegSO")
-        pr = f["properties"]
-        rings = rings_of(f["geometry"], args.tolerance, land=True)
-        if not rings:
-            continue
-        regso_features.append({
-            "type": "Feature",
-            "properties": {"code": pr["regsokod"] + REGSO_SUFFIX, "plain": pr["regsokod"],
-                           "name": pr["regsonamn"], "kommun": pr["kommunkod"], "lan": pr["lanskod"]},
-            "geometry": {"type": "MultiPolygon",
-                         "coordinates": [[[[p[1], p[0]] for p in r]] for r in rings]},
-        })
-    write(OUT / "regso.geojson", regso_features)
-    del regso
+    def build_level(raw_feats, props):
+        feats = []
+        for i, f in enumerate(raw_feats, 1):
+            progress(i, len(raw_feats), "clip")
+            geom = f["geometry"]
+            if _LAND["tree"] is not None:
+                geom = clip_to_land(geom)
+                if geom is None:
+                    continue
+            feats.append({"type": "Feature", "geometry": geom, "properties": props(f["properties"])})
+        return feats
 
-    # --- DeSO
-    print("reading and simplifying DeSO…")
-    deso = json.loads(deso_raw.read_text(encoding="utf-8"))["features"]
-    deso_features = []
-    for n_i, f in enumerate(deso, 1):
-        progress(n_i, len(deso), "DeSO")
-        pr = f["properties"]
-        rings = rings_of(f["geometry"], args.deso_tolerance, land=True)
-        if not rings:
-            continue
-        deso_features.append({
-            "type": "Feature",
-            "properties": {"code": pr["desokod"] + DESO_SUFFIX, "plain": pr["desokod"],
-                           "regso": pr["regsokod"] + REGSO_SUFFIX,
-                           "kommun": pr["kommunkod"], "lan": pr["lanskod"]},
-            "geometry": {"type": "MultiPolygon",
-                         "coordinates": [[[[p[1], p[0]] for p in r]] for r in rings]},
-        })
-    write(OUT / "deso.geojson", deso_features)
+    kom = cached("kommun", build_kommun)
+    emit("kommun", kom, args.kommun_metres, "kommuner.geojson")
+
+    print("clipping RegSO…")
+    rs = cached("regso", lambda: build_level(regso, lambda pr: {
+        "code": pr["regsokod"] + REGSO_SUFFIX, "plain": pr["regsokod"],
+        "name": pr["regsonamn"], "kommun": pr["kommunkod"], "lan": pr["lanskod"]}))
+    emit("regso", rs, args.metres, "regso.geojson")
+    del regso, rs
+
+    print("clipping DeSO…")
+    deso_raw_feats = None
+    if not (use_cache and cache_path("deso").exists()):
+        deso_raw_feats = json.loads(deso_raw.read_text(encoding="utf-8"))["features"]
+    ds = cached("deso", lambda: build_level(deso_raw_feats, lambda pr: {
+        "code": pr["desokod"] + DESO_SUFFIX, "plain": pr["desokod"],
+        "regso": pr["regsokod"] + REGSO_SUFFIX,
+        "kommun": pr["kommunkod"], "lan": pr["lanskod"]}))
+    emit("deso", ds, args.deso_metres, "deso.geojson")
     return 0
 
 

@@ -157,6 +157,9 @@ function parseHash() {
 }
 function go(hash) { if ("#" + hash === location.hash) { parseHash(); render(); } else location.hash = hash; }
 function syncHash() { history.replaceState(null, "", "#" + hashFor()); }
+/* A handle on the live page: the Leaflet instance is a lexical const, so without
+   this neither the console nor a screenshot script can set a precise view. */
+window.AM = { get map() { return LF.map; }, get area() { return LF.amap; }, go, D, MK, S, LF };
 window.addEventListener("hashchange", () => { const r = parseHash(); render(); if (r.viewChanged) { const m = document.getElementById("main"); if (m) m.scrollTop = 0; } });
 
 /* ---------- views & navigation ---------- */
@@ -804,7 +807,7 @@ function arMapInit() {
   if (LF.amap) { try { LF.amap.remove(); } catch (x) {} LF.amap = null; }
   const map = L.map(el, { center: [62.5, 16.5], zoom: 5, scrollWheelZoom: true, zoomSnap: 0.5, zoomDelta: 1, wheelPxPerZoomLevel: 30, wheelDebounceTime: 20, attributionControl: false });
   LF.amap = map;
-  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18, className: "basemap" }).addTo(map);
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18, maxNativeZoom: 19, detectRetina: true, className: "basemap" }).addTo(map);
   const ind = curInd(); const { useQ, sind, kommuneLevel } = arMapMode(e, ind);
   const ctx = e.type === "kommun" ? (useQ ? desoAreas(e.code) : kommuneLevel ? AREAS : e.ctx) : e.ctx;
   const vk = a => { if (!sind) return null; if (kommuneLevel) return V(byCode[a.kommun], sind.key); return V(a, sind.key) ?? (useQ ? null : V(byCode[a.kommun], sind.key)); };
@@ -813,7 +816,7 @@ function arMapInit() {
   const outline = e.type !== "kommun";
   ctx.forEach(a => {
     const isOwn = own.includes(a); const t = sc.t(vk(a));
-    const p = L.polygon(a.rings, { color: isOwn && (outline || kommuneLevel) ? "#141C18" : "#FFFFFF", weight: isOwn && outline ? 2.6 : isOwn && kommuneLevel ? 1.2 : kommuneLevel ? 0.6 : 1,
+    const p = L.polygon(a.rings, { color: isOwn && (outline || kommuneLevel) ? "#141C18" : "#FFFFFF", smoothFactor: 0.25, weight: isOwn && outline ? 2.6 : isOwn && kommuneLevel ? 1.2 : kommuneLevel ? 1.5 : useQ ? 0.4 : 0.8,
       fillColor: t == null ? "#C4CBC4" : (sc.color ? sc.color(t) : mkShade(t, ind.key)), fillOpacity: isOwn ? .85 : kommuneLevel ? .35 : .45 });
     const v = vk(a); const native = kommuneLevel || (sind && V(a, sind.key) != null);
     const label = kommuneLevel ? (byCode[a.kommun] || {}).name : a.name;
@@ -910,11 +913,16 @@ function lfLayers() {
     const m = drill ? byCode[a.kommun] : a;
     const src = !drill ? a : (hasOwn && vk(a) != null ? a : m);
     const t = src ? sc.t(vk(src)) : null;
-    const w = drill ? 1.4 : 0.9;
+    /* thinner the finer the level: a 1.5 px stroke that reads as a border between
+       kommuner turns into a white haze over a kommun's worth of DeSO. */
+    const w = !drill ? 1.5 : sub === "deso" ? 0.4 : 0.8;
     const fill = t == null ? "#C4CBC4" : (sc.color ? sc.color(t) : mkShade(t, ind.key));
-    const p = L.polygon(a.rings, { color: "#FFFFFF", weight: w, fillColor: fill, fillOpacity: .72, smoothFactor: 1 });
+    /* smoothFactor is Leaflet dropping vertices within N screen pixels. At the
+       default 1 it undoes the simplification budget the geometry was built to,
+       and the angularity shows at close zoom. */
+    const p = L.polygon(a.rings, { color: "#FFFFFF", weight: w, fillColor: fill, fillOpacity: .72, smoothFactor: 0.25 });
     p.bindPopup(() => drill ? lfPopup(a, m) : lfKommunPopup(a), { maxWidth: 560, maxHeight: 560, autoPanPadding: [24, 24] });
-    p.on("mouseover", () => p.setStyle({ weight: 2.2, color: "#141C18" }));
+    p.on("mouseover", () => p.setStyle({ weight: Math.max(2.2, w * 2), color: "#141C18" }));
     p.on("mouseout", () => p.setStyle({ weight: w, color: "#FFFFFF" }));
     polys.push(p);
   });
@@ -994,8 +1002,11 @@ function lfInit() {
   if (LF.map) { try { LF.map.remove(); } catch (e) {} LF.map = null; }
   const map = L.map(el, { center: LF.center, zoom: LF.zoom, scrollWheelZoom: true, zoomSnap: 0.5, zoomDelta: 1, wheelPxPerZoomLevel: 30, wheelDebounceTime: 20 });
   LF.map = map;
-  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18, className: "basemap",
-    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> · Boundaries: SCB RegSO/DeSO 2025 (CC0)' }).addTo(map);
+  /* detectRetina asks for 2x tiles on a 2x display; without it the basemap is
+     upscaled 1x raster and looks soft next to the crisp vector boundaries. */
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18, maxNativeZoom: 19,
+    detectRetina: true, className: "basemap",
+    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a> · Boundaries: SCB RegSO/DeSO 2025 (CC0) · Coastline: OSM land polygons (ODbL)' }).addTo(map);
   map.on("moveend", () => { const c = map.getCenter(); LF.center = [c.lat, c.lng]; LF.zoom = map.getZoom(); });
   /* Leaflet stops click propagation inside popups, so page links in popups are wired here */
   map.on("popupopen", ev => { const el = ev.popup.getElement(); if (!el) return;
@@ -1005,7 +1016,10 @@ function lfInit() {
   map.on("zoomend", () => {
     /* rebuild polygons only when the display level changes — rebuilding on every pan would kill open popups */
     const lvl = (MK.kommun ? (desoMode() ? "deso" : "regso") : "national") + (MK.kommun || "");
-    if (lvl !== LF.level) lfLayers(); else if (fine) lfLabels();
+    /* `fine` was a variable in the zoom-decides-the-level code that v1.0 replaced;
+       the reference survived, so every zoomend threw and labels stopped being
+       rebuilt. Labels are sized against the screen, so they are always redone. */
+    if (lvl !== LF.level) lfLayers(); else lfLabels();
   });
   lfLayers();
   applyPendingFit();
