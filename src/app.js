@@ -43,11 +43,13 @@ const nf = (n, d = 1) => (n == null || isNaN(n)) ? "–" : Number(n).toLocaleStr
 const sign = (n, f) => n == null || isNaN(n) ? "–" : (n > 0 ? "+" : "") + f(n);
 const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const FMT = {
-  pct0: v => nf(v, 0) + " %", pct1: v => nf(v, 1) + " %", signpct1: v => sign(v, x => nf(x, 1) + " %"),
-  kdkk: v => nf(v / 1000, 0) + " kDKK", dkk0: v => nf(v, 0) + " DKK", dkk1: v => nf(v, 1) + " DKK",
-  int: v => nf(v, 0), days: v => nf(v, 0) + " d", m2: v => nf(v, 0) + " m²", per1000: v => nf(v, 1) + " ‰", idx: v => nf(v, 1)
+  pct0: v => nf(v, 0) + " %", pct1: v => nf(v, 1) + " %", pct2: v => nf(v, 2) + " %",
+  signpct1: v => sign(v, x => nf(x, 1) + " %"),
+  ksek: v => nf(v, 0) + " kSEK", sek0: v => nf(v, 0) + " SEK",
+  int: v => nf(v, 0), m2: v => nf(v, 0) + " m²", per1000: v => nf(v, 1) + " ‰",
+  idx: v => nf(v, 1), idx1: v => nf(v, 1), ratio2: v => nf(v, 2), cat: v => esc(String(v))
 };
-const fmtOf = i => FMT[i.fmt] || FMT.pct1;
+const fmtOf = i => FMT[i.fmt] || FMT.int;
 const isPct = i => (i.fmt || "").startsWith("pct") || i.fmt === "signpct1";
 const median = arr => { const v = arr.filter(x => x != null && !isNaN(x)).sort((a, b) => a - b); if (!v.length) return null; const m = v.length >> 1; return v.length % 2 ? v[m] : (v[m - 1] + v[m]) / 2; };
 const byCode = {}; MUNI.forEach(m => byCode[m.code] = m);
@@ -86,9 +88,7 @@ const LAN = { "01": "Stockholm", "03": "Uppsala", "04": "Södermanland", "05": "
 const lanName = c => LAN[c] || "";
 const REGIONS = Object.keys(LAN).map(k => LAN[k]);
 /* Sweden is tall and narrow — a lower zoom than Denmark's, centred on Dalarna */
-const LF = { map: null, center: [62.6, 16.6], zoom: 4 };
-/* zoom at which sub-areas replace kommuner when no kommun is drilled into */
-const SUB_ZOOM = 8;
+const LF = { map: null, center: [62.5, 16.5], zoom: 5 };
 /* every indicator is defined the same way at every level, so an area may always
    be compared with its kommun */
 const muniCmp = (e, key) => !!e.kommun;
@@ -144,7 +144,7 @@ function parseHash() {
   if (S.view === "makro") {
     /* zoom to a municipality the first time it is shown; back to the national frame when it is cleared */
     if (MK.kommun && MK.kommun !== LF.shownMuni) LF.pendingFit = MK.kommun;
-    if (!MK.kommun && LF.shownMuni) { LF.center = [56.0, 10.5]; LF.zoom = 7; }
+    if (!MK.kommun && LF.shownMuni) { LF.center = [62.5, 16.5]; LF.zoom = 5; }
     LF.shownMuni = MK.kommun;
   }
   return { viewChanged: prevView !== S.view };
@@ -412,7 +412,7 @@ function vMakro() {
     ${indExplain(ind)}
     ${muni ? muniStrip(muni) : ""}
     <div class="mapwrap"><div id="lfmap"></div><div class="maplegend" id="maplegend"></div></div>
-    ${srcNote(`<p class="cap">${muni ? "Click a polygon for its figures and a link to its page." : "Click a polygon for its figures; open a municipality with the search box above or from the popup. Table view lists everything side by side."} Colour classes: quintiles of the visible areas. Boundaries: DAGI, Klimadatastyrelsen (simplified); basemap OpenStreetMap.</p>`)}
+    ${srcNote(`<p class="cap">${muni ? "Click a polygon for its figures and a link to its page." : "Click a polygon for its figures; open a kommun with the search box above or from the popup. Table view lists everything side by side."} Colour classes: quintiles of the visible areas. Boundaries: SCB RegSO/DeSO 2025 (CC0), clipped to the coastline with OSM land polygons (ODbL); basemap OpenStreetMap.</p>`)}
   </div>`;
 }
 
@@ -760,7 +760,7 @@ function arMapInit() {
   const el = document.getElementById("armap"); if (!el || typeof L === "undefined") return;
   const e = areaEntity(); if (!e) return;
   if (LF.amap) { try { LF.amap.remove(); } catch (x) {} LF.amap = null; }
-  const map = L.map(el, { center: [56, 10.5], zoom: 7, scrollWheelZoom: true, zoomSnap: 0.5, zoomDelta: 1, wheelPxPerZoomLevel: 30, wheelDebounceTime: 20, attributionControl: false });
+  const map = L.map(el, { center: [62.5, 16.5], zoom: 5, scrollWheelZoom: true, zoomSnap: 0.5, zoomDelta: 1, wheelPxPerZoomLevel: 30, wheelDebounceTime: 20, attributionControl: false });
   LF.amap = map;
   L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18, className: "basemap" }).addTo(map);
   const ind = curInd(); const { useQ, sind, kommuneLevel } = arMapMode(e, ind);
@@ -808,38 +808,6 @@ function lfPopup(a, muni) {
 /* which sub-area (RegSO / DeSO) of the drilled kommun a point lies in — ray casting on the rings */
 function pip(pt, ring) { let ins = false; for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) { const yi = ring[i][0], xi = ring[i][1], yj = ring[j][0], xj = ring[j][1]; if ((yi > pt[0]) !== (yj > pt[0]) && pt[1] < (xj - xi) * (pt[0] - yi) / (yj - yi) + xi) ins = !ins; } return ins; }
 function areaAt(lat, lon) { return muniAreas(MK.kommun).find(a => (a.rings || []).some(r => pip([lat, lon], r))) || null; }
-function lfLabels() {
-  /* labels are rebuilt on every zoom step: a name is shown only when its polygon is wide enough on screen */
-  if (!LF.map || !LF.ctx) return;
-  const { areas, munis, sc, sub, ind, vk } = LF.ctx; const zoom = LF.map.getZoom(); const labs = [];
-  if (LF.labG) LF.map.removeLayer(LF.labG);
-  if (MK.kommun || zoom >= SUB_ZOOM) {
-    const px = ring => { const xs = [], ys = []; ring.forEach(q => { const c = LF.map.latLngToContainerPoint(q); xs.push(c.x); ys.push(c.y); }); return [Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)]; };
-    /* sub-areas: a value only where the polygon is clearly wide enough, the name only when there is room for both */
-    areas.slice().sort((x, y) => (y.pop || 0) - (x.pop || 0)).slice(0, 40).forEach(a => {
-      const [w, h] = px(mainRing(a)); if (w < 64 || h < 26) return;
-      const m = byCode[a.kommun]; const own = sub && vk(a) != null; const v = own ? vk(a) : (m ? vk(m) : null);
-      const t = sc.t(v), dark = t != null && t > .55; const val = v != null ? fmtOf(ind)(v) + (own ? "" : " °") : "–";
-      const name = w >= 120 && h >= 36 ? `<b>${esc(a.name)}</b><br>` : "";
-      labs.push(L.marker(centroid(mainRing(a)), { interactive: false, icon: L.divIcon({ className: "lflab" + (dark ? " lflab-dark" : ""), iconSize: null, html: name + val }) }));
-    });
-  } else {
-    /* municipalities: the 12 largest by name only at the national zoom; the 40 largest with values from zoom 8 */
-    const big = MUNI.slice().sort((a, b) => (b.pop || 0) - (a.pop || 0)).slice(0, zoom < 8 ? 12 : 40).filter(m => munis.includes(m));
-    const placed = [];   /* larger municipalities first; a label that would sit on top of one already placed is skipped */
-    big.forEach(m => {
-      const ma = muniAreas(m.code); let x = 0, y = 0, w = 0;
-      ma.forEach(a => { const c = centroid(mainRing(a)); const ww = a.pop || 1; x += c[0] * ww; y += c[1] * ww; w += ww; });
-      if (!w) return;
-      const ll = [x / w, y / w], pt = LF.map.latLngToContainerPoint(ll);
-      if (placed.some(q => Math.abs(q.x - pt.x) < 70 && Math.abs(q.y - pt.y) < 26)) return;
-      placed.push(pt);
-      const t = sc.t(vk(m)), dark = t != null && t > .55;
-      labs.push(L.marker(ll, { interactive: false, icon: L.divIcon({ className: "lflab" + (dark ? " lflab-dark" : ""), iconSize: null, html: `<b>${esc(m.name)}</b>${zoom >= 8 ? `<br>${vk(m) != null ? fmtOf(ind)(vk(m)) : "–"}` : ""}` }) }));
-    });
-  }
-  LF.labG = L.layerGroup(labs).addTo(LF.map);
-}
 /* ---------- DeSO: the on-demand sub-level ---------- */
 /* DeSO polygons and values live in dist/deso/<kommun>.json so the page does not
    carry 6 160 areas it will mostly never draw. The file is fetched once per
@@ -875,33 +843,44 @@ function subToggle() {
 
 function lfLayers() {
   if (!LF.map) return;
-  const zoom = LF.map.getZoom();
   const ind = curInd();
-  /* a drilled-in municipality always shows its sub-areas, whatever the zoom (small screens fit it below zoom 10) */
-  const fine = !!MK.kommun || zoom >= SUB_ZOOM;
-  const sub = fine && ((i => (i.levels || []).includes(desoMode() ? "deso" : "regso"))(ind));
-  LF.level = (fine ? "sub" : zoom < 5 ? "national" : "macro") + (desoMode() ? "-deso" : "") + (MK.kommun || "");
+  /* Three levels, and only one of them is ever drawn:
+       no kommun open  -> the 290 kommuner
+       kommun open     -> its RegSO
+       kommun open + DeSO toggle -> its DeSO
+     The Danish edition drew postal codes at every zoom and tinted them with the
+     municipality value when they had none of their own; here that meant 3 363
+     RegSO polygons on the national map and a click that opened a RegSO instead
+     of the kommun under the cursor. Zoom no longer changes the level — drilling
+     in does, which is also what the breadcrumb says is happening. */
+  const drill = !!MK.kommun;
+  const sub = drill && desoMode() ? "deso" : drill ? "regso" : null;
+  const shapes = !drill ? MUNI : muniAreas(MK.kommun);
+  const hasOwn = !sub || (ind.levels || []).includes(sub);
+  LF.level = (sub || "national") + (MK.kommun || "");
   if (LF.areaG) LF.map.removeLayer(LF.areaG);
   if (LF.labG) LF.map.removeLayer(LF.labG);
-  const areas = MK.kommun ? muniAreas(MK.kommun) : AREAS;
-  const munis = MK.kommun ? [byCode[MK.kommun]].filter(Boolean) : MUNI;
   const vk = o => V(o, ind.key);
-  const sc = scaleOf(sub ? areas.filter(a => vk(a) != null) : munis, vk);
+  const scalePool = !drill ? MUNI : shapes.filter(a => hasOwn && vk(a) != null);
+  const sc = scaleOf(scalePool.length ? scalePool : MUNI, vk);
   const polys = [];
-  areas.forEach(a => {
-    const m = byCode[a.kommun];
-    const src = sub && vk(a) != null ? a : m;
+  shapes.forEach(a => {
+    const m = drill ? byCode[a.kommun] : a;
+    const src = !drill ? a : (hasOwn && vk(a) != null ? a : m);
     const t = src ? sc.t(vk(src)) : null;
-    const w = fine ? 1.4 : 0.8;
+    const w = drill ? 1.4 : 0.9;
     const p = L.polygon(a.rings, { color: "#FFFFFF", weight: w, fillColor: t == null ? "#C4CBC4" : mkShade(t, ind.key), fillOpacity: .72, smoothFactor: 1 });
-    p.bindPopup(() => lfPopup(a, m), { maxWidth: 560, maxHeight: 560, autoPanPadding: [24, 24] });
-    p.on("mouseover", () => p.setStyle({ weight: 2.2, color: "#141C18" })); p.on("mouseout", () => p.setStyle({ weight: w, color: "#FFFFFF" }));
+    p.bindPopup(() => drill ? lfPopup(a, m) : lfKommunPopup(a), { maxWidth: 560, maxHeight: 560, autoPanPadding: [24, 24] });
+    p.on("mouseover", () => p.setStyle({ weight: 2.2, color: "#141C18" }));
+    p.on("mouseout", () => p.setStyle({ weight: w, color: "#FFFFFF" }));
     polys.push(p);
   });
   LF.areaG = L.layerGroup(polys).addTo(LF.map);
-  LF.ctx = { areas, munis, sc, sub, ind, vk };
+  LF.ctx = { shapes, sc, sub, drill, hasOwn, ind, vk };
   lfLabels();
-  setLegend("maplegend", sc, ind, ind.key, sub ? (desoMode() ? "DeSO" : "RegSO") : ((ind.levels || []).includes("regso") && !MK.kommun ? "kommuner · zoom in for RegSO" : "kommuner" + (fine ? " · ° sub-areas take the kommun value" : "")));
+  setLegend("maplegend", sc, ind, ind.key,
+    !drill ? "kommuner · open one for its RegSO"
+           : sub === "deso" ? "DeSO" : (hasOwn ? "RegSO" : "RegSO · ° all take the kommun value"));
   if (LF.ownG) { LF.map.removeLayer(LF.ownG); LF.ownG = null; }
   if (MK.own && D.portfolio) {
     const marks = D.portfolio.properties.filter(p => p.lat != null).map(p => {
@@ -913,6 +892,59 @@ function lfLayers() {
     LF.ownG = L.layerGroup(marks).addTo(LF.map);
   }
 }
+
+/* the national map's popup: a kommun, with the way into its sub-areas */
+function lfKommunPopup(m) {
+  const LI = curInds(), ind = curInd();
+  const row = (i, v, o) => `<span class="lfrow"><span>${esc(i.short || i.label)}</span><b>${fmtOf(i)(v)}${moeSpan(i, v, moeOf(i, o))}</b></span>`;
+  const sel = V(m, ind.key);
+  const rk = sel != null ? rankOf(m, ind.key, MUNI) : null;
+  const keys = HL_KEYS.filter(k => k !== ind.key).map(k => LI.find(i => i.key === k))
+    .filter(i => i && V(m, i.key) != null).slice(0, 4);
+  const all = LI.filter(i => V(m, i.key) != null);
+  const n = (DESO_IDX[m.code] || {}).n || 0;
+  return `<div class="lfpop"><b>${esc(m.name)}</b>${MK.year !== LATEST ? ` <span class="tag">${MK.year}</span>` : ""}
+    <span class="dim">${esc(lanName(m.lan))}${m.pop != null ? " · " + nf(m.pop, 0) + " inhabitants" : ""} · ${AREAS.filter(a => a.kommun === m.code).length} RegSO${n ? ` · ${n} DeSO` : ""}</span>
+    ${sel != null ? `<div class="lfbig"><span>${esc(ind.label)}</span><b>${fmtOf(ind)(sel)}${moeSpan(ind, sel, moeOf(ind, m))}</b><em>${rk ? `#${rk.r} of ${rk.n} kommuner` : ""}</em></div>`
+                  : `<div class="lfbig dim"><span>${esc(ind.label)}</span><b>–</b></div>`}
+    ${keys.length ? `<div class="lfkey">${keys.map(i => `<div><span>${esc(i.short || i.label)}</span><b>${fmtOf(i)(V(m, i.key))}${moeSpan(i, V(m, i.key), moeOf(i, m))}</b></div>`).join("")}</div>` : ""}
+    <span class="lfact"><button class="lk mini primary" data-go="${withQ(`area/kommun/${m.code}`)}">Open page ›</button><button class="lk mini" data-go="${withQ(`map/${m.code}`)}">RegSO ›</button>${n ? `<button class="lk mini" data-go="${withQ(`map/${m.code}/deso`)}">DeSO ›</button>` : ""}<button class="lk mini" data-go="${chartLink(ind.key, "kommun", m.code)}">↗ Chart</button></span>
+    <details class="lfmore"><summary>All ${all.length} values</summary>
+    <div class="lfrows">${all.map(i => row(i, V(m, i.key), m)).join("")}</div></details></div>`;
+}
+
+function lfLabels() {
+  /* labels are rebuilt on every zoom step: a name is shown only when its polygon is wide enough on screen */
+  if (!LF.map || !LF.ctx) return;
+  const { shapes, sc, sub, drill, hasOwn, ind, vk } = LF.ctx; const zoom = LF.map.getZoom(); const labs = [];
+  if (LF.labG) LF.map.removeLayer(LF.labG);
+  const px = ring => { const xs = [], ys = []; ring.forEach(q => { const c = LF.map.latLngToContainerPoint(q); xs.push(c.x); ys.push(c.y); }); return [Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)]; };
+  if (drill) {
+    /* sub-areas: a value only where the polygon is clearly wide enough, the name only when there is room for both */
+    shapes.slice().sort((x, y) => (y.pop || 0) - (x.pop || 0)).slice(0, 40).forEach(a => {
+      const [w, h] = px(mainRing(a)); if (w < 64 || h < 26) return;
+      const m = byCode[a.kommun]; const own = hasOwn && vk(a) != null; const v = own ? vk(a) : (m ? vk(m) : null);
+      const t = sc.t(v), dark = t != null && t > .55; const val = v != null ? fmtOf(ind)(v) + (own ? "" : " °") : "–";
+      const name = w >= 120 && h >= 36 ? `<b>${esc(a.name)}</b><br>` : "";
+      labs.push(L.marker(centroid(mainRing(a)), { interactive: false, icon: L.divIcon({ className: "lflab" + (dark ? " lflab-dark" : ""), iconSize: null, html: name + val }) }));
+    });
+  } else {
+    /* kommuner: the 12 largest by name at the national zoom, the 40 largest with values once zoomed in */
+    const big = MUNI.slice().sort((a, b) => (b.pop || 0) - (a.pop || 0)).slice(0, zoom < 6 ? 12 : 40);
+    const placed = [];   /* larger kommuner first; a label that would sit on top of one already placed is skipped */
+    big.forEach(m => {
+      const ring = mainRing(m); if (!ring.length) return;
+      const [w, h] = px(ring); if (w < 34 || h < 16) return;
+      const ll = centroid(ring), pt = LF.map.latLngToContainerPoint(ll);
+      if (placed.some(q => Math.abs(q.x - pt.x) < 70 && Math.abs(q.y - pt.y) < 26)) return;
+      placed.push(pt);
+      const t = sc.t(vk(m)), dark = t != null && t > .55;
+      labs.push(L.marker(ll, { interactive: false, icon: L.divIcon({ className: "lflab" + (dark ? " lflab-dark" : ""), iconSize: null, html: `<b>${esc(m.name)}</b>${zoom >= 6 ? `<br>${vk(m) != null ? fmtOf(ind)(vk(m)) : "–"}` : ""}` }) }));
+    });
+  }
+  LF.labG = L.layerGroup(labs).addTo(LF.map);
+}
+
 function lfInit() {
   const el = document.getElementById("lfmap");
   if (!el || typeof L === "undefined") return;
@@ -920,7 +952,7 @@ function lfInit() {
   const map = L.map(el, { center: LF.center, zoom: LF.zoom, scrollWheelZoom: true, zoomSnap: 0.5, zoomDelta: 1, wheelPxPerZoomLevel: 30, wheelDebounceTime: 20 });
   LF.map = map;
   L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18, className: "basemap",
-    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> · Boundaries: DAGI, Klimadatastyrelsen' }).addTo(map);
+    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> · Boundaries: SCB RegSO/DeSO 2025 (CC0)' }).addTo(map);
   map.on("moveend", () => { const c = map.getCenter(); LF.center = [c.lat, c.lng]; LF.zoom = map.getZoom(); });
   /* Leaflet stops click propagation inside popups, so page links in popups are wired here */
   map.on("popupopen", ev => { const el = ev.popup.getElement(); if (!el) return;
@@ -929,7 +961,7 @@ function lfInit() {
     el.querySelectorAll("details").forEach(d => d.addEventListener("toggle", () => { const pp = ev.popup; if (pp._updateLayout) { pp._updateLayout(); pp._updatePosition(); pp._adjustPan(); } })); });
   map.on("zoomend", () => {
     /* rebuild polygons only when the display level changes — rebuilding on every pan would kill open popups */
-    const z = map.getZoom(), fine = !!MK.kommun || z >= SUB_ZOOM, lvl = (fine ? "sub" : z < 5 ? "national" : "macro") + (desoMode() ? "-deso" : "") + (MK.kommun || "");
+    const lvl = (MK.kommun ? (desoMode() ? "deso" : "regso") : "national") + (MK.kommun || "");
     if (lvl !== LF.level) lfLayers(); else if (fine) lfLabels();
   });
   lfLayers();
@@ -1150,19 +1182,37 @@ function spark(series, w = 160, h = 26) {
   return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><polyline fill="none" stroke="currentColor" stroke-width="1.5" points="${pts}"/></svg>`;
 }
 function lineChart(key, opts = {}) {
-  const s = ((D.macro && D.macro.series) || {})[key] || [];
-  const pts = s.filter(p => p.v != null);
-  if (pts.length < 2) return `<p class="empty">no series for ${esc(key)}</p>`;
-  const W = 640, H = 180, L0 = 44, R = 10, T0 = 10, B = 24;
-  const v = pts.map(p => p.v), lo = opts.zero ? 0 : Math.min(...v), hi = Math.max(...v), sp = hi - lo || 1;
-  const x = i => L0 + i / (pts.length - 1) * (W - L0 - R), y = val => T0 + (1 - (val - lo) / sp) * (H - T0 - B);
-  const path = pts.map((p, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(p.v).toFixed(1)}`).join("");
+  /* `key` is one series key, or a list of {key,label,color} drawn on shared axes
+     (the interest-rate card puts the policy rate, the 10-year yield and the
+     mortgage rate side by side — they are all per cent, so they share a scale). */
+  const all = (D.macro && D.macro.series) || {};
+  const defs = Array.isArray(key) ? key : [{ key, label: "", color: opts.color }];
+  const series = defs.map(d => ({ ...d, pts: (all[d.key] || []).filter(p => p.v != null) }))
+                     .filter(d => d.pts.length > 1);
+  if (!series.length) return `<p class="empty">no series for ${esc(Array.isArray(key) ? defs.map(d => d.key).join(", ") : key)}</p>`;
+  const W = 640, H = 180, L0 = 44, R = 10, T0 = 10, B = series.length > 1 ? 38 : 24;
+  /* a shared time axis: the union of every period, so series of different
+     lengths and cadences line up instead of being stretched to the same width */
+  const times = [...new Set(series.flatMap(d => d.pts.map(p => p.t)))].sort((a, b) => {
+    const k = t => { const m = /(\d{4})(?:[KQM](\d{1,2}))?|(\d{4})-(\d{2})-(\d{2})/.exec(t) || [];
+      return m[3] ? [+m[3], +m[4], +m[5]] : [+m[1] || 0, +m[2] || 0, 0]; };
+    const A = k(a), B_ = k(b); return A[0] - B_[0] || A[1] - B_[1] || A[2] - B_[2];
+  });
+  const xi = {}; times.forEach((t, i) => xi[t] = i);
+  const v = series.flatMap(d => d.pts.map(p => p.v));
+  const lo = opts.zero ? 0 : Math.min(...v), hi = Math.max(...v), sp = hi - lo || 1;
+  const x = i => L0 + (times.length < 2 ? 0 : i / (times.length - 1) * (W - L0 - R));
+  const y = val => T0 + (1 - (val - lo) / sp) * (H - T0 - B);
+  const COL = ["#1C6B5C", "#B07A1E", "#40547F"];
+  const paths = series.map((d, k) => `<path d="${d.pts.map((p, i) => `${i ? "L" : "M"}${x(xi[p.t]).toFixed(1)},${y(p.v).toFixed(1)}`).join("")}" fill="none" stroke="${d.color || COL[k % COL.length]}" stroke-width="2"/>`).join("");
   const ticks = [lo, lo + sp / 2, hi];
-  const xl = [0, Math.floor(pts.length / 2), pts.length - 1];
+  const xl = [0, Math.floor(times.length / 2), times.length - 1];
+  const legend = series.length > 1
+    ? `<g>${series.map((d, k) => `<rect x="${L0 + k * 168}" y="${H - 12}" width="10" height="3" fill="${d.color || COL[k % COL.length]}"/><text class="ax" x="${L0 + k * 168 + 15}" y="${H - 8}">${esc(d.label || d.key)}</text>`).join("")}</g>` : "";
   return `<svg class="chart" viewBox="0 0 ${W} ${H}">
     ${ticks.map(t => `<line class="grid" x1="${L0}" x2="${W - R}" y1="${y(t).toFixed(1)}" y2="${y(t).toFixed(1)}"/><text class="ax" x="${L0 - 6}" y="${(y(t) + 3).toFixed(1)}" text-anchor="end">${nf(t, opts.dec ?? 1)}</text>`).join("")}
-    ${xl.map(i => `<text class="ax" x="${x(i).toFixed(1)}" y="${H - 6}" text-anchor="${i === 0 ? "start" : i === pts.length - 1 ? "end" : "middle"}">${esc(pts[i].t)}</text>`).join("")}
-    <path d="${path}" fill="none" stroke="${opts.color || "#1C6B5C"}" stroke-width="2"/></svg>`;
+    ${xl.map(i => `<text class="ax" x="${x(i).toFixed(1)}" y="${H - (series.length > 1 ? 20 : 6)}" text-anchor="${i === 0 ? "start" : i === times.length - 1 ? "end" : "middle"}">${esc(times[i] || "")}</text>`).join("")}
+    ${paths}${legend}</svg>`;
 }
 function vMarket() {
   const mac = D.macro || {}, lt = mac.latest || {};
@@ -1170,15 +1220,20 @@ function vMarket() {
   const tile = (key, label) => { const o = lt[key]; if (!o) return ""; const yoy = o.yoy;
     return `<div><span>${esc(label)}</span><b>${nf(o.v, o.dec ?? 1)}<i class="u">${esc(o.unit || "")}</i></b>
       ${yoy != null ? `<em class="k ${yoy > 0 ? "up" : yoy < 0 ? "dn" : ""}">${sign(yoy, x => nf(x, 1) + " %")} y/y</em>` : ""}<em>${esc(o.label || "")} · ${esc(o.t || "")}</em>${spark((mac.series || {})[key])}</div>`; };
-  const heroKeys = (mac.hero || ["rent_index", "hpi_flats", "supply_dk", "completions"]);
+  const heroKeys = mac.hero || ["policy_rate", "mortgage_rate", "bond_10y", "cpi"];
   const tableKeys = mac.table || Object.keys(lt);
   return `
   <div class="hero">${heroKeys.map(k => tile(k, (lt[k] || {}).label || k)).join("")}</div>
   <div class="grid-2">
-    <div class="card"><div class="card-head"><h3>Rent index, private rental (2021 = 100)</h3><span class="hint">DST HUS1</span></div>${lineChart("rent_index")}</div>
-    <div class="card"><div class="card-head"><h3>House price index, owner-occupied flats</h3><span class="hint">DST EJ56</span></div>${lineChart("hpi_flats")}</div>
-    <div class="card"><div class="card-head"><h3>Homes for sale, Sweden</h3><span class="hint">Finans Danmark UDB010</span></div>${lineChart("supply_dk", { dec: 0, color: "#B07A1E" })}</div>
-    <div class="card"><div class="card-head"><h3>Interest rates</h3><span class="hint">Danmarks Nationalbank via DST</span></div>${lineChart("rate_policy", { dec: 2, color: "#5C5F52" })}</div>
+    <div class="card"><div class="card-head"><h3>Rent index (CPI 04.1)</h3><span class="hint">SCB TAB6598 · 2020 = 100</span></div>${lineChart("cpi_rent")}
+      <p class="cap">Actual rental payments made for housing, the CPI component Swedish leases are indexed on (CPI for October). Rebased to 2020 = 100 in January 2026.</p></div>
+    <div class="card"><div class="card-head"><h3>Property price index (FASTPI)</h3><span class="hint">SCB TAB1149 · 1981 = 100</span></div>${lineChart("hpi", { color: "#40547F" })}
+      <p class="cap">Fastighetsprisindex for permanent småhus. An index of how prices moved — Sweden publishes no open realised price per m² at any geography.</p></div>
+    <div class="card"><div class="card-head"><h3>Interest rates</h3><span class="hint">Riksbanken SWEA · SCB TAB5783</span></div>${lineChart([
+      { key: "policy_rate", label: "Policy rate" },
+      { key: "bond_10y", label: "10-yr government bond" },
+      { key: "mortgage_rate", label: "Mortgage, new agreements" }], { dec: 2 })}
+      <p class="cap">Policy rate and 10-year yield from the Riksbank (daily, thinned to month-end); the mortgage rate is SCB's lending rate to households for housing loans, all fixation periods.</p></div>
   </div>
   <div class="card"><div class="card-head"><h3>Macro indicators</h3><span class="hint">latest available period per series</span></div>
     <table class="tbl compact" data-sortable><thead><tr><th>Indicator</th><th class="num">Value</th><th class="num">y/y</th><th>Period</th><th>Source</th></tr></thead>
