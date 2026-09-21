@@ -2,6 +2,8 @@
 data/raw/*.jsonl.gz
 data/raw/_console.txt
 data/geo/raw/
+# OSM land polygons (1.3 GB) and the mask derived from them (396 MB):
+# scripts/clip_geo.py rebuilds the mask, build_geo.py clips with it.
 
 # Kept: data/raw/*.meta.json, *.state.json, _fetch_log.txt, _discovery.json
 # (provenance — the indicator registry is built from the metadata, and the
