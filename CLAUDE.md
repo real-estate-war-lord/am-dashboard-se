@@ -30,13 +30,26 @@ Done:
   vintage and margin-of-error code against the metadata on disk and fails on an invented one.
 
 Next, in order:
-1. `caffeinate -i python3 scripts/fetch_scb.py 2>&1 | tee data/raw/_console.txt` — the full pull,
-   ~42 M cells, ~1 350 calls. Resumable: re-running skips finished pulls and retries failed ones.
-   Re-run it once after any change to `config/tables_se.json`; it only fetches what is new.
-2. Port `build_makro.py` / `build_market.py` / `build_dashboard.py` / `app.js` from the Danish repo.
-3. `make build && make serve`, spot-check, publish.
-4. Still missing, and not from SCB: Boverket BME (`bme`), Riksbank SWEA (`policy_rate`,
-   `bond_10y`). Their registry entries exist and are marked NOT YET ON DISK.
+1. Boverket BME (`bme`) — the only registered indicator with no data. Files are JS-rendered,
+   so it needs a browser pass.
+2. Whatever the first real readers ask for.
+
+Also done:
+- `scripts/build_geo.py` — kommun outlines dissolved out of RegSO by edge cancellation
+  (no GDAL, no shapely); all three layers simplified under 5 MB.
+- `scripts/build_makro.py` / `build_market.py` / `build_dashboard.py` — the calc engine,
+  ported from the Danish repo. `src/` (app.js, style.css, index.html, vendor/) ported with
+  the level vocabulary renamed and the Buildings/BBR layer replaced by distribution cards.
+- `scripts/fetch_riksbank.py` — SWEA API, `SECBREPOEFF` and `SEGVB10YC`.
+- `tests/smoke.js` — renders every view headlessly against the built page and asserts the
+  documented numbers (Stockholm 1 710 ±28, Malå suppressed, RegSO not inheriting).
+  `make test`.
+
+**Trap found during the build, worth keeping in mind:** the 2025 RegSO/DeSO codes return
+`0`, not null, for years before the division existed. Taken at face value every sub-municipal
+share reads 0 % back to 2014 and growth divides by zero. `build_makro.py` drops a period in
+which no area anywhere has a non-zero value, which leaves 2024-2025 below kommun level and
+the full eleven years at kommun level.
 
 ## Geography — three levels, and the vocabulary differs from Denmark
 

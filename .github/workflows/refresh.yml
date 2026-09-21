@@ -1,0 +1,82 @@
+name: refresh-data
+# Two jobs, as in the Danish edition, but the Swedish pull is much heavier:
+# ~1 350 calls and 43 M cells, about 70 minutes. So the monthly job fetches and
+# rebuilds the processed layer and commits it; every push only re-assembles the
+# page from what is already committed, which takes seconds.
+#
+# data/raw/*.jsonl.gz is regenerable and never committed (~1 GB). The fetcher is
+# resumable but each CI run starts from an empty cache, so the monthly job does
+# the whole pull. data/processed, data/geo/*.geojson and data/raw/*.meta.json
+# are committed and are all the page build needs.
+on:
+  push:
+    branches: [main]                 # UI/code change -> rebuild + deploy (no fetch)
+  schedule: [{ cron: "0 4 5 * *" }]  # 5th of each month, 04:00 UTC — SCB publishes early
+  workflow_dispatch:                 # manual: same as schedule
+permissions: { contents: write, pages: write, id-token: write }
+concurrency: { group: pages, cancel-in-progress: false }
+
+jobs:
+  refresh:
+    if: github.event_name != 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.12" }
+
+      - name: Check the indicator registry against the metadata on disk
+        run: python scripts/validate_indicators.py
+
+      - name: Pull SCB
+        run: python scripts/fetch_scb.py
+
+      - name: Pull Riksbank
+        run: python scripts/fetch_riksbank.py || echo "Riksbank unavailable — policy_rate/bond_10y will show no data"
+
+      - name: Rebuild the processed layer
+        run: python scripts/build_makro.py && python scripts/build_market.py
+
+      - name: Commit processed data
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add data/processed data/raw/*.meta.json data/raw/*.state.json data/raw/riksbank_*.json
+          git commit -m "data: monthly refresh $(date +%F)" || echo "nothing to commit"
+          git push
+
+  build-deploy:
+    needs: refresh
+    if: always() && (needs.refresh.result == 'success' || needs.refresh.result == 'skipped')
+    runs-on: ubuntu-latest
+    environment: { name: github-pages }
+    steps:
+      - uses: actions/checkout@v5
+        with: { ref: main }
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.12" }
+      - uses: actions/setup-node@v4
+        with: { node-version: "22" }
+
+      - name: Offline checks
+        run: python scripts/selftest.py && python scripts/validate_indicators.py
+
+      - name: Assemble dist/
+        run: python scripts/build_dashboard.py
+
+      - name: Smoke-test the built page
+        run: node tests/smoke.js
+
+      - name: Commit dist/
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add dist
+          git commit -m "build: dashboard $(date +%F)" || echo "nothing to commit"
+          git push || echo "nothing to push"
+
+      - uses: actions/upload-pages-artifact@v4
+        with: { path: dist }
+      - id: deployment
+        uses: actions/deploy-pages@v4

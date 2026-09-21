@@ -15,27 +15,37 @@ Sibling project: [am-dashboard-dk](https://github.com/real-estate-war-lord/am-da
 
 ## Status
 
-Work in progress.
+Built and running.
 
 - [x] Data map and source verification
 - [x] SCB API client, deep raw fetcher, boundary fetcher (`scripts/`)
-- [x] Boundaries downloaded (RegSO 2025, DeSO 2025, EPSG:4326)
-- [x] Metadata for 65 tables on disk
-- [ ] Full data pull
-- [ ] Indicator registry
-- [ ] Dashboard build and first publish
+- [x] Boundaries: RegSO 2025, DeSO 2025, kommun outlines dissolved from RegSO
+- [x] Full data pull — 94 pulls, 43.2 M cells, 0 failures
+- [x] Indicator registry — 27 mapped indicators + 8 national macro series
+- [x] Dashboard build (`dist/index.html`, one self-contained file)
 
 ## Running it
 
 ```bash
-python3 scripts/selftest.py        # offline checks, one second
-python3 scripts/fetch_geo_scb.py   # boundary polygons
-python3 scripts/discover_scb.py    # resolve table ids known only by their old API path
-python3 scripts/fetch_scb.py       # the full pull — resumable, ~45-90 min
+make selftest    # offline checks, one second
+make geo         # download boundary polygons (once)
+make simplify    # -> data/geo/*.geojson, browser-sized
+make discover    # resolve table ids known only by their old API path
+make fetch       # the full pull — resumable, ~70 min
+make riksbank    # policy rate and 10-yr yield
+make validate    # every code in the registry against the metadata on disk
+make build       # -> dist/index.html
+make test        # render every view headlessly and check the numbers
+make serve       # http://localhost:8080
 ```
 
-Requires Python 3.10+. No API key, no account, nothing to install.
+Requires Python 3.10+ (standard library only) and, for `make test`, Node.
+No API key, no account, nothing to install.
 `START_HERE.md` has the step-by-step version, `CLAUDE.md` the working conventions.
+
+**The page must be served over http**, not opened from disk: the 6 160 DeSO areas
+ship as one file per kommun (`dist/deso/<kommun>.json`) and are fetched when you open
+that kommun. From a `file://` URL the DeSO toggle stays unavailable; everything else works.
 
 ## What this data can and cannot say
 
@@ -52,6 +62,17 @@ Stated plainly, because the gaps are real and a dashboard that hides them is wor
   source and render as `–`, never as zero.
 - **No private-vs-allmännytta rent split below six national groups.**
 - **No building register with floor area.** Sweden has no open equivalent of Denmark's BBR.
+  The area page uses what SCB does publish below kommun level instead: the age x sex
+  pyramid, the composition of income and the tenure mix.
+- **Below kommun level the data is two years deep, not eleven.** SCB re-cut RegSO and DeSO
+  on 2025-01-01 and publishes the new division from 2024 onwards. Kommuner have the full
+  history; RegSO and DeSO are close to a snapshot, and charts there say so. Earlier years
+  come back from the API as `0` rather than null for an area that did not yet exist, which
+  the build drops rather than charting as a collapse to zero.
+- **Building permits have no kommun level.** `TAB2534` / `TAB796` carry 30 region codes —
+  riket, three metro areas, four riksområden and the 21 län. Permits are a panel, never a map.
+- **Boverket's Bostadsmarknadsenkät is not wired up.** The `bme` indicator is registered and
+  renders as "no data"; its files are JS-rendered and need a browser pass.
 
 ## Sources and licence
 
