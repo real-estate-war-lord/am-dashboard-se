@@ -1892,20 +1892,38 @@
    "sources": [
     {
      "db": "boverket",
-     "table": "bostadsmarknadsenkaten",
+     "file": "bme",
      "geo": "kommun",
      "vintage": "kommun",
-     "pull": null,
-     "format": "xlsx"
+     "format": "xlsx",
+     "url": "https://www.boverket.se/sv/samhallsplanering/bostadsmarknad/bostadsmarknaden/bostadsmarknadsenkaten/"
     }
    ],
    "calc": "categorical",
    "fmt": "cat",
    "moe": null,
-   "desc": "Boverket's Bostadsmarknadsenkät: each kommun's own assessment of whether it has a shortage, balance or surplus of housing.",
-   "source": "Boverket Bostadsmarknadsenkäten (annual, May)",
-   "warn": "NOT YET ON DISK. The files are JS-rendered and need a browser pass; this entry is a placeholder so the registry matches DATA_MAP_SE.md §1b. Self-reported by the kommuner, not measured. Attribution to Boverket is required.",
-   "group": "Area quality"
+   "desc": "Each kommun's own assessment of its housing market — shortage, balance or surplus — from Boverket's annual Bostadsmarknadsenkät, question \"Hur bedömer ni för närvarande kommunens bostadsmarknadsläge? [I kommunen som helhet]\".",
+   "source": "Boverket, Bostadsmarknadsenkäten",
+   "warn": "Self-reported by the kommuner, not measured — it is an opinion survey with one response per kommun, and what counts as 'balance' is explicitly left to each kommun to interpret. Three or four kommuner do not answer in any given year and stay blank. Attribution to Boverket is required by the licence.",
+   "group": "Area quality",
+   "cats": [
+    {
+     "v": -1,
+     "label": "Shortage",
+     "color": "#B5391F"
+    },
+    {
+     "v": 0,
+     "label": "Balance",
+     "color": "#D9C27E"
+    },
+    {
+     "v": 1,
+     "label": "Surplus",
+     "color": "#40547F"
+    }
+   ],
+   "note": "2020 and 2021 worded the answers differently (\"Obalans - underskott på bostäder\"); scripts/import_bme.py normalises them. The trend over 2020–2026 is real: shortage fell from 212 kommuner to 102 while surplus rose from 8 to 55."
   },
   {
    "key": "mortgage_rate",

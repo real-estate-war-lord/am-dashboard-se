@@ -31,6 +31,7 @@ Usage: python3 scripts/build_makro.py
 from __future__ import annotations
 
 import collections
+import csv
 import datetime as dt
 import json
 import pathlib
@@ -215,6 +216,39 @@ def values_for(ind: dict, source: dict, num: dict, den: dict, year: str | None):
     return dict(num[p]), p
 
 
+# ---------------------------------------------------------------- external files
+
+EXT = PROC.parent / "external"
+
+# Categorical answers are carried as numbers so ranking, sorting, charting and
+# the CSV export all keep working; the registry's `cats` maps them back to a
+# label and a colour for the map.
+BME_CODE = {"shortage": -1, "balance": 0, "surplus": 1}
+
+
+def external_csv(name: str) -> dict:
+    """data/external/<name>.csv -> {year: {kommun: value}}. Empty when absent."""
+    p = EXT / f"{name}.csv"
+    if not p.exists():
+        return {}
+    out: dict = collections.defaultdict(dict)
+    with p.open(encoding="utf-8") as fh:
+        rows = csv.reader(fh, delimiter=";")
+        header = next(rows, None)
+        for r in rows:
+            if len(r) < 3:
+                continue
+            code, year, raw = r[0].strip(), r[1].strip(), r[2].strip()
+            v = BME_CODE.get(raw)
+            if v is None:
+                try:
+                    v = float(raw)
+                except ValueError:
+                    continue
+            out[year][code] = v
+    return dict(out)
+
+
 # ---------------------------------------------------------------- geometry
 
 def load_geo(name: str):
@@ -374,6 +408,28 @@ def main() -> int:
         if ind.get("level") == "none":
             continue                                   # national series → market.json
         srcs = [s for s in ind["sources"] if s.get("role") != "denominator"]
+        ext_name = next((s.get("file") for s in srcs if s.get("db") == "boverket"), None)
+        if ext_name:
+            byyear = external_csv(ext_name)
+            if not byyear:
+                indicators_out.append(meta_of(ind, {}, {}))
+                warn(f"{key}: data/external/{ext_name}.csv not on disk — renders as 'no data'")
+                continue
+            years = sorted(byyear, key=int)[-n_hist:]
+            all_years.update(years)
+            for y in years:
+                for a, v in byyear[y].items():
+                    e = kommuner.get(a)
+                    if e is not None:
+                        e["hist"].setdefault(key, {})[y] = v
+            last = years[-1]
+            for a, v in byyear[last].items():
+                if a in kommuner:
+                    kommuner[a][key] = v
+            indicators_out.append(meta_of(ind, {"kommun": last},
+                                          {y: {"kommun": y} for y in years}))
+            print(f"  {key:14s} kommun:{len(byyear[last])} · {years[0]}–{last}")
+            continue
         if any(s.get("db") != "scb" for s in srcs):
             indicators_out.append(meta_of(ind, {}, {}))
             warn(f"{key}: no SCB source on disk — renders as 'no data'")
@@ -523,7 +579,8 @@ def main() -> int:
             "sources": sorted(sources, key=lambda s: s["key"]),
             "attribution": ["Källa: SCB (CC0)", "Sveriges riksbank, SWEA",
                             "Boundaries: SCB RegSO/DeSO 2025 (CC0)",
-                            "Coastline: OpenStreetMap land polygons (ODbL)"],
+                            "Coastline: OpenStreetMap land polygons (ODbL)",
+                            "Boverket, Bostadsmarknadsenkäten"],
             "years": years_sorted,
             "latest_year": latest_year,
             "levels": {"kommun": len(kommuner), "regso": len(regso), "deso": len(deso)},
@@ -551,6 +608,8 @@ def main() -> int:
 def meta_of(ind: dict, asof: dict, hist_asof: dict) -> dict:
     out = {k: ind[k] for k in ("key", "label", "short", "unit", "level", "levels", "hue", "group")
            if k in ind}
+    if ind.get("cats"):
+        out["cats"] = ind["cats"]
     out.update({"fmt": ind.get("fmt", "pct1"), "desc": ind.get("desc", ""),
                 "source": ind.get("source", ""), "warn": ind.get("warn", ""),
                 "note": ind.get("note", ""), "moe": bool(ind.get("moe")),

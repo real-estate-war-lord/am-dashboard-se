@@ -19,5 +19,8 @@ __pycache__/
 dist/fixture.html
 tests/fixture_*.json
 
+# Kept: data/external/raw/ — Boverket and Kronofogden source files are small
+#        and the licences want the provenance kept with the derived CSV.
+
 # Never public
 data/processed/portfolio.json

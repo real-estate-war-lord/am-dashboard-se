@@ -55,6 +55,11 @@ def check_source(key: str, source: dict) -> None:
         if not p.exists():
             warnings.append(f"{key}: {p.name} not on disk — run scripts/fetch_riksbank.py")
         return
+    if db == "boverket":
+        p = ROOT / "data" / "external" / f"{source.get('file')}.csv"
+        if not p.exists():
+            warnings.append(f"{key}: data/external/{p.name} not on disk — run scripts/import_bme.py")
+        return
     if db != "scb":
         if not source.get("pull"):
             warnings.append(f"{key}: source db='{db}' has no fetcher yet — renders as 'no data'")

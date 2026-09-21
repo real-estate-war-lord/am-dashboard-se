@@ -178,10 +178,10 @@ assert("no rent rendered as 0", nulls === 0, `${nulls} kommuner with rent === 0`
 assert("macro has the Riksbank series",
        !!(D.macro.series && D.macro.series.policy_rate && D.macro.series.bond_10y),
        `policy_rate=${(D.macro.latest.policy_rate || {}).v} · bond_10y=${(D.macro.latest.bond_10y || {}).v}`);
-assert("bme has no data and is reported, not crashed",
-       (D.indicators.find(i => i.key === "bme") || {}).asof &&
-       Object.keys((D.indicators.find(i => i.key === "bme") || {}).asof).length === 0,
-       "renders as no data");
+/* bme had no data in v1.0; it is asserted properly under "Boverket BME" below. */
+assert("every registered indicator either has data or says why",
+       D.indicators.every(i => Object.keys(i.asof || {}).length > 0),
+       D.indicators.filter(i => !Object.keys(i.asof || {}).length).map(i => i.key).join(", ") || "all have data");
 
 /* ---- what actually reaches the HTML ---- */
 console.log("\nrendered output:");
@@ -270,6 +270,26 @@ assert("no kommun ring reaches into open Baltic", !seaLon, "Värmdö stays west 
 assert("the ODbL coastline is attributed",
        (D.meta.attribution || []).some(a => /OpenStreetMap land polygons \(ODbL\)/.test(a)),
        (D.meta.attribution || []).join(" · "));
+
+console.log("\nBoverket BME:");
+const bme = D.indicators.find(i => i.key === "bme");
+assert("bme has data now", bme && Object.keys(bme.asof || {}).length > 0, `asof ${JSON.stringify(bme.asof)}`);
+assert("three categories with colours", (bme.cats || []).length === 3,
+       (bme.cats || []).map(c => `${c.label}=${c.color}`).join(" "));
+const withBme = D.kommuner.filter(k => k.bme != null).length;
+assert("most kommuner answered", withBme > 280 && withBme < 290, `${withBme} of 290`);
+assert("non-answers stay blank, not 0", D.kommuner.some(k => k.bme === undefined || k.bme === null),
+       `${290 - withBme} kommuner blank`);
+const vals = new Set(D.kommuner.map(k => k.bme).filter(v => v != null));
+assert("values are the three codes", [...vals].sort().join(",") === "-1,0,1", [...vals].sort().join(","));
+const hist = (byCode["0180"].hist || {}).bme || {};
+assert("history spans the survey years", Object.keys(hist).length >= 6, Object.keys(hist).sort().join(" "));
+const fmtB = fmtOf(bme);
+assert("a category renders as its label, not a number", fmtB(-1) === "Shortage", `fmtOf(-1) = "${fmtB(-1)}"`);
+assert("Boverket is attributed", (D.meta.attribution || []).some(a => /Boverket/.test(a)));
+S.view = "makro"; MK.kommun = null; MK.ind = "bme";
+const bmap = A.vMakro();
+assert("the map renders with bme selected", bmap.length > 1000 && !/undefined/.test(bmap.slice(0, 4000)));
 
 console.log("\nmarket cards:");
 const mk = (S.view = "market", A.vMarket());

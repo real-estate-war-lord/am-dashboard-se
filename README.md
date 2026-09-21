@@ -73,8 +73,10 @@ Stated plainly, because the gaps are real and a dashboard that hides them is wor
   the build drops rather than charting as a collapse to zero.
 - **Building permits have no kommun level.** `TAB2534` / `TAB796` carry 30 region codes —
   riket, three metro areas, four riksområden and the 21 län. Permits are a panel, never a map.
-- **Boverket's Bostadsmarknadsenkät is not wired up.** The `bme` indicator is registered and
-  renders as "no data"; its files are JS-rendered and need a browser pass.
+- **Boverket's Bostadsmarknadsenkät is a survey, not a measurement.** Each kommun states
+  whether it has a shortage, a balance or a surplus, and what counts as "balance" is
+  explicitly left to each kommun to interpret. Three or four do not answer in a given year
+  and stay blank. Attribution to Boverket is required.
 
 ## Sources and licence
 

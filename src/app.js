@@ -47,9 +47,15 @@ const FMT = {
   signpct1: v => sign(v, x => nf(x, 1) + " %"),
   ksek: v => nf(v, 0) + " kSEK", sek0: v => nf(v, 0) + " SEK",
   int: v => nf(v, 0), m2: v => nf(v, 0) + " m²", per1000: v => nf(v, 1) + " ‰",
-  idx: v => nf(v, 1), idx1: v => nf(v, 1), ratio2: v => nf(v, 2), cat: v => esc(String(v))
+  idx: v => nf(v, 1), idx1: v => nf(v, 1), ratio2: v => nf(v, 2),
+  /* `cat` is replaced per indicator by fmtOf, which knows its labels */
+  cat: v => nf(v, 0)
 };
-const fmtOf = i => FMT[i.fmt] || FMT.int;
+const fmtOf = i => {
+  const cats = catsOf(i);
+  if (cats) return v => { const c = catOf(i, v); return c ? c.label : "–"; };
+  return FMT[i.fmt] || FMT.int;
+};
 const isPct = i => (i.fmt || "").startsWith("pct") || i.fmt === "signpct1";
 const median = arr => { const v = arr.filter(x => x != null && !isNaN(x)).sort((a, b) => a - b); if (!v.length) return null; const m = v.length >> 1; return v.length % 2 ? v[m] : (v[m - 1] + v[m]) / 2; };
 const byCode = {}; MUNI.forEach(m => byCode[m.code] = m);
@@ -273,6 +279,12 @@ function enableSort(root) {
 }
 
 /* ---------- choropleth colour model (identical to the Finnish edition) ---------- */
+/* Categorical indicators (Boverket's shortage / balance / surplus) are not a
+   ramp: each answer has its own colour, fixed by the registry. Values travel as
+   numbers so ranking, sorting, charts and the CSV keep working, and `cats` maps
+   them back to a label and a colour. */
+const catsOf = i => (i && i.cats) || null;
+const catOf = (i, v) => { const c = catsOf(i); return c ? c.find(x => x.v === v) || null : null; };
 function mkShade(t, key) {
   /* five steps from a light tint to the full hue, the top class deeper still — differences read at a glance */
   const i = IND.find(x => x.key === key); const hue = (i && i.hue) || [10, 88, 70];
@@ -281,7 +293,14 @@ function mkShade(t, key) {
   return `rgb(${c[0]},${c[1]},${c[2]})`;
 }
 /* quintile classes: each colour step holds a fifth of the areas, so a few outliers cannot flatten the map */
-function scaleOf(list, vk, fixed) {
+function scaleOf(list, vk, fixed, ind) {
+  const cats = catsOf(ind);
+  if (cats) {
+    const seen = new Set(list.map(vk).filter(v => v != null));
+    return { cats, t: v => (v == null ? null : v), color: v => (catOf(ind, v) || {}).color || "#C4CBC4",
+             lo: null, hi: null, breaks: [], classes: cats.length,
+             n: [...seen].length ? list.filter(o => vk(o) != null).length : 0 };
+  }
   const vals = list.map(vk).filter(v => v != null && !isNaN(v)).sort((a, b) => a - b);
   if (!vals.length) return { t: () => null, lo: null, hi: null, breaks: [] };
   const q = p => vals[Math.min(vals.length - 1, Math.floor(p * vals.length))];
@@ -296,6 +315,11 @@ function legendHtml(sc, ind, key, note) {
   /* class-break legend drawn on top of the map (bottom right) */
   const f = fmtOf(ind); const b = sc.breaks || []; const n = sc.classes || 0;
   const lab = c => n === 1 ? f(sc.lo) : c === 0 ? `≤ ${f(b[0])}` : c === n - 1 ? `> ${f(b[c - 1])}` : `${f(b[c - 1])} – ${f(b[c])}`;
+  if (sc.cats) {
+    const rows2 = sc.cats.slice().reverse().map(c => `<div class="lgrow"><i style="background:${c.color}"></i>${esc(c.label)}</div>`);
+    return `<div class="lgtitle">${esc(ind.short || ind.label)}<span>${esc(ind.unit || "")}</span></div>` +
+      rows2.join("") + `<div class="lgrow"><i style="background:#C4CBC4"></i>no answer</div>${note ? `<div class="lgnote">${note}</div>` : ""}`;
+  }
   const rows = []; for (let c = n - 1; c >= 0; c--) rows.push(`<div class="lgrow"><i style="background:${mkShade(n > 1 ? c / (n - 1) : .5, key)}"></i>${lab(c)}</div>`);
   return `<div class="lgtitle">${esc(ind.short || ind.label)}<span>${esc(ind.unit || "")}</span></div>` +
     (n ? rows.join("") : `<div class="lgrow dim">no data</div>`) +
@@ -766,13 +790,13 @@ function arMapInit() {
   const ind = curInd(); const { useQ, sind, kommuneLevel } = arMapMode(e, ind);
   const ctx = e.type === "kommun" ? (useQ ? desoAreas(e.code) : kommuneLevel ? AREAS : e.ctx) : e.ctx;
   const vk = a => { if (!sind) return null; if (kommuneLevel) return V(byCode[a.kommun], sind.key); return V(a, sind.key) ?? (useQ ? null : V(byCode[a.kommun], sind.key)); };
-  const sc = kommuneLevel ? scaleOf(MUNI, m => V(m, sind.key)) : scaleOf(ctx.filter(a => sind && V(a, sind.key) != null), vk);
+  const sc = kommuneLevel ? scaleOf(MUNI, m => V(m, sind.key), null, sind) : scaleOf(ctx.filter(a => sind && V(a, sind.key) != null), vk, null, sind);
   const own = e.type === "kommun" ? e.ctx : e.own;
   const outline = e.type !== "kommun";
   ctx.forEach(a => {
     const isOwn = own.includes(a); const t = sc.t(vk(a));
     const p = L.polygon(a.rings, { color: isOwn && (outline || kommuneLevel) ? "#141C18" : "#FFFFFF", weight: isOwn && outline ? 2.6 : isOwn && kommuneLevel ? 1.2 : kommuneLevel ? 0.6 : 1,
-      fillColor: t == null ? "#C4CBC4" : mkShade(t, ind.key), fillOpacity: isOwn ? .85 : kommuneLevel ? .35 : .45 });
+      fillColor: t == null ? "#C4CBC4" : (sc.color ? sc.color(t) : mkShade(t, ind.key)), fillOpacity: isOwn ? .85 : kommuneLevel ? .35 : .45 });
     const v = vk(a); const native = kommuneLevel || (sind && V(a, sind.key) != null);
     const label = kommuneLevel ? (byCode[a.kommun] || {}).name : a.name;
     p.bindTooltip(`<b>${esc(label)}</b>${v != null ? `<br>${esc(sind.short || sind.label)}: ${fmtOf(sind)(v)}${native ? "" : " °"}` : ""}`);
@@ -862,14 +886,15 @@ function lfLayers() {
   if (LF.labG) LF.map.removeLayer(LF.labG);
   const vk = o => V(o, ind.key);
   const scalePool = !drill ? MUNI : shapes.filter(a => hasOwn && vk(a) != null);
-  const sc = scaleOf(scalePool.length ? scalePool : MUNI, vk);
+  const sc = scaleOf(scalePool.length ? scalePool : MUNI, vk, null, ind);
   const polys = [];
   shapes.forEach(a => {
     const m = drill ? byCode[a.kommun] : a;
     const src = !drill ? a : (hasOwn && vk(a) != null ? a : m);
     const t = src ? sc.t(vk(src)) : null;
     const w = drill ? 1.4 : 0.9;
-    const p = L.polygon(a.rings, { color: "#FFFFFF", weight: w, fillColor: t == null ? "#C4CBC4" : mkShade(t, ind.key), fillOpacity: .72, smoothFactor: 1 });
+    const fill = t == null ? "#C4CBC4" : (sc.color ? sc.color(t) : mkShade(t, ind.key));
+    const p = L.polygon(a.rings, { color: "#FFFFFF", weight: w, fillColor: fill, fillOpacity: .72, smoothFactor: 1 });
     p.bindPopup(() => drill ? lfPopup(a, m) : lfKommunPopup(a), { maxWidth: 560, maxHeight: 560, autoPanPadding: [24, 24] });
     p.on("mouseover", () => p.setStyle({ weight: 2.2, color: "#141C18" }));
     p.on("mouseout", () => p.setStyle({ weight: w, color: "#FFFFFF" }));
@@ -924,7 +949,7 @@ function lfLabels() {
     shapes.slice().sort((x, y) => (y.pop || 0) - (x.pop || 0)).slice(0, 40).forEach(a => {
       const [w, h] = px(mainRing(a)); if (w < 64 || h < 26) return;
       const m = byCode[a.kommun]; const own = hasOwn && vk(a) != null; const v = own ? vk(a) : (m ? vk(m) : null);
-      const t = sc.t(v), dark = t != null && t > .55; const val = v != null ? fmtOf(ind)(v) + (own ? "" : " °") : "–";
+      const t = sc.t(v), dark = !sc.cats && t != null && t > .55; const val = v != null ? fmtOf(ind)(v) + (own ? "" : " °") : "–";
       const name = w >= 120 && h >= 36 ? `<b>${esc(a.name)}</b><br>` : "";
       labs.push(L.marker(centroid(mainRing(a)), { interactive: false, icon: L.divIcon({ className: "lflab" + (dark ? " lflab-dark" : ""), iconSize: null, html: name + val }) }));
     });
@@ -938,7 +963,7 @@ function lfLabels() {
       const ll = centroid(ring), pt = LF.map.latLngToContainerPoint(ll);
       if (placed.some(q => Math.abs(q.x - pt.x) < 70 && Math.abs(q.y - pt.y) < 26)) return;
       placed.push(pt);
-      const t = sc.t(vk(m)), dark = t != null && t > .55;
+      const t = sc.t(vk(m)), dark = !sc.cats && t != null && t > .55;
       labs.push(L.marker(ll, { interactive: false, icon: L.divIcon({ className: "lflab" + (dark ? " lflab-dark" : ""), iconSize: null, html: `<b>${esc(m.name)}</b>${zoom >= 6 ? `<br>${vk(m) != null ? fmtOf(ind)(vk(m)) : "–"}` : ""}` }) }));
     });
   }
