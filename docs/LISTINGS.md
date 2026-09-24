@@ -146,6 +146,14 @@ different costume.
    (short, because listings turn over daily and a stale card is visible to the
    user; the minute exists to absorb a user clicking around a map, which is what
    actually protects the upstream API).
+
+   That cache is **best-effort and must never be relied on**. The write happens
+   in `ctx.waitUntil` *after* the response is sent, so a second request arriving
+   immediately behind the first still misses; entries are per-colo, so a hit in
+   one location says nothing about another; and Cloudflare may evict at any
+   time. Observed in production: miss, hit, then miss again on the same URL
+   within ten seconds. `x-gateway-cache: hit|miss` reports what happened, for
+   debugging only — correctness never depends on it.
 2. **Area level only.** Listings are shown as an aggregate or a short list on an
    area page. The gateway is not a search engine and the dashboard is not a
    listings portal; nothing here is re-published as a dataset.
@@ -189,6 +197,16 @@ npx wrangler login
 npx wrangler deploy
 ```
 
-Deployed at `https://am-se-listings.<subdomain>.workers.dev`. If the workers.dev
-subdomain changes, the origin allowlist in `src/index.js` is what the dashboard
-must match, not the other way round.
+**Live at <https://am-se-listings.am-se-listings-gateway.workers.dev>** (account
+`625d331c77c0d97127dbebfc30755b33`, first deployed 2026-09-24). The first deploy
+registers the workers.dev subdomain and DNS took about 75 seconds to answer; a
+fresh deploy afterwards is immediate.
+
+If the workers.dev subdomain ever changes, the origin allowlist in `src/index.js`
+is what the dashboard must match, not the other way round.
+
+`wrangler login` mints a broad account-wide OAuth token (`d1:write`,
+`pages:write`, `workers_kv:write`, `ssl_certs:write` and more) that this Worker
+does not need — it uses `workers:write` and has no bindings at all. A scoped API
+token limited to *Workers Scripts: Edit*, passed as `CLOUDFLARE_API_TOKEN`, is
+the tighter setup for CI or a shared machine.
