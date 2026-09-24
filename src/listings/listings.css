@@ -1,0 +1,135 @@
+/* AM Dashboard — Sweden edition · the Listings page.
+   Every colour, radius and font here comes from the tokens in src/style.css,
+   which is inlined ahead of this file. Nothing is redefined — if the dashboard
+   changes its palette, this page follows. */
+
+.lst-body { background: var(--bg); color: var(--ink); font-family: var(--body); margin: 0; }
+.lst-wrap { max-width: 1280px; margin: 0 auto; padding: 18px 20px 72px; }
+
+/* ---- top bar ---- */
+.lst-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px 16px; margin-bottom: 4px; }
+.lst-head h1 { font-family: var(--disp); font-size: 22px; margin: 0; font-weight: 600; }
+.lst-head .lst-sub { color: var(--muted); font-size: 12.5px; }
+.lst-head a { color: var(--good); }
+
+.lst-find { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 12px 0 8px; }
+.lst-find input[type=text] {
+  flex: 1 1 380px; min-width: 260px; padding: 9px 11px; font: inherit; font-size: 13px;
+  border: 1px solid var(--line); border-radius: var(--r); background: var(--panel); color: var(--ink);
+}
+.lst-find input[type=text]:focus { outline: 2px solid var(--good); outline-offset: -1px; }
+.lst-btn {
+  padding: 9px 14px; font: inherit; font-size: 13px; font-weight: 500; cursor: pointer;
+  border: 1px solid var(--line); border-radius: var(--r); background: var(--panel); color: var(--ink);
+}
+.lst-btn:hover { background: var(--panel2); }
+.lst-btn.primary { background: var(--good); border-color: var(--good); color: #fff; }
+.lst-seg { display: inline-flex; border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+.lst-seg button {
+  padding: 9px 12px; font: inherit; font-size: 12.5px; cursor: pointer; border: 0;
+  background: var(--panel); color: var(--ink2); border-left: 1px solid var(--line);
+}
+.lst-seg button:first-child { border-left: 0; }
+.lst-seg button[aria-pressed=true] { background: var(--side); color: var(--side-ink); }
+
+.lst-msg { font-size: 12.5px; padding: 8px 11px; border-radius: var(--r); margin: 6px 0; }
+.lst-msg.err { background: #FBEDEA; color: var(--bad2); border: 1px solid #F0D4CD; }
+.lst-msg.info { background: var(--panel2); color: var(--ink2); border: 1px solid var(--line2); }
+
+/* ---- source status strip ---- */
+.lst-strip { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 12px; }
+.lst-chip {
+  display: inline-flex; align-items: baseline; gap: 6px; padding: 4px 9px;
+  border: 1px solid var(--line); border-radius: 999px; background: var(--panel);
+  font-size: 11.5px; font-family: var(--mono); color: var(--ink2); white-space: nowrap;
+}
+.lst-chip b { font-weight: 600; color: var(--ink); }
+.lst-chip .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); flex: none; }
+.lst-chip.warn .dot { background: var(--amber); }
+.lst-chip.bad  .dot { background: var(--red); }
+.lst-chip.bad  { border-color: #E9C9C1; background: #FDF5F3; }
+.lst-chip .age { color: var(--dim); }
+.lst-chip.zero b { color: var(--muted); }
+
+/* ---- filters ---- */
+.lst-filters { display: flex; flex-wrap: wrap; gap: 14px 22px; padding: 11px 13px; margin-bottom: 12px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); }
+.lst-fgroup { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; }
+.lst-fgroup > span { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.lst-tog {
+  display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; cursor: pointer;
+  border: 1px solid var(--line); border-radius: 999px; background: var(--panel2);
+  font-size: 12px; color: var(--ink2);
+}
+.lst-tog[aria-pressed=true] { background: var(--side); border-color: var(--side); color: var(--side-ink); }
+.lst-tog .swatch { width: 9px; height: 9px; border-radius: 2px; flex: none; }
+.lst-tog.sub { font-size: 11.5px; padding: 3px 8px; font-family: var(--mono); }
+
+/* ---- map ---- */
+#lst-map { height: clamp(360px, calc(100vh - 340px), 620px); border: 1px solid var(--line);
+  border-radius: var(--r); background: var(--panel2); }
+/* The basemap is reference, not content: desaturated and lightened so the
+   coloured markers are what the eye lands on. */
+.basemap { filter: saturate(.35) brightness(1.06); }
+.lst-legend { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 8px 0 16px; font-size: 12px; color: var(--ink2); }
+.lst-legend .k { display: inline-flex; align-items: center; gap: 6px; }
+.lst-legend .swatch { width: 10px; height: 10px; border-radius: 50%; }
+.lst-mk { border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.28); }
+.lst-pin { border-radius: 50%; border: 3px solid var(--side); background: #fff; box-shadow: 0 0 0 1px rgba(0,0,0,.2); }
+
+/* ---- card ---- */
+.leaflet-popup-content { margin: 0; width: 300px !important; }
+.lst-card { font-family: var(--body); font-size: 12.5px; color: var(--ink); }
+.lst-card .img { width: 100%; height: 148px; object-fit: cover; display: block; background: var(--panel2);
+  border-radius: var(--r) var(--r) 0 0; }
+.lst-card .noimg { width: 100%; height: 88px; display: flex; align-items: center; justify-content: center;
+  background: var(--panel2); color: var(--dim); font-family: var(--mono); font-size: 11px;
+  border-radius: var(--r) var(--r) 0 0; border-bottom: 1px solid var(--line2); }
+.lst-card .pad { padding: 10px 12px 12px; }
+.lst-card h3 { font-family: var(--disp); font-size: 15px; margin: 0 0 2px; font-weight: 600; }
+.lst-card .sub { color: var(--muted); font-size: 11.5px; margin-bottom: 8px; }
+.lst-card .facts { display: grid; grid-template-columns: 1fr 1fr; gap: 3px 10px; font-family: var(--mono);
+  font-size: 11.5px; margin-bottom: 8px; }
+.lst-card .facts i { font-style: normal; color: var(--muted); }
+.lst-card .badges { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
+.lst-bdg { font-size: 10.5px; font-family: var(--mono); padding: 2px 7px; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--panel2); color: var(--ink2); }
+.lst-bdg.offer { background: #FBF3E3; border-color: #EBD9B4; color: #7A5410; }
+.lst-bdg.queue { background: #EFF1EE; border-color: #D9DDD6; color: #45483F; }
+.lst-bdg.also  { background: #E9F1EF; border-color: #C9DCD7; color: #14544A; }
+.lst-bdg.pos   { background: var(--panel2); color: var(--muted); }
+.lst-card .text { font-size: 12px; color: var(--ink2); line-height: 1.45; margin-bottom: 9px; }
+.lst-card .text.muted { color: var(--dim); font-style: italic; }
+.lst-card .open { display: block; text-align: center; padding: 8px; border-radius: var(--r);
+  background: var(--side); color: var(--side-ink); text-decoration: none; font-weight: 500; font-size: 12.5px; }
+.lst-card .open:hover { background: var(--side2); }
+
+/* ---- table + medians ---- */
+.lst-sec { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r);
+  padding: 14px 16px 16px; margin-bottom: 14px; }
+.lst-sec h2 { font-family: var(--disp); font-size: 15px; margin: 0 0 3px; font-weight: 600; }
+.lst-sec .cap { color: var(--muted); font-size: 11.5px; margin-bottom: 10px; }
+.lst-tbl { width: 100%; border-collapse: collapse; font-size: 12px; font-family: var(--mono); }
+.lst-tbl th, .lst-tbl td { padding: 5px 8px; text-align: left; border-bottom: 1px solid var(--line2); white-space: nowrap; }
+.lst-tbl th { cursor: pointer; user-select: none; color: var(--muted); font-weight: 500;
+  position: sticky; top: 0; background: var(--panel); }
+.lst-tbl th:hover { color: var(--ink); }
+.lst-tbl td.num, .lst-tbl th.num { text-align: right; }
+.lst-tbl tbody tr:hover { background: var(--panel2); }
+.lst-tbl .srcdot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+.lst-scroll { max-height: 460px; overflow: auto; }
+.lst-med { display: flex; flex-wrap: wrap; gap: 10px; }
+.lst-med .m { border: 1px solid var(--line); border-radius: var(--r); padding: 8px 12px; min-width: 116px; background: var(--panel2); }
+.lst-med .m b { display: block; font-family: var(--mono); font-size: 17px; font-weight: 600; }
+.lst-med .m span { font-size: 11px; color: var(--muted); }
+.lst-med .m.sup b { color: var(--dim); font-size: 14px; }
+
+/* ---- the fixed caveat ---- */
+.lst-caveat { font-size: 11.5px; line-height: 1.55; color: var(--muted); border-top: 1px solid var(--line2);
+  padding-top: 10px; margin-top: 4px; }
+
+@media (max-width: 760px) {
+  .lst-wrap { padding: 14px 14px 60px; }
+  .lst-card .facts { grid-template-columns: 1fr; }
+  #lst-map { height: 52vh; }
+}

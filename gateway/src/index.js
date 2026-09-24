@@ -29,7 +29,12 @@ import { dedupe } from "./dedupe.js";
 
 const ALLOWED_ORIGINS = new Set([
   "https://real-estate-war-lord.github.io",
+  /* The two local dev ports. 8080 is what `python3 -m http.server 8080
+   * --directory dist` uses; 8081 is the fallback for when 8080 is already
+   * taken by another project on the same machine. Both are loopback-only and
+   * cannot be reached from another host. */
   "http://localhost:8080",
+  "http://localhost:8081",
 ]);
 
 const LAT_MIN = 55, LAT_MAX = 70;

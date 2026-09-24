@@ -374,10 +374,10 @@ test("lat and lon are required", async () => {
 });
 
 test("CORS is granted to the two known origins and nobody else", async () => {
-  for (const origin of [DASHBOARD, "http://localhost:8080"]) {
+  for (const origin of [DASHBOARD, "http://localhost:8080", "http://localhost:8081"]) {
     assert.equal((await call("/health", { origin })).headers.get("access-control-allow-origin"), origin);
   }
-  for (const origin of ["https://evil.example.com", "http://localhost:8081"]) {
+  for (const origin of ["https://evil.example.com", "http://localhost:8082", "http://127.0.0.1:8080", "null"]) {
     assert.equal((await call("/health", { origin })).headers.get("access-control-allow-origin"), null, origin);
   }
 });

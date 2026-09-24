@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Listings · Macro Dashboard Sweden</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>{{LEAFLET_CSS}}</style>
+<style>{{TOKENS_CSS}}</style>
+<style>{{LISTINGS_CSS}}</style>
+</head>
+<body class="lst-body">
+<div class="lst-wrap">
+
+  <div class="lst-head">
+    <h1>Listings</h1>
+    <div class="lst-sub">What is advertised for rent near a point, right now.</div>
+  </div>
+
+  <div class="lst-find">
+    <input type="text" id="lst-input" placeholder="Paste Google Maps link or coordinates" autocomplete="off" spellcheck="false">
+    <button class="lst-btn primary" id="lst-go">Show</button>
+    <div class="lst-seg" id="lst-radius" role="group" aria-label="Radius">
+      <button data-r="500" aria-pressed="true">500 m</button>
+      <button data-r="1000" aria-pressed="false">1 km</button>
+      <button data-r="2000" aria-pressed="false">2 km</button>
+    </div>
+    <button class="lst-btn" id="lst-csv" title="Download the listings currently shown">⤓ CSV</button>
+  </div>
+
+  <div id="lst-note"></div>
+  <div class="lst-strip" id="lst-strip"></div>
+  <div class="lst-filters" id="lst-filters"></div>
+
+  <div id="lst-map"></div>
+  <div class="lst-legend" id="lst-legend"></div>
+
+  <div class="lst-sec" id="lst-medians-sec">
+    <h2>Advertised rents</h2>
+    <div class="cap">Median asking rent, SEK per m² per year, of the listings shown. Shown only where at least three listings back the figure.</div>
+    <div class="lst-med" id="lst-medians"></div>
+  </div>
+
+  <div class="lst-sec">
+    <h2>Listings <span id="lst-count" class="cap" style="display:inline"></span></h2>
+    <div class="cap">Click a row to open it on the map. Click a column to sort.</div>
+    <div class="lst-scroll"><table class="lst-tbl" id="lst-table"></table></div>
+  </div>
+
+  <p class="lst-caveat">
+    Live advertised listings from HomeQ, landlord portals and municipal queues.
+    Counts show where landlords advertise, not vacancy.
+    Advertised rent ≠ contract rent; not comparable with SCB rent statistics.
+    Queue listings are allocated by queue time.
+  </p>
+
+</div>
+
+<script>{{LEAFLET_JS}}</script>
+<script>{{PARSE_JS}}</script>
+<script>{{VIEW_JS}}</script>
+<script>{{LISTINGS_JS}}</script>
+</body>
+</html>

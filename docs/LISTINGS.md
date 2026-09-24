@@ -723,6 +723,85 @@ npx wrangler secret put REFRESH_SECRET         # any long random string
 - The dashboard's own statistics come from SCB (CC0, "Källa: SCB") and are
   entirely separate from anything here.
 
+## The Listings page
+
+A standalone page that reads this gateway and draws what is advertised near a
+point: `src/listings/`, built to `dist/listings.html`. It shares the
+dashboard's design tokens and vendored Leaflet but none of its code, and
+touches nothing under `src/` that the dashboard owns.
+
+```sh
+python3 scripts/build_listings.py          # -> dist/listings.html
+python3 -m http.server 8080 --directory dist
+open http://localhost:8080/listings.html
+```
+
+`http://localhost:8080` and `:8081` are both on the gateway's CORS allowlist —
+8081 because another project often already holds 8080 on the same machine. Any
+other origin gets no CORS headers and the page will say the gateway could not
+be reached.
+
+`scripts/build_listings.py` is a separate entry point: it reads `src/style.css`
+and `src/vendor/`, writes only `dist/listings.html`, and shares no code with
+`build_dashboard.py`, so neither build can break the other. It takes only the
+`:root` blocks out of `style.css` — the palette, radii and fonts — because the
+rest of that file lays out a sidebar and grid this page does not have.
+
+**What the page does**
+
+- A pasted Google Maps link or a `59.3165, 18.0335` pair sets the pin;
+  `src/listings/parse.js` validates it is inside Sweden.
+- Radius 500 m / 1 km / 2 km. Markers coloured by group — HomeQ, landlord
+  portals, municipal queues — with per-group and per-source toggles.
+- Filters: allocation, rooms, Kampanj-only, and reserved listings
+  (student/ungdom/senior/korttid), which are **hidden by default and counted**,
+  never silently dropped.
+- Listings sharing one position are fanned out on a short spoke, so none is
+  hidden under another — which matters for Boplats Väst, whose positions are
+  property-level.
+- A card carries the photo (or a placeholder), the facts, SEK/m²/yr, badges
+  (`Kampanj`, `Kö: 3–8 år`, `Also on HomeQ`, `Position: property-level`), the
+  listing text fetched lazily from `/text`, and an **"Open listing ›"** button
+  to the source. That button is on every card without exception.
+- Below the map: the filtered listings as a sortable table, advertised
+  SEK/m²/yr medians by room count **shown only where n ≥ 3**, and a CSV export
+  of exactly what is on screen including `source`, `url` and `fetched_at`.
+- Every source has a chip showing its count, whether it answered, and how old
+  its snapshot is. A failing source shows its error — there are no silent
+  zeros.
+- The whole view lives in the URL hash, so a link reproduces it:
+  `listings.html#at=59.3710,16.5090&r=1000&res=1`.
+
+The page states, fixed and unremovable, that counts show where landlords
+advertise rather than vacancy, that advertised rent is not contract rent and
+is not comparable with the SCB series, and that queue listings are allocated by
+queue time. It has no field for the reader's own rent.
+
+Tests: `node --test tests/listings.test.js` — the parser and the
+filter/median/CSV logic, both DOM-free.
+
+### Merging into the dashboard
+
+The page is deliberately separable. To fold it into the dashboard later,
+exactly three things are needed, all additive:
+
+1. **A nav link** in `src/app.js`'s sidebar (`#nav`) pointing at the Listings
+   view, and a `listings` case in `parseHash()` / `render()` — the page's own
+   state already lives in a hash of the same shape.
+2. **Pin hand-off**: `app.js` already resolves a point to an area via
+   `locate()`. Passing that point in as `{lat, lon}` replaces the paste box;
+   the box can stay as a fallback.
+3. **Delete `src/listings/parse.js`** and point `listings.js` at
+   `src/testprop.js` instead. The two are twins — same bounds, same patterns in
+   the same order, same return shape and messages — and parse.js exists only
+   because testprop.js is not on this branch. This is a one-line change and
+   should be done in the same commit as the merge, so the rules cannot drift
+   apart.
+
+Nothing in `src/app.js`, `src/style.css` or `scripts/build_dashboard.py` has
+been modified on this branch, so none of the above conflicts with work in
+progress there.
+
 ## Deploying
 
 ```sh
