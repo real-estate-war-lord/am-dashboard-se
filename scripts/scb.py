@@ -190,8 +190,14 @@ def regions_for(all_codes: list[str], level: str) -> tuple[list[str], str]:
 
 
 def periods_for(all_periods: list[str], spec: str) -> list[str]:
-    """`all` or `top(N)` — resolved here rather than server-side, so the
-    inverted meaning of top() on the time dimension can never surprise us."""
+    """`all`, `top(N)` or `years(A..B)` — resolved here rather than server-side,
+    so the inverted meaning of top() on the time dimension can never surprise us.
+
+    `years(A..B)` exists for the projection tables: they run 2024-2070, and the
+    window we want (2026-2040) is neither the newest N nor the whole thing.
+    Matching is on the leading four digits, so it selects 2026K1..2040K4 on a
+    quarterly table as readily as 2026..2040 on a yearly one.
+    """
     spec = (spec or "all").strip()
     if spec == "all":
         return list(all_periods)
@@ -199,7 +205,11 @@ def periods_for(all_periods: list[str], spec: str) -> list[str]:
     if match:
         n = int(match.group(1))
         return list(all_periods[-n:]) if n else []
-    raise ScbError(f"unsupported time spec '{spec}' (use 'all' or 'top(N)')")
+    match = re.fullmatch(r"years\((\d{4})\.\.(\d{4})\)", spec)
+    if match:
+        a, b = match.group(1), match.group(2)
+        return [p for p in all_periods if a <= p[:4] <= b]
+    raise ScbError(f"unsupported time spec '{spec}' (use 'all', 'top(N)' or 'years(A..B)')")
 
 
 def unrequestable(values: list[str]) -> list[str]:

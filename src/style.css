@@ -1372,6 +1372,16 @@ details.indx .indx-body p{margin:0 0 3px}
 /* "Verify at source" — the publisher's own query for the cells on screen */
 a.srcv{font-family:var(--mono);font-size:10.5px;color:var(--accent,#1C6B5C);text-decoration:none;border-bottom:1px dotted currentColor;white-space:nowrap}
 a.srcv:hover{border-bottom-style:solid}
+/* where the year selector sits for an Outlook indicator — a projection has no
+   year to pick, it is one published statement about a future year */
+.fclab{font-family:var(--mono);font-size:11px;color:var(--muted);border:1px dashed var(--line);border-radius:6px;padding:4px 9px;white-space:nowrap;align-self:center}
+/* the Outlook line — the one place on the page that talks about the future, so
+   it is dashed and always names the projection and its publication date */
+.fcline{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px;margin:8px 0 2px;padding:6px 9px;border:1px dashed var(--line);border-radius:7px;font-family:var(--mono);font-size:11px;color:var(--ink);background:rgba(64,84,140,.04)}
+.fcline .fctag{font-family:var(--body);font-weight:600;font-size:11px;color:#40547F;letter-spacing:.02em}
+.fcline span em{font-style:normal;color:var(--muted);margin-right:4px}
+.fcline .fcsrc{flex-basis:100%;color:var(--muted);font-size:9.5px}
+.lfpop .fcline{margin:6px 0 4px;font-size:10.5px}
 .maplegs:empty{display:none}
 /* quick jumps sit in the toolbar as a plain segmented control */
 .tools .seg.jumps{margin-left:auto}

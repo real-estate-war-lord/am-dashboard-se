@@ -163,3 +163,86 @@ as a failing sweep rather than as a reader finding a dead link.
 | `socio` direction still unverified | stays `neutral`; carried to Phase 8 |
 | `OV` is empty, so the overlay pills render nothing yet | intended — the framework lands before its first consumer |
 
+## Phase 2 — Population outlook
+
+### Check table
+
+| Indicator | Definition | Source | Level | Coverage |
+|---|---|---|---|---|
+| `fc_growth` | 2026→2040 change, % | SCB TAB698 | kommun | 290/290 |
+| `fc_growth_5y` | 2026→2031 change, % | SCB TAB698 | kommun | 290/290 |
+| `fc_abs` | projected inhabitants 2040 | SCB TAB698 | kommun | 290/290 |
+| `fc_0_5` | 2026→2040 change, ages 0–5 summed | SCB TAB698 | kommun | 290/290 |
+| `fc_6_16` | 2026→2040 change, ages 6–16 summed | SCB TAB698 | kommun | 290/290 |
+| `fc_20_34` | 2026→2040 change, ages 20–34 summed | SCB TAB698 | kommun | 290/290 |
+| `fc_80p` | 2026→2040 change, ages 80–100+ summed | SCB TAB698 | kommun | 290/290 |
+
+All seven are `direction: neutral` — a projection is not a score. All five
+percentage indicators use the diverging scale centred on 0, so above and below
+flat read as different colours rather than two shades of one.
+RegSO and DeSO inherit the kommun figure marked `°`; SCB does not publish the
+projection below kommun.
+
+### Data
+
+`config/tables_se.json` gained TAB698 and TAB6008, both `years(2026..2040)`, kommun
+level, age and sex in full. 878 700 rows each, 1.9 min, 30 calls.
+A new time spec `years(A..B)` was needed: the projection runs 2024–2070 and the window
+we want is neither the newest N nor the whole table, so `top(N)` could not express it.
+
+**TAB6008 is pulled as an independent recomputation, not as extra detail.** Pinned to
+`InrikesUtrikes=83` (total), it reproduces TAB698 exactly: 4 350 kommun×year cells,
+**0 differing by more than 0.01**.
+
+### Verification
+
+`scripts/verify_outlook.py` recomputes all seven indicators for five kommuner by asking
+SCB again and summing the cells itself — it never reads `data/raw/` or `data/processed/`
+for the expected value.
+
+**35 of 35 values match**, to 0.05 pp (1 inhabitant on the count):
+
+| kommun | 2026 | 2040 | growth | 0–5 | 6–16 | 20–34 | 80+ |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| 0180 Stockholm | 992 730 | 1 041 998 | +4.96 % | +7.74 | −19.93 | +7.09 | +46.03 |
+| 1480 Göteborg | 612 220 | 659 015 | +7.64 % | +10.70 | −12.36 | +6.77 | +39.21 |
+| 1280 Malmö | 367 915 | 402 322 | +9.35 % | +12.83 | −13.30 | +9.94 | +37.11 |
+| 2418 Malå | 2 896 | 2 618 | −9.59 % | −2.60 | −20.66 | −4.57 | +22.81 |
+| 0760 Uppvidinge | 9 121 | 8 768 | −3.87 % | +1.62 | −12.22 | −0.15 | +15.31 |
+
+### Bugs found by the verification and the screenshots
+
+1. **`100+` must be percent-encoded.** `urlencode(..., safe=",+")` left the plus raw,
+   SCB read it as a space and returned 400. This is the trap CLAUDE.md already records;
+   the verifier hit it on its first run, which is what a verifier is for.
+2. **The chart drew a single bar labelled "no history".** `chartMode()` asked
+   `chartYears()`, which is empty for a projection, instead of `chartPeriods()`.
+3. **The y-axis reached −80 532 on a population count.** Padding below the smallest
+   value, with Malå and Stockholm three orders of magnitude apart. A series whose
+   values are all ≥ 0 now keeps its axis at 0 or above.
+4. **The line chart has its own footer** and did not call `chFoot`, so the
+   "dashed = projected" note was missing from the PNG. Added, and the source string
+   capped the way `chFoot` already caps it.
+5. **A test assertion of mine was wrong, not the data.** "80+ rises in every kommun"
+   failed on Hällefors (−1.38 %). Checked against the API: Hällefors is projected to
+   shrink 8.2 % overall and its 80+ cohort with it. The assertion now says
+   289 of 290 and names the exception.
+
+### Gates
+
+| Gate | Result |
+|---|---|
+| `make validate` | clean — 51 indicators |
+| `make test` | clean — 15 new Outlook assertions |
+| `make build` | clean, 15.3 MB |
+| `scripts/verify_outlook.py` | **35 of 35 match the API** |
+| screenshots | `v12_outlook_map.png`, `v12_outlook_chart.png`, `v12_outlook_area.png` |
+
+### ⚠ raised
+
+| ⚠ | Decision |
+|---|---|
+| projected years must not reach the year selector | the series lives in `fc`, never `hist`; asserted in `tests/smoke.js` |
+| a projection has no median across kommuner | the median band is suppressed on Outlook charts — SCB published no such figure |
+| TAB6008's born-in-Sweden / foreign-born split is pulled but unused | kept as the cross-check; no indicator claims it |
+

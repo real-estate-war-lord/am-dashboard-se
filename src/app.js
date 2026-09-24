@@ -67,6 +67,14 @@ const isPct = i => (i.fmt || "").startsWith("pct") || i.fmt === "signpct1";
    than silently assumed to be higher-is-better; scripts/validate_indicators.py
    requires the field, so this is a belt-and-braces fallback, not a policy. */
 const indOf = k => IND.find(i => i.key === k) || null;
+/* An Outlook indicator is one published statement about a future year, not an
+   observation, so it has no year to select and no observed history. `fc` on a
+   kommun record holds the projected levels per year, kept beside `hist` and
+   never inside it — putting 2027-2040 into the year selector would offer every
+   other indicator years for which no observation exists. */
+const outlookOf = i => (typeof i === "string" ? indOf(i) : i) && ((typeof i === "string" ? indOf(i) : i).outlook || null);
+const isOutlook = i => !!outlookOf(i);
+const fcSeries = (o, key) => (o && o.fc && o.fc[key]) || null;
 const dirOf = i => { const d = (typeof i === "string" ? indOf(i) : i); return (d && d.direction) || "neutral"; };
 const lowerBetter = i => dirOf(i) === "lower_better";
 const neutralDir = i => dirOf(i) === "neutral";
@@ -414,7 +422,7 @@ function setLegend(id, sc, ind, key, note) {
     if (e2) e2.innerHTML = (ovOn(o) && o.legend) ? o.legend() : "";
   }
 }
-const GROUP_ORDER = ["Demographics", "Income & jobs", "Housing stock", "Rents", "Prices & market", "Construction", "Municipal finances", "Area quality"];
+const GROUP_ORDER = ["Demographics", "Outlook", "Income & jobs", "Housing stock", "Rents", "Prices & market", "Construction", "Municipal finances", "Area quality"];
 function indSelect() {
   const L = curInds();
   const groups = GROUP_ORDER.filter(gname => L.some(i => (i.group || "Other") === gname)).concat(L.some(i => !GROUP_ORDER.includes(i.group || "Other")) ? ["Other"] : []);
@@ -519,6 +527,8 @@ function indExplain(i) {
   </details>`;
 }
 function yearSelect() {
+  const oi = outlookOf(curInd());
+  if (oi) return `<span class="fclab" title="${esc((curInd().warn || ""))}">${esc(oi.label)} · SCB ${esc((oi.published || "").slice(0, 4))}</span>`;
   const ys = yearsFor(MK.ind);
   if (ys.length < 2) return "";
   const hy = ys.filter(y => y !== LATEST); const lastHist = hy[hy.length - 1];
@@ -779,7 +789,15 @@ function headlineHtml(e) {
 }
 function multiLine(series, ind, ys) {
   const all = series.flatMap(s => s.pts.map(p => p.v)).filter(v => v != null);
-  if (!all.length || ys.length < 2) return `<p class="empty">no history for this indicator</p>`;
+  if (!all.length || ys.length < 2) {
+    /* "no history" is the wrong word for a projection: there is nothing to
+       observe yet, and that is the point rather than a gap in the data. */
+    const oi = outlookOf(ind);
+    return `<p class="empty">${oi
+      ? `A projection, not a series — one published figure for ${esc(oi.target)}. ` +
+        `The projected path is under <b>Charts</b>.`
+      : "no history for this indicator"}</p>`;
+  }
   const W = 900, H = 240, L0 = 78, R = 16, T0 = 14, B = 26;
   const lo = Math.min(...all), hi = Math.max(...all), sp = (hi - lo) || 1;
   const x = i => L0 + i / (ys.length - 1) * (W - L0 - R), y = v => T0 + (1 - (v - lo) / sp) * (H - T0 - B);
@@ -962,6 +980,7 @@ function vArea() {
     </div>
     <div class="tools">${yearSelect()}<button class="lk" data-go="${withQ(mapHash)}">Show on map</button><button class="lk" data-go="${chartLink(MK.ind, e.type, e.code)}">↗ Chart</button>${e.type !== "deso" && desoAvail(e.type === "kommun" ? e.code : e.o.kommun) ? `<button class="lk primary" data-go="map/${e.type === "kommun" ? e.code : e.o.kommun}/deso?ind=${MK.ind}">DeSO ›</button>` : ""}</div>
     ${headlineHtml(e)}
+    ${outlookLine(e.type === "kommun" ? e.o : e.kommun, e.type !== "kommun")}
   </div>
   <div class="card">
     <div class="card-head"><h3>Key figures${MK.year !== LATEST ? " · " + MK.year : ""} <span class="hq" title="${esc(hint)}">ⓘ</span></h3>
@@ -1037,6 +1056,7 @@ function lfPopup(a, muni) {
     <span class="dim">${a.regso && byRegso[a.regso] ? esc(byRegso[a.regso].name) + " · " : ""}${muni ? esc(muni.name) : ""}${a.pop != null ? " · " + nf(a.pop, 0) + " inhabitants" : ""}</span>
     ${sel ? `<div class="lfbig"><span>${esc(ind.label)}${sel.own ? "" : " °"}</span><b>${fmtOf(ind)(sel.v)}${moeSpan(ind, sel.v, moeOf(ind, sel.own ? a : muni))}</b><em>${rk ? `#${rk.r} of ${rk.n} ${sel.own ? (isQ ? "DeSO" : "RegSO") : "kommuner"}` : ""}</em></div>` : `<div class="lfbig dim"><span>${esc(ind.label)}</span><b>–</b></div>`}
     ${keys.length ? `<div class="lfkey">${keys.map(({ i, x }) => `<div><span>${esc(i.short || i.label)}${x.own ? "" : " °"}</span><b>${fmtOf(i)(x.v)}${moeSpan(i, x.v, moeOf(i, x.own ? a : muni))}</b></div>`).join("")}</div>` : ""}
+    ${outlookLine(muni, true)}
     <span class="lfact"><button class="lk mini primary" data-go="${withQ(pageOf(a))}">Open page ›</button>${muni && !MK.kommun ? `<button class="lk mini" data-go="map/${muni.code}?ind=${MK.ind}">Zoom to ${esc(muni.name)}</button>` : ""}${muni && desoAvail(muni.code) && !desoMode() ? `<button class="lk mini" data-go="map/${muni.code}/deso?ind=${MK.ind}">DeSO ›</button>` : ""}<button class="lk mini" data-go="${chartLink(ind.key, type, code)}">↗ Chart</button></span>
     <details class="lfmore"><summary>All ${n} values</summary>
     ${native ? `<span class="lfsec">${isQ ? "DeSO" : "RegSO"}</span><div class="lfrows">${native}</div>` : ""}
@@ -1137,6 +1157,27 @@ function lfLayers() {
 }
 
 /* the national map's popup: a kommun, with the way into its sub-areas */
+/* ---------- the Outlook line ----------
+   One line wherever an area is described: what SCB's projection says about it.
+   It is always labelled as a projection and always carries the publication
+   date, because it is the only number on the page that is about the future.
+   An area below kommun level shows its kommun's figure marked °, since SCB
+   does not publish the projection below kommun. */
+function outlookLine(m, inherited) {
+  if (!m) return "";
+  const g = indOf("fc_growth"), a = indOf("fc_abs"), g5 = indOf("fc_growth_5y");
+  if (!g || m[g.key] == null) return "";
+  const oi = outlookOf(g) || {};
+  const mark = inherited ? " \u00b0" : "";
+  const part = (i, lab) => i && m[i.key] != null
+    ? `<span><em>${esc(lab)}</em>${fmtOf(i)(m[i.key])}</span>` : "";
+  return `<div class="fcline" title="${esc(g.warn || "")}">
+    <span class="fctag">Outlook${mark}</span>
+    ${part(g, "2026\u21922040 ")}${part(g5, "to 2031 ")}${part(a, "population 2040 ")}
+    <span class="fcsrc">SCB trend projection, published ${esc((oi.published || "2024-06-11"))}</span>
+  </div>`;
+}
+
 function lfKommunPopup(m) {
   const LI = curInds(), ind = curInd();
   const row = (i, v, o) => `<span class="lfrow"><span>${esc(i.short || i.label)}</span><b>${fmtOf(i)(v)}${moeSpan(i, v, moeOf(i, o))}</b></span>`;
@@ -1151,6 +1192,7 @@ function lfKommunPopup(m) {
     ${sel != null ? `<div class="lfbig"><span>${esc(ind.label)}</span><b>${fmtOf(ind)(sel)}${moeSpan(ind, sel, moeOf(ind, m))}</b><em>${rk ? `#${rk.r} of ${rk.n} kommuner` : ""}</em></div>`
                   : `<div class="lfbig dim"><span>${esc(ind.label)}</span><b>–</b></div>`}
     ${keys.length ? `<div class="lfkey">${keys.map(i => `<div><span>${esc(i.short || i.label)}</span><b>${fmtOf(i)(V(m, i.key))}${moeSpan(i, V(m, i.key), moeOf(i, m))}</b></div>`).join("")}</div>` : ""}
+    ${outlookLine(m, false)}
     <span class="lfact"><button class="lk mini primary" data-go="${withQ(`area/kommun/${m.code}`)}">Open page ›</button><button class="lk mini" data-go="${withQ(`map/${m.code}`)}">RegSO ›</button>${n ? `<button class="lk mini" data-go="${withQ(`map/${m.code}/deso`)}">DeSO ›</button>` : ""}<button class="lk mini" data-go="${chartLink(ind.key, "kommun", m.code)}">↗ Chart</button></span>
     <details class="lfmore"><summary>All ${all.length} values</summary>
     <div class="lfrows">${all.map(i => row(i, V(m, i.key), m)).join("")}</div></details></div>`;
@@ -1337,7 +1379,20 @@ function chartQ() {
   return ents.every(e => e.o && e.o.q && e.o.q[ind.key]);
 }
 const chQVal = (o, key, t) => { const q = o && o.q && o.q[key]; return q && q[t] != null ? q[t] : null; };
+/* For an Outlook indicator the x axis is the projection window, and every point
+   on it is projected — so the whole line is drawn dashed and the caption says
+   which projection it is. Observed and projected are never spliced into one
+   series: they are different kinds of number. */
+function chartFcYears() {
+  const ind = chartInd(); const oi = outlookOf(ind); if (!oi) return null;
+  const ents = CH.areas.map(chEntity).filter(Boolean);
+  const set = new Set();
+  for (const e of ents) { const f = fcSeries(e.o, ind.key) || fcSeries(e.kommun, ind.key); if (f) for (const y in f) set.add(y); }
+  const ys = [...set].sort();
+  return ys.length > 1 ? ys : null;
+}
 function chartPeriods() {
+  const fy = chartFcYears(); if (fy) return fy;
   if (!chartQ()) return chartYears();
   const ps = chQPeriods(chartInd());
   return ps.filter(t => (!CH.y0 || t.slice(0, 4) >= CH.y0) && (!CH.y1 || t.slice(0, 4) <= CH.y1));
@@ -1349,11 +1404,26 @@ function chartYears() {
 }
 function chartMode() {
   if (CH.mode !== "auto") return CH.mode;
-  return chartYears().length >= 2 ? "line" : "bar";
+  /* chartPeriods(), not chartYears(): an Outlook indicator has no observed
+     history at all but fifteen projected points, and asking the wrong one drew
+     it as a single bar labelled "no history". */
+  return chartPeriods().length >= 2 ? "line" : "bar";
 }
 function chartAutoTitle() { if (chartMode() === "dist") return `${(DIST_DEFS[CH.dist] || DIST_DEFS.age)[0]} — share`; const i = chartInd(); return `${i.label}${i.unit ? " · " + i.unit : ""}${chartMode() === "bar" ? " — latest" : ""}`; }
 function chartSeries() {
   const ind = chartInd(), q = chartQ(), ys = chartPeriods(); const ents = CH.areas.map(chEntity).filter(Boolean);
+  const fc = !!chartFcYears();
+  if (fc) {
+    /* projected levels, dashed, no median band — the median of a projection
+       across kommuner is not something SCB published */
+    const ser = ents.map((e, k) => {
+      const f = fcSeries(e.o, ind.key) || fcSeries(e.kommun, ind.key) || {};
+      return { name: e.name + (fcSeries(e.o, ind.key) ? "" : " °"), color: CH_COLORS[k % CH_COLORS.length],
+               dash: true, pts: ys.map(y => ({ y, v: f[y] != null ? f[y] : null })),
+               inherited: !fcSeries(e.o, ind.key) };
+    });
+    return { ind, ys, fc: true, series: ser.filter(x => x.pts.some(pt => pt.v != null)) };
+  }
   const series = ents.map((e, k) => { const own = e.inds.some(i => i.key === ind.key);
     const val = y => { if (q) return chQVal(e.o, ind.key, y);
       const v = V(e.o, ind.key, y); if (v != null) return v; return e.type === "regso" && e.kommun ? V(e.kommun, ind.key, y) : null; };
@@ -1378,7 +1448,9 @@ function chFoot(L0, H, ind, extra) {
   const src = (ind.source || ""); const short = src.length > 90 ? src.slice(0, 88) + "…" : src;
   /* a rolling window has to say so on the chart itself, not only in the toolbar —
      the PNG leaves the toolbar behind */
-  const roll = chartQ() ? " · each point is the rolling sum of the four quarters ending there" : "";
+  const oi = outlookOf(ind);
+  const roll = chartQ() ? " · rolling 4 quarters"
+    : (oi && chartFcYears()) ? " · dashed = projected, not observed" : "";
   return `<text x="${L0}" y="${H - 14}" font-family="${CH_MONO}" font-size="11" fill="#8A8C81">Source: ${esc(short)} · Macro Dashboard — Sweden, open data · built ${esc((D.meta && D.meta.built) || "")}${roll}${extra || ""}</text>`;
 }
 /* bars: latest value per selected area, sorted, median as a dashed marker */
@@ -1454,7 +1526,11 @@ function chartSvgLine(withTitle) {
   const all = series.flatMap(s_ => s_.pts.map(p => p.v)).filter(v => v != null);
   const F = "Inter, 'Helvetica Neue', Arial, sans-serif", M = "'IBM Plex Mono', Menlo, monospace";
   if (!all.length) return `<svg class="chart" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg"><rect width="${W}" height="${H}" fill="#FFFFFF"/><text x="${W / 2}" y="${H / 2}" text-anchor="middle" font-family="${F}" font-size="18" fill="#8A8C81">Add areas with the search box — nothing to plot yet</text></svg>`;
-  const lo0 = Math.min(...all), hi0 = Math.max(...all), pad = (hi0 - lo0 || Math.abs(hi0) || 1) * .08; const lo = lo0 - pad, hi = hi0 + pad, sp = hi - lo;
+  const lo0 = Math.min(...all), hi0 = Math.max(...all), pad = (hi0 - lo0 || Math.abs(hi0) || 1) * .08;
+  /* Padding below the smallest value put the axis at -80 532 on a population
+     count, because Malå and Stockholm differ by three orders of magnitude.
+     A series whose values are all >= 0 keeps its axis at 0 or above. */
+  const lo = lo0 >= 0 ? Math.max(0, lo0 - pad) : lo0 - pad, hi = hi0 + pad, sp = (hi - lo) || 1;
   const x = i => L0 + i / (ys.length - 1) * (W - L0 - R), y = v => T0 + (1 - (v - lo) / sp) * (H - T0 - B);
   const ticks = [0, .25, .5, .75, 1].map(t => lo + t * sp);
   const paths = series.map(s_ => { let d = "", open = false; s_.pts.forEach((p, i) => { if (p.v == null) { open = false; return; } d += (open ? "L" : "M") + x(i).toFixed(1) + "," + y(p.v).toFixed(1); open = true; });
@@ -1464,7 +1540,13 @@ function chartSvgLine(withTitle) {
   const legend = series.map((s_, k) => { const lx = L0 + (k % perRow) * colW, ly = legY + Math.floor(k / perRow) * 24; const last = [...s_.pts].reverse().find(p => p.v != null);
     return `<line x1="${lx}" x2="${lx + 26}" y1="${ly - 4}" y2="${ly - 4}" stroke="${s_.color}" stroke-width="${s_.dash ? 2 : 3}" ${s_.dash ? 'stroke-dasharray="7 5"' : ""}/><text x="${lx + 34}" y="${ly}" font-family="${F}" font-size="14" fill="#16170F">${esc(s_.name)}${s_.inherited ? " °" : ""}${last ? ` <tspan font-family="${M}" fill="#4A4C43">${esc(fmtOf(ind)(last.v))} (${last.y})</tspan>` : ""}</text>`; }).join("");
   const title = withTitle ? `<text x="${L0}" y="40" font-family="${F}" font-size="24" font-weight="600" fill="#16170F" id="chsvgtitle">${esc(CH.title || chartAutoTitle())}</text><text x="${L0}" y="64" font-family="${M}" font-size="12" fill="#8A8C81">${esc(ind.desc || "")}</text>` : "";
-  const foot = `<text x="${L0}" y="${H - 14}" font-family="${M}" font-size="11" fill="#8A8C81">Source: ${esc(ind.source || "")} · Macro Dashboard — Sweden, open data · built ${esc((D.meta && D.meta.built) || "")}${series.some(s_ => s_.inherited) ? " · ° = municipality value shown for a postal code" : ""}</text>`;
+  /* The line chart draws its own footer rather than calling chFoot, so the
+     rolling-window and projection notes have to be repeated here — the PNG
+     leaves the toolbar behind, and a dashed line has to say what it means. */
+  const note = chartQ() ? " · rolling 4 quarters"
+    : (outlookOf(ind) && chartFcYears()) ? " · dashed = projected, not observed" : "";
+  const fsrc = (ind.source || ""); const fshort = fsrc.length > 78 ? fsrc.slice(0, 76) + "…" : fsrc;
+  const foot = `<text x="${L0}" y="${H - 14}" font-family="${M}" font-size="11" fill="#8A8C81">Source: ${esc(fshort)} · Macro Dashboard — Sweden, open data · built ${esc((D.meta && D.meta.built) || "")}${note}${series.some(s_ => s_.inherited) ? " · ° = municipality value shown for a RegSO or DeSO" : ""}</text>`;
   return `<svg class="chart" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" id="chsvg"><rect width="${W}" height="${H}" fill="#FFFFFF"/>${title}
     ${ticks.map(t => `<line x1="${L0}" x2="${W - R}" y1="${y(t).toFixed(1)}" y2="${y(t).toFixed(1)}" stroke="#EFEFEA"/><text x="${L0 - 10}" y="${(y(t) + 4).toFixed(1)}" text-anchor="end" font-family="${M}" font-size="12" fill="#8A8C81">${esc(fmtOf(ind)(t))}</text>`).join("")}
     ${ys.map((yy, i) => `<text x="${x(i).toFixed(1)}" y="${H - B + 22}" text-anchor="middle" font-family="${M}" font-size="12" fill="#8A8C81">${yy}</text>`).join("")}
@@ -1482,14 +1564,15 @@ function vCharts() {
   <div class="card accent">
     <div class="card-head tools-only"><div class="tools">
       <select id="chind" class="indsel">${groups.map(gn => `<optgroup label="${esc(gn)}">${L.filter(i => (i.group || "Other") === gn).map(i => `<option value="${i.key}" ${CH.ind === i.key ? "selected" : ""}>${esc(i.label)}${i.unit ? " · " + esc(i.unit) : ""}</option>`).join("")}</optgroup>`).join("")}</select>
-      <select id="chy0" class="indsel"><option value="">from ${YEARS[0]}</option>${YEARS.map(y => `<option value="${y}" ${CH.y0 === y ? "selected" : ""}>${y}</option>`).join("")}</select>
-      <select id="chy1" class="indsel"><option value="">to ${LATEST}</option>${YEARS.map(y => `<option value="${y}" ${CH.y1 === y ? "selected" : ""}>${y}</option>`).join("")}</select>
+      ${(() => { const fy = chartFcYears(); const ys = fy || YEARS; const lo = ys[0], hi = ys[ys.length - 1];
+        return `<select id="chy0" class="indsel"><option value="">from ${lo}</option>${ys.map(y => `<option value="${y}" ${CH.y0 === y ? "selected" : ""}>${y}</option>`).join("")}</select>
+      <select id="chy1" class="indsel"><option value="">to ${hi}</option>${ys.map(y => `<option value="${y}" ${CH.y1 === y ? "selected" : ""}>${y}</option>`).join("")}</select>`; })()}
       <label class="hint" style="display:flex;align-items:center;gap:5px"><input type="checkbox" id="chmed" ${CH.median ? "checked" : ""}> median</label>
       <div class="seg">${[["auto", "Auto"], ["line", "Line"], ["bar", "Bars"], ["dist", "Distribution"]].map(([m, l]) => `<button class="sg ${CH.mode === m ? "on" : ""}" data-chmode="${m}">${l}</button>`).join("")}</div>
       ${chQPeriods(chartInd()).length > 1 ? `<div class="seg">${[["year", "Yearly"], ["q", "Quarterly"]].map(([m, l]) => `<button class="sg ${CH.fq === m ? "on" : ""}" data-chfq="${m}" title="${m === "q" ? "Each point is the rolling sum of the four quarters ending there" : "One point per year"}">${l}</button>`).join("")}</div>` : ""}
       ${chartMode() === "dist" ? `<select id="chdist" class="indsel">${Object.entries(DIST_DEFS).map(([k, v]) => `<option value="${k}" ${CH.dist === k ? "selected" : ""}>${v[0]}</option>`).join("")}</select>` : ""}</div></div>
     ${CH.fq === "q" && !chartQ() && chQPeriods(chartInd()).length > 1 ? `<p class="hint" style="margin:0 0 8px">Showing years: not every selected area has quarterly figures, and a line mixing the two would not be comparable.</p>` : ""}
-    ${ents.length && CH.mode === "auto" && chartMode() === "bar" && chartYears().length < 2 ? `<p class="hint" style="margin:0 0 8px">This indicator is a single snapshot (no history) — shown as bars of the latest value. BBR distributions are under <b>Distribution</b>.</p>` : ""}
+    ${ents.length && CH.mode === "auto" && chartMode() === "bar" && !chartFcYears() && chartYears().length < 2 ? `<p class="hint" style="margin:0 0 8px">This indicator is a single snapshot (no history) — shown as bars of the latest value. BBR distributions are under <b>Distribution</b>.</p>` : ""}
     <div class="tfilters">
       <span class="asrch"><input id="chq" list="arealist" class="indsel" placeholder="Add kommun or RegSO… (Enter)" autocomplete="off"><datalist id="arealist">${AREA_OPTS.map(o => `<option value="${esc(o.t)}"></option>`).join("")}</datalist></span>
       ${quick.map(([l, ids]) => `<button class="lk mini" data-chadd="${ids.join("|")}">+ ${l}</button>`).join("")}

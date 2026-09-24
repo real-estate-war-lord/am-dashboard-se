@@ -4602,6 +4602,1169 @@
      "label": "Kolada N03002"
     }
    ]
+  },
+  {
+   "key": "fc_growth",
+   "label": "Projected population change 2026→2040",
+   "short": "Growth to 2040",
+   "unit": "%",
+   "level": "kommun",
+   "levels": [
+    "kommun",
+    "regso",
+    "deso"
+   ],
+   "hue": [
+    64,
+    84,
+    140
+   ],
+   "sources": [
+    {
+     "db": "scb",
+     "table": "TAB698",
+     "geo": "kommun",
+     "vars": {
+      "ContentsCode": [
+       "000004LG"
+      ]
+     },
+     "vintage": "kommun",
+     "pull": "scb_TAB698_kommun"
+    }
+   ],
+   "calc": "fc_change_pct",
+   "fmt": "signpct1",
+   "moe": null,
+   "desc": "Change in projected population between 2026 and 2040, per cent. Cross-checked cell for cell against SCB TAB6008.",
+   "source": "SCB TAB698, befolkningsframskrivning 2024–2070",
+   "group": "Outlook",
+   "direction": "neutral",
+   "direction_note": "a projection is not a score — a shrinking kommun and an overheating one are different problems, not a ranking",
+   "base": "2026",
+   "target": "2040",
+   "published": "2024-06-11",
+   "series": false,
+   "warn": "SCB's trend projection, published 2024-06-11. It continues observed patterns; it is not a forecast of policy, and SCB does not publish it below kommun level.",
+   "scale": "diverging",
+   "center": 0,
+   "hue_neg": [
+    176,
+    51,
+    27
+   ],
+   "hue_pos": [
+    28,
+    107,
+    92
+   ],
+   "src_verify": [
+    {
+     "level": "kommun",
+     "db": "scb",
+     "table": "TAB698",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB698/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB698?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "year",
+     "newest_period": "2070",
+     "code_level": "kommun",
+     "region_levels": [
+      "kommun",
+      "lan"
+     ],
+     "vars": {
+      "ContentsCode": [
+       "000004LG"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB698",
+     "updated": "2024-06-11T06:00:00Z"
+    },
+    {
+     "level": "regso",
+     "db": "scb",
+     "table": "TAB698",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB698/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB698?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "year",
+     "newest_period": "2070",
+     "code_level": "kommun",
+     "region_levels": [
+      "kommun",
+      "lan"
+     ],
+     "vars": {
+      "ContentsCode": [
+       "000004LG"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB698",
+     "updated": "2024-06-11T06:00:00Z"
+    },
+    {
+     "level": "deso",
+     "db": "scb",
+     "table": "TAB698",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB698/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB698?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "year",
+     "newest_period": "2070",
+     "code_level": "kommun",
+     "region_levels": [
+      "kommun",
+      "lan"
+     ],
+     "vars": {
+      "ContentsCode": [
+       "000004LG"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB698",
+     "updated": "2024-06-11T06:00:00Z"
+    }
+   ]
+  },
+  {
+   "key": "fc_growth_5y",
+   "label": "Projected population change 2026→2031",
+   "short": "Growth to 2031",
+   "unit": "%",
+   "level": "kommun",
+   "levels": [
+    "kommun",
+    "regso",
+    "deso"
+   ],
+   "hue": [
+    64,
+    84,
+    140
+   ],
+   "sources": [
+    {
+     "db": "scb",
+     "table": "TAB698",
+     "geo": "kommun",
+     "vars": {
+      "ContentsCode": [
+       "000004LG"
+      ]
+     },
+     "vintage": "kommun",
+     "pull": "scb_TAB698_kommun"
+    }
+   ],
+   "calc": "fc_change_pct",
+   "fmt": "signpct1",
+   "moe": null,
+   "desc": "Change in projected population between 2026 and 2031, per cent. Cross-checked cell for cell against SCB TAB6008.",
+   "source": "SCB TAB698, befolkningsframskrivning 2024–2070",
+   "group": "Outlook",
+   "direction": "neutral",
+   "direction_note": "a projection is not a score — a shrinking kommun and an overheating one are different problems, not a ranking",
+   "base": "2026",
+   "target": "2031",
+   "published": "2024-06-11",
+   "series": false,
+   "warn": "SCB's trend projection, published 2024-06-11. It continues observed patterns; it is not a forecast of policy, and SCB does not publish it below kommun level.",
+   "scale": "diverging",
+   "center": 0,
+   "hue_neg": [
+    176,
+    51,
+    27
+   ],
+   "hue_pos": [
+    28,
+    107,
+    92
+   ],
+   "src_verify": [
+    {
+     "level": "kommun",
+     "db": "scb",
+     "table": "TAB698",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB698/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB698?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "year",
+     "newest_period": "2070",
+     "code_level": "kommun",
+     "region_levels": [
+      "kommun",
+      "lan"
+     ],
+     "vars": {
+      "ContentsCode": [
+       "000004LG"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB698",
+     "updated": "2024-06-11T06:00:00Z"
+    },
+    {
+     "level": "regso",
+     "db": "scb",
+     "table": "TAB698",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB698/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB698?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "year",
+     "newest_period": "2070",
+     "code_level": "kommun",
+     "region_levels": [
+      "kommun",
+      "lan"
+     ],
+     "vars": {
+      "ContentsCode": [
+       "000004LG"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB698",
+     "updated": "2024-06-11T06:00:00Z"
+    },
+    {
+     "level": "deso",
+     "db": "scb",
+     "table": "TAB698",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB698/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB698?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "year",
+     "newest_period": "2070",
+     "code_level": "kommun",
+     "region_levels": [
+      "kommun",
+      "lan"
+     ],
+     "vars": {
+      "ContentsCode": [
+       "000004LG"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB698",
+     "updated": "2024-06-11T06:00:00Z"
+    }
+   ]
+  },
+  {
+   "key": "fc_abs",
+   "label": "Projected population 2040",
+   "short": "Population 2040",
+   "unit": "inhabitants",
+   "level": "kommun",
+   "levels": [
+    "kommun",
+    "regso",
+    "deso"
+   ],
+   "hue": [
+    64,
+    84,
+    140
+   ],
+   "sources": [
+    {
+     "db": "scb",
+     "table": "TAB698",
+     "geo": "kommun",
+     "vars": {
+      "ContentsCode": [
+       "000004LG"
+      ]
+     },
+     "vintage": "kommun",
+     "pull": "scb_TAB698_kommun"
+    }
+   ],
+   "calc": "fc_level",
+   "fmt": "int",
+   "moe": null,
+   "desc": "Projected number of inhabitants in 2040. Cross-checked cell for cell against SCB TAB6008.",
+   "source": "SCB TAB698, befolkningsframskrivning 2024–2070",
+   "group": "Outlook",
+   "direction": "neutral",
+   "direction_note": "a projection is not a score — a shrinking kommun and an overheating one are different problems, not a ranking",
+   "base": "2026",
+   "target": "2040",
+   "published": "2024-06-11",
+   "series": true,
+   "warn": "SCB's trend projection, published 2024-06-11. It continues observed patterns; it is not a forecast of policy, and SCB does not publish it below kommun level.",
+   "src_verify": [
+    {
+     "level": "kommun",
+     "db": "scb",
+     "table": "TAB698",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB698/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB698?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "year",
+     "newest_period": "2070",
+     "code_level": "kommun",
+     "region_levels": [
+      "kommun",
+      "lan"
+     ],
+     "vars": {
+      "ContentsCode": [
+       "000004LG"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB698",
+     "updated": "2024-06-11T06:00:00Z"
+    },
+    {
+     "level": "regso",
+     "db": "scb",
+     "table": "TAB698",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB698/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB698?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "year",
+     "newest_period": "2070",
+     "code_level": "kommun",
+     "region_levels": [
+      "kommun",
+      "lan"
+     ],
+     "vars": {
+      "ContentsCode": [
+       "000004LG"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB698",
+     "updated": "2024-06-11T06:00:00Z"
+    },
+    {
+     "level": "deso",
+     "db": "scb",
+     "table": "TAB698",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB698/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB698?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "year",
+     "newest_period": "2070",
+     "code_level": "kommun",
+     "region_levels": [
+      "kommun",
+      "lan"
+     ],
+     "vars": {
+      "ContentsCode": [
+       "000004LG"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB698",
+     "updated": "2024-06-11T06:00:00Z"
+    }
+   ]
+  },
+  {
+   "key": "fc_0_5",
+   "label": "Projected change, ages 0–5",
+   "short": "Ages 0–5",
+   "unit": "%",
+   "level": "kommun",
+   "levels": [
+    "kommun",
+    "regso",
+    "deso"
+   ],
+   "hue": [
+    64,
+    84,
+    140
+   ],
+   "sources": [
+    {
+     "db": "scb",
+     "table": "TAB698",
+     "geo": "kommun",
+     "vars": {
+      "ContentsCode": [
+       "000004LG"
+      ],
+      "Alder": [
+       "0",
+       "1",
+       "2",
+       "3",
+       "4",
+       "5"
+      ]
+     },
+     "vintage": "kommun",
+     "pull": "scb_TAB698_kommun"
+    }
+   ],
+   "calc": "fc_change_pct",
+   "fmt": "signpct1",
+   "moe": null,
+   "desc": "Change between 2026 and 2040 in the projected number of children aged 0–5, summed over single years of age. Cross-checked cell for cell against SCB TAB6008.",
+   "source": "SCB TAB698, befolkningsframskrivning 2024–2070",
+   "group": "Outlook",
+   "direction": "neutral",
+   "direction_note": "a projection is not a score — a shrinking kommun and an overheating one are different problems, not a ranking",
+   "base": "2026",
+   "target": "2040",
+   "published": "2024-06-11",
+   "series": true,
+   "warn": "SCB's trend projection, published 2024-06-11. It continues observed patterns; it is not a forecast of policy, and SCB does not publish it below kommun level.",
+   "scale": "diverging",
+   "center": 0,
+   "hue_neg": [
+    176,
+    51,
+    27
+   ],
+   "hue_pos": [
+    28,
+    107,
+    92
+   ],
+   "src_verify": [
+    {
+     "level": "kommun",
+     "db": "scb",
+     "table": "TAB698",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB698/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB698?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "year",
+     "newest_period": "2070",
+     "code_level": "kommun",
+     "region_levels": [
+      "kommun",
+      "lan"
+     ],
+     "vars": {
+      "ContentsCode": [
+       "000004LG"
+      ],
+      "Alder": [
+       "0",
+       "1",
+       "2",
+       "3",
+       "4",
+       "5"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB698",
+     "updated": "2024-06-11T06:00:00Z"
+    },
+    {
+     "level": "regso",
+     "db": "scb",
+     "table": "TAB698",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB698/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB698?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "year",
+     "newest_period": "2070",
+     "code_level": "kommun",
+     "region_levels": [
+      "kommun",
+      "lan"
+     ],
+     "vars": {
+      "ContentsCode": [
+       "000004LG"
+      ],
+      "Alder": [
+       "0",
+       "1",
+       "2",
+       "3",
+       "4",
+       "5"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB698",
+     "updated": "2024-06-11T06:00:00Z"
+    },
+    {
+     "level": "deso",
+     "db": "scb",
+     "table": "TAB698",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB698/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB698?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "year",
+     "newest_period": "2070",
+     "code_level": "kommun",
+     "region_levels": [
+      "kommun",
+      "lan"
+     ],
+     "vars": {
+      "ContentsCode": [
+       "000004LG"
+      ],
+      "Alder": [
+       "0",
+       "1",
+       "2",
+       "3",
+       "4",
+       "5"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB698",
+     "updated": "2024-06-11T06:00:00Z"
+    }
+   ]
+  },
+  {
+   "key": "fc_6_16",
+   "label": "Projected change, ages 6–16",
+   "short": "Ages 6–16",
+   "unit": "%",
+   "level": "kommun",
+   "levels": [
+    "kommun",
+    "regso",
+    "deso"
+   ],
+   "hue": [
+    64,
+    84,
+    140
+   ],
+   "sources": [
+    {
+     "db": "scb",
+     "table": "TAB698",
+     "geo": "kommun",
+     "vars": {
+      "ContentsCode": [
+       "000004LG"
+      ],
+      "Alder": [
+       "6",
+       "7",
+       "8",
+       "9",
+       "10",
+       "11",
+       "12",
+       "13",
+       "14",
+       "15",
+       "16"
+      ]
+     },
+     "vintage": "kommun",
+     "pull": "scb_TAB698_kommun"
+    }
+   ],
+   "calc": "fc_change_pct",
+   "fmt": "signpct1",
+   "moe": null,
+   "desc": "Change between 2026 and 2040 in the projected number of children of compulsory school age, summed over single years of age. Cross-checked cell for cell against SCB TAB6008.",
+   "source": "SCB TAB698, befolkningsframskrivning 2024–2070",
+   "group": "Outlook",
+   "direction": "neutral",
+   "direction_note": "a projection is not a score — a shrinking kommun and an overheating one are different problems, not a ranking",
+   "base": "2026",
+   "target": "2040",
+   "published": "2024-06-11",
+   "series": true,
+   "warn": "SCB's trend projection, published 2024-06-11. It continues observed patterns; it is not a forecast of policy, and SCB does not publish it below kommun level.",
+   "scale": "diverging",
+   "center": 0,
+   "hue_neg": [
+    176,
+    51,
+    27
+   ],
+   "hue_pos": [
+    28,
+    107,
+    92
+   ],
+   "src_verify": [
+    {
+     "level": "kommun",
+     "db": "scb",
+     "table": "TAB698",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB698/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB698?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "year",
+     "newest_period": "2070",
+     "code_level": "kommun",
+     "region_levels": [
+      "kommun",
+      "lan"
+     ],
+     "vars": {
+      "ContentsCode": [
+       "000004LG"
+      ],
+      "Alder": [
+       "6",
+       "7",
+       "8",
+       "9",
+       "10",
+       "11",
+       "12",
+       "13",
+       "14",
+       "15",
+       "16"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB698",
+     "updated": "2024-06-11T06:00:00Z"
+    },
+    {
+     "level": "regso",
+     "db": "scb",
+     "table": "TAB698",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB698/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB698?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "year",
+     "newest_period": "2070",
+     "code_level": "kommun",
+     "region_levels": [
+      "kommun",
+      "lan"
+     ],
+     "vars": {
+      "ContentsCode": [
+       "000004LG"
+      ],
+      "Alder": [
+       "6",
+       "7",
+       "8",
+       "9",
+       "10",
+       "11",
+       "12",
+       "13",
+       "14",
+       "15",
+       "16"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB698",
+     "updated": "2024-06-11T06:00:00Z"
+    },
+    {
+     "level": "deso",
+     "db": "scb",
+     "table": "TAB698",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB698/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB698?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "year",
+     "newest_period": "2070",
+     "code_level": "kommun",
+     "region_levels": [
+      "kommun",
+      "lan"
+     ],
+     "vars": {
+      "ContentsCode": [
+       "000004LG"
+      ],
+      "Alder": [
+       "6",
+       "7",
+       "8",
+       "9",
+       "10",
+       "11",
+       "12",
+       "13",
+       "14",
+       "15",
+       "16"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB698",
+     "updated": "2024-06-11T06:00:00Z"
+    }
+   ]
+  },
+  {
+   "key": "fc_20_34",
+   "label": "Projected change, ages 20–34",
+   "short": "Ages 20–34",
+   "unit": "%",
+   "level": "kommun",
+   "levels": [
+    "kommun",
+    "regso",
+    "deso"
+   ],
+   "hue": [
+    64,
+    84,
+    140
+   ],
+   "sources": [
+    {
+     "db": "scb",
+     "table": "TAB698",
+     "geo": "kommun",
+     "vars": {
+      "ContentsCode": [
+       "000004LG"
+      ],
+      "Alder": [
+       "20",
+       "21",
+       "22",
+       "23",
+       "24",
+       "25",
+       "26",
+       "27",
+       "28",
+       "29",
+       "30",
+       "31",
+       "32",
+       "33",
+       "34"
+      ]
+     },
+     "vintage": "kommun",
+     "pull": "scb_TAB698_kommun"
+    }
+   ],
+   "calc": "fc_change_pct",
+   "fmt": "signpct1",
+   "moe": null,
+   "desc": "Change between 2026 and 2040 in the projected number of people aged 20–34, summed over single years of age. Cross-checked cell for cell against SCB TAB6008.",
+   "source": "SCB TAB698, befolkningsframskrivning 2024–2070",
+   "group": "Outlook",
+   "direction": "neutral",
+   "direction_note": "a projection is not a score — a shrinking kommun and an overheating one are different problems, not a ranking",
+   "base": "2026",
+   "target": "2040",
+   "published": "2024-06-11",
+   "series": true,
+   "warn": "SCB's trend projection, published 2024-06-11. It continues observed patterns; it is not a forecast of policy, and SCB does not publish it below kommun level.",
+   "scale": "diverging",
+   "center": 0,
+   "hue_neg": [
+    176,
+    51,
+    27
+   ],
+   "hue_pos": [
+    28,
+    107,
+    92
+   ],
+   "src_verify": [
+    {
+     "level": "kommun",
+     "db": "scb",
+     "table": "TAB698",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB698/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB698?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "year",
+     "newest_period": "2070",
+     "code_level": "kommun",
+     "region_levels": [
+      "kommun",
+      "lan"
+     ],
+     "vars": {
+      "ContentsCode": [
+       "000004LG"
+      ],
+      "Alder": [
+       "20",
+       "21",
+       "22",
+       "23",
+       "24",
+       "25",
+       "26",
+       "27",
+       "28",
+       "29",
+       "30",
+       "31",
+       "32",
+       "33",
+       "34"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB698",
+     "updated": "2024-06-11T06:00:00Z"
+    },
+    {
+     "level": "regso",
+     "db": "scb",
+     "table": "TAB698",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB698/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB698?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "year",
+     "newest_period": "2070",
+     "code_level": "kommun",
+     "region_levels": [
+      "kommun",
+      "lan"
+     ],
+     "vars": {
+      "ContentsCode": [
+       "000004LG"
+      ],
+      "Alder": [
+       "20",
+       "21",
+       "22",
+       "23",
+       "24",
+       "25",
+       "26",
+       "27",
+       "28",
+       "29",
+       "30",
+       "31",
+       "32",
+       "33",
+       "34"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB698",
+     "updated": "2024-06-11T06:00:00Z"
+    },
+    {
+     "level": "deso",
+     "db": "scb",
+     "table": "TAB698",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB698/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB698?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "year",
+     "newest_period": "2070",
+     "code_level": "kommun",
+     "region_levels": [
+      "kommun",
+      "lan"
+     ],
+     "vars": {
+      "ContentsCode": [
+       "000004LG"
+      ],
+      "Alder": [
+       "20",
+       "21",
+       "22",
+       "23",
+       "24",
+       "25",
+       "26",
+       "27",
+       "28",
+       "29",
+       "30",
+       "31",
+       "32",
+       "33",
+       "34"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB698",
+     "updated": "2024-06-11T06:00:00Z"
+    }
+   ]
+  },
+  {
+   "key": "fc_80p",
+   "label": "Projected change, ages 80+",
+   "short": "Ages 80+",
+   "unit": "%",
+   "level": "kommun",
+   "levels": [
+    "kommun",
+    "regso",
+    "deso"
+   ],
+   "hue": [
+    64,
+    84,
+    140
+   ],
+   "sources": [
+    {
+     "db": "scb",
+     "table": "TAB698",
+     "geo": "kommun",
+     "vars": {
+      "ContentsCode": [
+       "000004LG"
+      ],
+      "Alder": [
+       "80",
+       "81",
+       "82",
+       "83",
+       "84",
+       "85",
+       "86",
+       "87",
+       "88",
+       "89",
+       "90",
+       "91",
+       "92",
+       "93",
+       "94",
+       "95",
+       "96",
+       "97",
+       "98",
+       "99",
+       "100+"
+      ]
+     },
+     "vintage": "kommun",
+     "pull": "scb_TAB698_kommun"
+    }
+   ],
+   "calc": "fc_change_pct",
+   "fmt": "signpct1",
+   "moe": null,
+   "desc": "Change between 2026 and 2040 in the projected number of people aged 80 and over, summed over single years of age including 100+. Cross-checked cell for cell against SCB TAB6008.",
+   "source": "SCB TAB698, befolkningsframskrivning 2024–2070",
+   "group": "Outlook",
+   "direction": "neutral",
+   "direction_note": "a projection is not a score — a shrinking kommun and an overheating one are different problems, not a ranking",
+   "base": "2026",
+   "target": "2040",
+   "published": "2024-06-11",
+   "series": true,
+   "warn": "SCB's trend projection, published 2024-06-11. It continues observed patterns; it is not a forecast of policy, and SCB does not publish it below kommun level.",
+   "scale": "diverging",
+   "center": 0,
+   "hue_neg": [
+    176,
+    51,
+    27
+   ],
+   "hue_pos": [
+    28,
+    107,
+    92
+   ],
+   "src_verify": [
+    {
+     "level": "kommun",
+     "db": "scb",
+     "table": "TAB698",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB698/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB698?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "year",
+     "newest_period": "2070",
+     "code_level": "kommun",
+     "region_levels": [
+      "kommun",
+      "lan"
+     ],
+     "vars": {
+      "ContentsCode": [
+       "000004LG"
+      ],
+      "Alder": [
+       "80",
+       "81",
+       "82",
+       "83",
+       "84",
+       "85",
+       "86",
+       "87",
+       "88",
+       "89",
+       "90",
+       "91",
+       "92",
+       "93",
+       "94",
+       "95",
+       "96",
+       "97",
+       "98",
+       "99",
+       "100+"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB698",
+     "updated": "2024-06-11T06:00:00Z"
+    },
+    {
+     "level": "regso",
+     "db": "scb",
+     "table": "TAB698",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB698/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB698?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "year",
+     "newest_period": "2070",
+     "code_level": "kommun",
+     "region_levels": [
+      "kommun",
+      "lan"
+     ],
+     "vars": {
+      "ContentsCode": [
+       "000004LG"
+      ],
+      "Alder": [
+       "80",
+       "81",
+       "82",
+       "83",
+       "84",
+       "85",
+       "86",
+       "87",
+       "88",
+       "89",
+       "90",
+       "91",
+       "92",
+       "93",
+       "94",
+       "95",
+       "96",
+       "97",
+       "98",
+       "99",
+       "100+"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB698",
+     "updated": "2024-06-11T06:00:00Z"
+    },
+    {
+     "level": "deso",
+     "db": "scb",
+     "table": "TAB698",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB698/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB698?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "year",
+     "newest_period": "2070",
+     "code_level": "kommun",
+     "region_levels": [
+      "kommun",
+      "lan"
+     ],
+     "vars": {
+      "ContentsCode": [
+       "000004LG"
+      ],
+      "Alder": [
+       "80",
+       "81",
+       "82",
+       "83",
+       "84",
+       "85",
+       "86",
+       "87",
+       "88",
+       "89",
+       "90",
+       "91",
+       "92",
+       "93",
+       "94",
+       "95",
+       "96",
+       "97",
+       "98",
+       "99",
+       "100+"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB698",
+     "updated": "2024-06-11T06:00:00Z"
+    }
+   ]
   }
  ],
  "src_periods": {

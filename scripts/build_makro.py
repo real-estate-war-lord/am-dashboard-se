@@ -177,6 +177,38 @@ def latest_in(periods: list, year: str | None) -> str | None:
     return same[-1] if same else None
 
 
+# ---------------------------------------------------------------- outlook
+
+FC_CALCS = ("fc_level", "fc_change_pct")
+
+
+def outlook_values(ind: dict, num: dict) -> tuple[dict, dict, str]:
+    """A projection is one statement, not a time series of observations.
+
+    SCB published this trend projection once, on 2024-06-11, and it says what
+    2040 looks like. So an Outlook indicator does NOT write into `hist`: doing
+    so would put 2027-2040 into the dashboard's year selector, and every other
+    indicator would then offer years for which no observation exists.
+
+    Returns (headline value per kommun, projected level per kommun per year,
+    the label to show where the year selector normally goes).
+    """
+    base, target = ind.get("base", "2026"), ind.get("target", "2040")
+    lv = {t: dict(v) for t, v in num.items()}
+    if target not in lv:
+        return {}, {}, ""
+    series = {a: {t: round(lv[t][a], 1) for t in sorted(lv) if a in lv[t]} for a in lv[target]}
+
+    if ind["calc"] == "fc_level":
+        head = {a: v for a, v in lv[target].items()}
+    else:                                            # fc_change_pct
+        b = lv.get(base) or {}
+        head = {a: (v / b[a] - 1.0) * 100.0
+                for a, v in lv[target].items() if b.get(a)}
+    label = f"Projection {base}\u2192{target}"
+    return head, series, label
+
+
 def values_for(ind: dict, source: dict, num: dict, den: dict, year: str | None):
     """{region: value} plus the period it came from, for one reference year."""
     calc = ind["calc"]
@@ -553,6 +585,34 @@ def main() -> int:
         if any(s.get("db") != "scb" for s in srcs):
             indicators_out.append(meta_of(ind, {}, {}))
             warn(f"{key}: no SCB source on disk — renders as 'no data'")
+            continue
+
+        if ind["calc"] in FC_CALCS:
+            s0 = srcs[0]
+            try:
+                num, _den, _moe = aggregate(s0, ind)
+            except FileNotFoundError as exc:
+                indicators_out.append(meta_of(ind, {}, {}))
+                warn(f"{key}: {exc}")
+                continue
+            head, series, label = outlook_values(ind, num)
+            if not head:
+                indicators_out.append(meta_of(ind, {}, {}))
+                warn(f"{key}: projection target {ind.get('target')} not in the pull")
+                continue
+            for a, v in head.items():
+                e = kommuner.get(a)
+                if e is None:
+                    continue
+                e[key] = round(v, 3)
+                # the projected series lives beside the observed history, never in it
+                if ind.get("series", True):
+                    e.setdefault("fc", {})[key] = series.get(a) or {}
+            m = meta_of(ind, {"kommun": label}, {})
+            m["outlook"] = {"base": ind.get("base", "2026"), "target": ind.get("target", "2040"),
+                            "published": ind.get("published", ""), "label": label}
+            indicators_out.append(m)
+            print(f"  {key:14s} kommun:{len(head)} · {label}")
             continue
 
         asof: dict = {}

@@ -261,6 +261,54 @@ assert("a rise in unemployment is not green", clsFn(1.5, "unemp") === "dn", `cls
 assert("a fall in unemployment is green", clsFn(-1.5, "unemp") === "up", `cls = "${clsFn(-1.5, "unemp")}"`);
 assert("a rise in income is green", clsFn(1.5, "income_med") === "up", `cls = "${clsFn(1.5, "income_med")}"`);
 assert("a neutral indicator gets no good/bad colour", clsFn(1.5, "flats") === "", `cls = "${clsFn(1.5, "flats")}"`);
+/* ---- v1.2 Outlook ----
+   A projection is not an observation. The trap to guard is the projected years
+   leaking into the dashboard's year selector, which would offer every other
+   indicator years for which no observation exists. */
+console.log("\noutlook:");
+const FC = D.indicators.filter(i => i.outlook);
+assert("seven Outlook indicators", FC.length === 7, FC.map(i => i.key).join(", "));
+assert("all at kommun level", FC.every(i => i.level === "kommun"), "kommun");
+assert("none is a score", FC.every(i => i.direction === "neutral"), "all neutral");
+const fcCover = D.kommuner.filter(k => k.fc_growth != null).length;
+assert("every kommun has a projection", fcCover === D.kommuner.length, `${fcCover} of ${D.kommuner.length}`);
+
+const projYears = ["2027", "2030", "2035", "2040"];
+const leaked = projYears.filter(y => (D.meta.years || []).includes(y));
+assert("projected years stay out of the year selector", leaked.length === 0,
+  leaked.join(", ") || `years end at ${(D.meta.years || []).slice(-1)[0]}`);
+assert("the projected series lives in fc, not hist",
+  D.kommuner.every(k => !(k.hist && k.hist.fc_abs)), "no fc_abs in hist");
+const fcSthlm = byCode["0180"];
+assert("the projected series is there for the chart",
+  fcSthlm.fc && fcSthlm.fc.fc_abs && Object.keys(fcSthlm.fc.fc_abs).length === 15,
+  `${Object.keys((fcSthlm.fc || {}).fc_abs || {}).length} projected years`);
+
+/* the five figures recomputed from the API in scripts/verify_outlook.py */
+const near = (a, b, t) => Math.abs(a - b) <= t;
+assert("Stockholm 2040 projection", near(fcSthlm.fc_abs, 1041998.0, 1), `${fcSthlm.fc_abs}`);
+assert("Stockholm growth 2026→2040", near(fcSthlm.fc_growth, 4.963, 0.01), `${fcSthlm.fc_growth} %`);
+assert("Malå shrinks", byCode["2418"].fc_growth < 0, `${byCode["2418"].fc_growth} %`);
+/* Ageing is near-universal but NOT universal: Hällefors (1863) is projected to
+   shrink 8.2 % overall, and its 80+ cohort with it, -1.38 %. Verified straight
+   from the API. The assertion says 289 of 290 rather than "every", because the
+   first draft said "every" and was simply wrong about the data. */
+const up80 = D.kommuner.filter(k => k.fc_80p != null && k.fc_80p > 0).length;
+const has80 = D.kommuner.filter(k => k.fc_80p != null).length;
+assert("ageing shows up in all but one kommun", up80 === has80 - 1, `${up80} of ${has80} rise`);
+assert("and the exception is Hällefors, which is shrinking overall",
+  byCode["1863"].fc_80p < 0 && byCode["1863"].fc_growth < -5,
+  `80+ ${byCode["1863"].fc_80p.toFixed(2)} %, total ${byCode["1863"].fc_growth.toFixed(1)} %`);
+/* a projection may be negative, and the diverging scale is what shows that */
+assert("growth is diverging, centred on flat",
+  FC.filter(i => i.scale === "diverging").every(i => i.center === 0), "centre 0");
+
+const outlookLine = vm.runInContext("outlookLine", sandbox);
+assert("the Outlook line names the projection and its date",
+  /SCB trend projection, published 2024-06-11/.test(outlookLine(fcSthlm, false)), "labelled");
+assert("below kommun it is marked as inherited",
+  /Outlook\s*°/.test(outlookLine(fcSthlm, true)), "° present");
+
 /* ---- v1.2 verify-at-source ----
    The link must reproduce the publisher's query for the cells on screen. Two
    ways it silently goes wrong: sending a kommun code to a län table (400), and

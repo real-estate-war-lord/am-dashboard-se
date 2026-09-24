@@ -12,7 +12,7 @@ the phase checklist below, pick the first unticked phase, and read
 
 - [x] **Phase 0** — Plan file + probe
 - [x] **Phase 1** — UI foundation from DK v2.0–v2.5.1
-- [ ] **Phase 2** — Population outlook (demographics)
+- [x] **Phase 2** — Population outlook (demographics)
 - [ ] **Phase 3** — Safety (crime)
 - [ ] **Phase 4** — Schools
 - [ ] **Phase 5** — Test property + Analysis + Compare
@@ -33,6 +33,12 @@ stacked legends, quick jumps S/G/M/W, Yearly|Quarterly toggle, datasheet shell a
 verify-at-source (70 queries, `make links` 69/69). 36 of 44 indicators are `neutral`
 by the stated rule. Three real bugs found and fixed in the link builder.
 Gates: validate / links / test / build all clean.
+
+**Phase 2** — seven Outlook indicators from SCB TAB698, all 290 kommuner, diverging
+scale centred on flat, RegSO/DeSO inherit with °. TAB6008 pulled as an independent
+recomputation and agrees on all 4 350 cells. verify_outlook.py: **35 of 35 values
+match the API**. Five real bugs found by the verifier and the screenshots, including
+the `100+` percent-encoding trap and a chart axis reaching -80 532 on a population.
 
 _(each phase appends a 5-line status here when it is ticked)_
 
