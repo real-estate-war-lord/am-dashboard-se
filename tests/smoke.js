@@ -309,6 +309,77 @@ assert("the Outlook line names the projection and its date",
 assert("below kommun it is marked as inherited",
   /Outlook\s*°/.test(outlookLine(fcSthlm, true)), "° present");
 
+/* ---- v1.2 Safety ----
+   Reported offences are a lower_better indicator, which is the whole reason
+   Phase 1 had to land first: before direction awareness the kommun with the
+   most crime ranked #1. */
+console.log("\nsafety:");
+const SAF = D.indicators.filter(i => i.group === "Safety");
+assert("eight Safety indicators", SAF.length === 8, SAF.map(i => i.key).join(", "));
+const crimeInds = SAF.filter(i => i.key !== "vulnerable_area_share" && i.key !== "crime_trend");
+assert("reported offences are lower_better",
+  crimeInds.every(i => i.direction === "lower_better"), crimeInds.length + " indicators");
+const crimeCov = D.kommuner.filter(k => k.crime_1000 != null).length;
+assert("every kommun has crime data", crimeCov === 290, `${crimeCov} of 290`);
+
+/* the five kommuner recomputed from a fresh Brå session in verify_bra.py */
+const near2 = (a, b, t) => a != null && Math.abs(a - b) <= t;
+assert("Stockholm 2025 reported offences", near2(byCode["0180"].crime_1000, 191.59, 0.01),
+  `${byCode["0180"].crime_1000} per 1 000`);
+assert("Göteborg 2025", near2(byCode["1480"].crime_1000, 138.78, 0.01), `${byCode["1480"].crime_1000}`);
+assert("Malmö 2025", near2(byCode["1280"].crime_1000, 161.83, 0.01), `${byCode["1280"].crime_1000}`);
+assert("Stockholm burglary per 1 000 dwellings",
+  near2(byCode["0180"].burglary_1000dw, 11.168, 0.01), `${byCode["0180"].burglary_1000dw}`);
+
+/* Heby moved län in 2007 and Brå keeps the two entities apart; we take the
+   current one, so its series must start at 2007 and never before */
+const hebyYears = Object.keys((byCode["0331"].hist || {}).crime_1000 || {}).sort();
+assert("Heby's series starts no earlier than 2007", hebyYears[0] >= "2007",
+  `starts ${hebyYears[0]}`);
+
+/* quarters exist for the headline indicator, and they are what the toggle needs */
+const crimeInd = D.indicators.find(i => i.key === "crime_1000");
+assert("crime has quarterly periods", (crimeInd.q_periods || []).length === 48,
+  `${(crimeInd.q_periods || []).length} quarters`);
+assert("and a kommun carries them", Object.keys((byCode["0180"].q || {}).crime_1000 || {}).length === 48,
+  `${Object.keys((byCode["0180"].q || {}).crime_1000 || {}).length} quarters on Stockholm`);
+
+/* clearance is national only — it must NOT appear as a kommun indicator */
+assert("no clearance indicator, because Brå does not publish it per kommun",
+  !D.indicators.some(i => /clearance|uppklar/i.test(i.key)), "absent, as logged");
+
+/* the police designation: a flag with two classes, never 0 for 'not designated' */
+const uso = D.regso.filter(a => a.vulnerable_area_share != null);
+assert("RegSO areas carry a designation share", uso.length > 100, `${uso.length} RegSO`);
+assert("an undesignated area has no value rather than 0",
+  D.regso.some(a => a.vulnerable_area_share == null) &&
+  !D.regso.some(a => a.vulnerable_area_share === 0), "null, not 0");
+assert("two classes only — riskområde is gone",
+  new Set(uso.map(a => a.vulnerable_area_share_class)).size <= 2,
+  [...new Set(uso.map(a => a.vulnerable_area_share_class))].join(", "));
+/* the designation must never be inherited: showing Stockholm's 4.4 % on every
+   RegSO in the city would say all of them are designated */
+const eValFn = vm.runInContext("eVal", sandbox);
+const usoInd = D.indicators.find(i => i.key === "vulnerable_area_share");
+assert("the designation refuses to be inherited", usoInd.no_inherit === true, "no_inherit");
+const plainRegso = D.regso.find(a => a.kommun === "0180" && a.vulnerable_area_share == null);
+if (plainRegso) {
+  const got = eValFn({ o: plainRegso, type: "regso", kommun: byCode["0180"] }, "vulnerable_area_share");
+  assert("an undesignated RegSO in Stockholm stays blank", got.v === null,
+    `got ${got.v}, own=${got.own}`);
+  /* contrast: a kommun-only indicator DOES still reach a RegSO, marked ° —
+     the no_inherit flag must be specific to the designation, not a global change */
+  const inc = eValFn({ o: plainRegso, type: "regso", kommun: byCode["0180"] }, "kommun_tax");
+  assert("but a kommun-only indicator still inherits with °", inc.v != null && inc.own === false,
+    `kommun_tax ${inc.v}, own=${inc.own}`);
+}
+
+const usoLine = vm.runInContext("usoLine", sandbox);
+assert("the designation line carries its date",
+  /Police-designated vulnerable area \(Dec 2025\)/.test(usoLine(uso[0])), "dated");
+assert("and no line at all where there is no designation",
+  usoLine(D.regso.find(a => a.vulnerable_area_share == null)) === "", "empty");
+
 /* ---- v1.2 verify-at-source ----
    The link must reproduce the publisher's query for the cells on screen. Two
    ways it silently goes wrong: sending a kommun code to a län table (400), and

@@ -316,6 +316,75 @@ def dwellings_by_lan() -> dict:
 _LAN_OF: dict = {}
 
 
+def dwellings_by_kommun() -> tuple[dict, str]:
+    """Dwelling stock per kommun (TAB824, newest live year) and that year.
+
+    The denominator for burglaries per 1 000 dwellings. Unlike the Kronofogden
+    rate this one can be per kommun, because both numerator and denominator are
+    published per kommun.
+    """
+    best, vals = None, collections.defaultdict(lambda: collections.defaultdict(float))
+    try:
+        rows = stream("scb_TAB824_kommun")
+    except FileNotFoundError:
+        return {}, ""
+    for r in rows:
+        if r.get("ContentsCode") != "BO0104AH" or not r.get("value"):
+            continue
+        t = r["Tid"]
+        if best is None or period_key(t) > period_key(best):
+            best = t
+        vals[t][r["Region"]] += r["value"]
+    return (dict(vals[best]), best) if best else ({}, "")
+
+
+def polisen_uso() -> dict:
+    """data/external/polisen_uso.csv -> {level: {code: (share_pct, class)}}.
+
+    One snapshot, not a series: the designation is current from 2025-12-01 and
+    Polisen republishes it roughly every two years. An area that touches no
+    designated area is simply absent — it is NOT 0 %, because 'not designated'
+    and 'designated but tiny' are different statements.
+    """
+    p = EXT / "polisen_uso.csv"
+    out: dict = collections.defaultdict(dict)
+    if not p.exists():
+        return {}
+    with p.open(encoding="utf-8") as fh:
+        rows = csv.reader(fh, delimiter=";")
+        next(rows, None)
+        for r in rows:
+            if len(r) < 4:
+                continue
+            code, level, cls, share = r[0], r[1], r[2], r[3]
+            try:
+                out[level][code] = (float(share), cls)
+            except ValueError:
+                continue
+    return dict(out)
+
+
+def bra_csv(name: str) -> dict:
+    """data/external/<name>.csv -> {key: {period: {kommun: (count, per100k)}}}."""
+    p = EXT / f"{name}.csv"
+    out: dict = collections.defaultdict(lambda: collections.defaultdict(dict))
+    if not p.exists():
+        return {}
+    with p.open(encoding="utf-8") as fh:
+        rows = csv.reader(fh, delimiter=";")
+        next(rows, None)
+        for r in rows:
+            if len(r) < 5:
+                continue
+            code, period, key, cnt, rate = (x.strip() for x in r[:5])
+            try:
+                c = float(cnt)
+            except ValueError:
+                continue
+            out[key][period][code] = (c, float(rate) if rate else None)
+    return {k: dict(v) for k, v in out.items()}
+
+
 # ---------------------------------------------------------------- geometry
 
 def load_geo(name: str):
@@ -582,9 +651,113 @@ def main() -> int:
                                           {y: {"kommun": y} for y in years}))
             print(f"  {key:14s} kommun:{len(byyear[last])} · {years[0]}–{last}")
             continue
-        if any(s.get("db") != "scb" for s in srcs):
+        if any(s.get("db") not in ("scb", "bra", "polisen") for s in srcs):
             indicators_out.append(meta_of(ind, {}, {}))
             warn(f"{key}: no SCB source on disk — renders as 'no data'")
+            continue
+
+        pol = next((x for x in srcs if x.get("db") == "polisen"), None)
+        if pol:
+            uso = polisen_uso()
+            if not uso:
+                indicators_out.append(meta_of(ind, {}, {}))
+                warn(f"{key}: data/external/polisen_uso.csv not on disk — run 'make polisen'")
+                continue
+            n = 0
+            for level, tgt in ENT.items():
+                for code, (share, cls) in (uso.get(level) or {}).items():
+                    e = tgt.get(code)
+                    if e is None:
+                        continue
+                    e[key] = round(share, 3)
+                    e[key + "_class"] = cls
+                    n += 1
+            m = meta_of(ind, {g: ind.get("asof", "2025-12-01") for g in ENT}, {})
+            m["snapshot"] = ind.get("asof", "2025-12-01")
+            indicators_out.append(m)
+            print(f"  {key:14s} {n} areas across {len(ENT)} levels · "
+                  f"{ind.get('asof', '2025-12-01')}")
+            continue
+
+        bra = next((x for x in srcs if x.get("db") == "bra"), None)
+        if bra:
+            allb = bra_csv("bra_crime")
+            block = allb.get(bra["key"]) or {}
+            if not block:
+                indicators_out.append(meta_of(ind, {}, {}))
+                warn(f"{key}: no Brå rows for '{bra['key']}' — run make bra")
+                continue
+            calc = ind["calc"]
+            dw, dw_year = ({}, "")
+            if calc == "bra_per_1000_dwellings":
+                dw, dw_year = dwellings_by_kommun()
+                if not dw:
+                    indicators_out.append(meta_of(ind, {}, {}))
+                    warn(f"{key}: no dwelling stock on disk for the denominator")
+                    continue
+            years = sorted(block, key=int)[-n_hist:]
+            all_years.update(years)
+
+            ordered = sorted(block, key=int)
+
+            def bra_value(period: str) -> dict:
+                vals = {}
+                if calc == "bra_trend":
+                    # change in the rate against the year before, in per cent.
+                    # Both years come from Brå; nothing is interpolated, and a
+                    # kommun missing either year simply has no value.
+                    i = ordered.index(period) if period in ordered else -1
+                    if i < 1:
+                        return {}
+                    prev = block.get(ordered[i - 1]) or {}
+                    for code, (cnt, rate) in (block.get(period) or {}).items():
+                        pr = (prev.get(code) or (None, None))[1]
+                        if rate is not None and pr:
+                            vals[code] = (rate / pr - 1.0) * 100.0
+                    return vals
+                for code, (cnt, rate) in (block.get(period) or {}).items():
+                    if calc == "bra_per_1000":
+                        # Brå's own published rate per 100 000, divided by 100.
+                        # Using Brå's denominator rather than ours keeps the
+                        # number identical to the one on Brå's own page.
+                        if rate is not None:
+                            vals[code] = rate / 100.0
+                    elif calc == "bra_per_1000_dwellings":
+                        d = dw.get(code)
+                        if d:
+                            vals[code] = cnt / d * 1000.0
+                    elif calc == "bra_count":
+                        vals[code] = cnt
+                return vals
+
+            for y in years:
+                for a, v in bra_value(y).items():
+                    e = kommuner.get(a)
+                    if e is not None:
+                        e["hist"].setdefault(key, {})[y] = round(v, 3)
+            last = years[-1]
+            for a, v in bra_value(last).items():
+                if a in kommuner:
+                    kommuner[a][key] = round(v, 3)
+
+            q = bra_csv("bra_crime_quarterly").get(bra["key"]) if ind.get("quarters") else None
+            qper = []
+            if q:
+                qper = sorted(q, key=lambda t: (t[:4], t[-1]))
+                for t in qper:
+                    for a, (cnt, rate) in q[t].items():
+                        e = kommuner.get(a)
+                        if e is not None and rate is not None:
+                            e.setdefault("q", {}).setdefault(key, {})[t] = round(rate / 100.0, 3)
+
+            m = meta_of(ind, {"kommun": last}, {y: {"kommun": y} for y in years})
+            if qper:
+                m["q_periods"] = qper
+            if calc == "bra_per_1000_dwellings":
+                m["denominator"] = f"SCB TAB824 dwelling stock, {dw_year}"
+            indicators_out.append(m)
+            print(f"  {key:14s} kommun:{len(bra_value(last))} · {years[0]}–{last}"
+                  + (f" · {len(qper)} quarters" if qper else ""))
             continue
 
         if ind["calc"] in FC_CALCS:
@@ -826,7 +999,8 @@ def meta_of(ind: dict, asof: dict, hist_asof: dict) -> dict:
     # the page reads them straight off window.DATA, and an indicator that lost
     # its direction on the way out would rank the worst kommun #1 in silence.
     out = {k: ind[k] for k in ("key", "label", "short", "unit", "level", "levels", "hue", "group",
-                               "direction", "direction_note", "scale", "center", "hue_neg", "hue_pos")
+                               "direction", "direction_note", "scale", "center", "hue_neg", "hue_pos",
+                               "no_inherit")
            if k in ind}
     if ind.get("cats"):
         out["cats"] = ind["cats"]

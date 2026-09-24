@@ -24,3 +24,5 @@ tests/fixture_*.json
 
 # Never public
 data/processed/portfolio.json
+data/raw/bra/
+data/raw/polisen/

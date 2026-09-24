@@ -48,6 +48,9 @@ const FMT = {
   ksek: v => nf(v, 0) + " kSEK", sek0: v => nf(v, 0) + " SEK",
   int: v => nf(v, 0), m2: v => nf(v, 0) + " m²", per1000: v => nf(v, 1) + " ‰",
   idx: v => nf(v, 1), idx1: v => nf(v, 1), ratio2: v => nf(v, 2), per10k: v => nf(v, 1) + " / 10k",
+  /* rates per 1 000: the ‰ sign is not borrowed here because these are counts
+     per 1 000 of a stock, not parts per thousand of the same quantity */
+  num1: v => nf(v, 1), num2: v => nf(v, 2),
   /* `cat` is replaced per indicator by fmtOf, which knows its labels */
   cat: v => nf(v, 0)
 };
@@ -122,7 +125,7 @@ const muniCmp = (e, key) => !!e.kommun;
 /* headline figures (area page header, map popups, kommun strip) — the first five available, in this order */
 const HL_KEYS = ["growth", "income_med", "rent", "unemp", "renters", "higher_ed", "young", "kt_tal", "flats"];
 /* quick-pick indicator chips next to the indicator select */
-const QUICK_KEYS = ["growth", "income_med", "rent", "unemp", "renters", "kt_tal"];
+const QUICK_KEYS = ["growth", "income_med", "rent", "unemp", "renters", "kt_tal", "crime_1000"];
 /* link into the chart generator with one area pre-selected */
 const chartLink = (key, type, code) => `charts?ind=${encodeURIComponent(key)}&a=${type}:${code}&y0=&y1=&med=1`;
 /* value of indicator k for kommun/area o in the selected year (latest = live field, else history) */
@@ -417,12 +420,18 @@ function setLegend(id, sc, ind, key, note) {
      overlay is off, which write "" — so no path can leave a stale box behind.
      `.maplegend:empty{display:none}` in style.css is what keeps an empty one
      from showing as a white bar. */
+  ovLegends();
+}
+/* Rewritten on every legend pass AND whenever an overlay's data arrives — a
+   lazily loaded layer draws before its legend would otherwise be refreshed,
+   which left the box reading "loading…" over a fully drawn overlay. */
+function ovLegends() {
   for (const o of ovList()) {
     const e2 = document.getElementById("lg-" + o.id);
     if (e2) e2.innerHTML = (ovOn(o) && o.legend) ? o.legend() : "";
   }
 }
-const GROUP_ORDER = ["Demographics", "Outlook", "Income & jobs", "Housing stock", "Rents", "Prices & market", "Construction", "Municipal finances", "Area quality"];
+const GROUP_ORDER = ["Demographics", "Outlook", "Safety", "Income & jobs", "Housing stock", "Rents", "Prices & market", "Construction", "Municipal finances", "Area quality"];
 function indSelect() {
   const L = curInds();
   const groups = GROUP_ORDER.filter(gname => L.some(i => (i.group || "Other") === gname)).concat(L.some(i => !GROUP_ORDER.includes(i.group || "Other")) ? ["Other"] : []);
@@ -732,8 +741,15 @@ function areaEntity() {
   }
   return null;
 }
+/* Most indicators fall back to the kommun figure for a sub-area that has none,
+   marked °. A few must NOT: the police designation is a statement about a
+   specific piece of ground, so showing Stockholm's 4.4 % on every RegSO in the
+   city would say that all of them are designated. An indicator with
+   `no_inherit` is blank where it has no value of its own. */
+const noInherit = i => !!(i && i.no_inherit);
+const canInherit = k => !noInherit(indOf(k));
 /* value for the entity: its own figure, or the kommun's (inherited, °) for sub-areas */
-function eVal(e, k, y) { const own = V(e.o, k, y); if (own != null) return { v: own, own: true }; if (e.type === "regso" && e.kommun) { const mv = V(e.kommun, k, y); if (mv != null) return { v: mv, own: false }; } return { v: null, own: false }; }
+function eVal(e, k, y) { const own = V(e.o, k, y); if (own != null) return { v: own, own: true }; if (canInherit(k) && e.type === "regso" && e.kommun) { const mv = V(e.kommun, k, y); if (mv != null) return { v: mv, own: false }; } return { v: null, own: false }; }
 function eYears(e, k) { return histYears(k, e.type === "regso" && V(e.o, k) == null ? MUNI : e.peers); }
 function tileSpark(ys, own, med, i) {
   /* area (solid) against the median of its peers (dashed), last point marked, first/last year on the axis */
@@ -980,7 +996,7 @@ function vArea() {
     </div>
     <div class="tools">${yearSelect()}<button class="lk" data-go="${withQ(mapHash)}">Show on map</button><button class="lk" data-go="${chartLink(MK.ind, e.type, e.code)}">↗ Chart</button>${e.type !== "deso" && desoAvail(e.type === "kommun" ? e.code : e.o.kommun) ? `<button class="lk primary" data-go="map/${e.type === "kommun" ? e.code : e.o.kommun}/deso?ind=${MK.ind}">DeSO ›</button>` : ""}</div>
     ${headlineHtml(e)}
-    ${outlookLine(e.type === "kommun" ? e.o : e.kommun, e.type !== "kommun")}
+    ${usoLine(e.o)}${outlookLine(e.type === "kommun" ? e.o : e.kommun, e.type !== "kommun")}
   </div>
   <div class="card">
     <div class="card-head"><h3>Key figures${MK.year !== LATEST ? " · " + MK.year : ""} <span class="hq" title="${esc(hint)}">ⓘ</span></h3>
@@ -1045,18 +1061,18 @@ function lfPopup(a, muni) {
   /* two levels: the selected indicator big + four headline figures and the ways onward; every value behind "all values" */
   const row = (i, v, own, o) => `<span class="lfrow"><span>${esc(i.short || i.label)}</span><b>${fmtOf(i)(v)}${own ? "" : " °"}${moeSpan(i, v, moeOf(i, o))}</b></span>`;
   const LI = curInds(); const ind = curInd(); const isQ = a.regso != null;
-  const val = i => { const v = V(a, i.key); if (v != null) return { v, own: true }; if (muni && V(muni, i.key) != null) return { v: V(muni, i.key), own: false }; return null; };
+  const val = i => { const v = V(a, i.key); if (v != null) return { v, own: true }; if (!noInherit(i) && muni && V(muni, i.key) != null) return { v: V(muni, i.key), own: false }; return null; };
   const peers = isQ ? desoAreas(a.kommun) : AREAS; const sel = val(ind);
   const rk = sel ? (sel.own ? rankOf(a, ind.key, peers) : (muni ? rankOf(muni, ind.key, MUNI) : null)) : null;
   const keys = HL_KEYS.filter(k => k !== ind.key).map(k => LI.find(i => i.key === k)).filter(Boolean).map(i => ({ i, x: val(i) })).filter(x => x.x).slice(0, 4);
   const native = LI.filter(i => V(a, i.key) != null).map(i => row(i, V(a, i.key), true, a)).join("");
-  const inherited = LI.filter(i => V(a, i.key) == null && muni && V(muni, i.key) != null).map(i => row(i, V(muni, i.key), false, muni)).join("");
+  const inherited = LI.filter(i => !noInherit(i) && V(a, i.key) == null && muni && V(muni, i.key) != null).map(i => row(i, V(muni, i.key), false, muni)).join("");
   const n = LI.filter(i => val(i)).length; const type = isQ ? "deso" : "regso", code = a.code;
   return `<div class="lfpop"><b>${esc(a.name)}</b>${MK.year !== LATEST ? ` <span class="tag">${MK.year}</span>` : ""}
     <span class="dim">${a.regso && byRegso[a.regso] ? esc(byRegso[a.regso].name) + " · " : ""}${muni ? esc(muni.name) : ""}${a.pop != null ? " · " + nf(a.pop, 0) + " inhabitants" : ""}</span>
     ${sel ? `<div class="lfbig"><span>${esc(ind.label)}${sel.own ? "" : " °"}</span><b>${fmtOf(ind)(sel.v)}${moeSpan(ind, sel.v, moeOf(ind, sel.own ? a : muni))}</b><em>${rk ? `#${rk.r} of ${rk.n} ${sel.own ? (isQ ? "DeSO" : "RegSO") : "kommuner"}` : ""}</em></div>` : `<div class="lfbig dim"><span>${esc(ind.label)}</span><b>–</b></div>`}
     ${keys.length ? `<div class="lfkey">${keys.map(({ i, x }) => `<div><span>${esc(i.short || i.label)}${x.own ? "" : " °"}</span><b>${fmtOf(i)(x.v)}${moeSpan(i, x.v, moeOf(i, x.own ? a : muni))}</b></div>`).join("")}</div>` : ""}
-    ${outlookLine(muni, true)}
+    ${usoLine(a)}${outlookLine(muni, true)}
     <span class="lfact"><button class="lk mini primary" data-go="${withQ(pageOf(a))}">Open page ›</button>${muni && !MK.kommun ? `<button class="lk mini" data-go="map/${muni.code}?ind=${MK.ind}">Zoom to ${esc(muni.name)}</button>` : ""}${muni && desoAvail(muni.code) && !desoMode() ? `<button class="lk mini" data-go="map/${muni.code}/deso?ind=${MK.ind}">DeSO ›</button>` : ""}<button class="lk mini" data-go="${chartLink(ind.key, type, code)}">↗ Chart</button></span>
     <details class="lfmore"><summary>All ${n} values</summary>
     ${native ? `<span class="lfsec">${isQ ? "DeSO" : "RegSO"}</span><div class="lfrows">${native}</div>` : ""}
@@ -1123,7 +1139,10 @@ function lfLayers() {
   const polys = [];
   shapes.forEach(a => {
     const m = drill ? byCode[a.kommun] : a;
-    const src = !drill ? a : (hasOwn && vk(a) != null ? a : m);
+    /* falling back to the kommun's value tints every sub-area with it; an
+       indicator that refuses inheritance (the police designation) must stay
+       blank instead, or the whole city reads as designated */
+    const src = !drill ? a : (hasOwn && vk(a) != null ? a : (noInherit(ind) ? null : m));
     const t = src ? sc.t(vk(src)) : null;
     /* thinner the finer the level: a 1.5 px stroke that reads as a border between
        kommuner turns into a white haze over a kommun's worth of DeSO. */
@@ -1178,6 +1197,22 @@ function outlookLine(m, inherited) {
   </div>`;
 }
 
+/* ---------- police-designated vulnerable area ----------
+   A flag, not a score. It says the police have designated part of this area,
+   which class, and when — and nothing about the people who live there. An area
+   with no designation shows no line at all rather than "0 %", because "not
+   designated" and "designated but small" are different statements. */
+const USO_LABEL = { utsatt: "Utsatt område", sarskilt: "Särskilt utsatt område" };
+function usoLine(o) {
+  if (!o || o.vulnerable_area_share == null) return "";
+  const cls = o.vulnerable_area_share_class || "utsatt";
+  const i = indOf("vulnerable_area_share");
+  return `<div class="usoline ${esc(cls)}" title="${esc((i && i.warn) || "")}">
+    <span class="usotag">${esc(USO_LABEL[cls] || cls)}</span>
+    <span>${nf(o.vulnerable_area_share, 1)} % of the area</span>
+    <span class="usosrc">Police-designated vulnerable area (Dec 2025)</span></div>`;
+}
+
 function lfKommunPopup(m) {
   const LI = curInds(), ind = curInd();
   const row = (i, v, o) => `<span class="lfrow"><span>${esc(i.short || i.label)}</span><b>${fmtOf(i)(v)}${moeSpan(i, v, moeOf(i, o))}</b></span>`;
@@ -1192,7 +1227,7 @@ function lfKommunPopup(m) {
     ${sel != null ? `<div class="lfbig"><span>${esc(ind.label)}</span><b>${fmtOf(ind)(sel)}${moeSpan(ind, sel, moeOf(ind, m))}</b><em>${rk ? `#${rk.r} of ${rk.n} kommuner` : ""}</em></div>`
                   : `<div class="lfbig dim"><span>${esc(ind.label)}</span><b>–</b></div>`}
     ${keys.length ? `<div class="lfkey">${keys.map(i => `<div><span>${esc(i.short || i.label)}</span><b>${fmtOf(i)(V(m, i.key))}${moeSpan(i, V(m, i.key), moeOf(i, m))}</b></div>`).join("")}</div>` : ""}
-    ${outlookLine(m, false)}
+    ${usoLine(m)}${outlookLine(m, false)}
     <span class="lfact"><button class="lk mini primary" data-go="${withQ(`area/kommun/${m.code}`)}">Open page ›</button><button class="lk mini" data-go="${withQ(`map/${m.code}`)}">RegSO ›</button>${n ? `<button class="lk mini" data-go="${withQ(`map/${m.code}/deso`)}">DeSO ›</button>` : ""}<button class="lk mini" data-go="${chartLink(ind.key, "kommun", m.code)}">↗ Chart</button></span>
     <details class="lfmore"><summary>All ${all.length} values</summary>
     <div class="lfrows">${all.map(i => row(i, V(m, i.key), m)).join("")}</div></details></div>`;
@@ -1208,7 +1243,8 @@ function lfLabels() {
     /* sub-areas: a value only where the polygon is clearly wide enough, the name only when there is room for both */
     shapes.slice().sort((x, y) => (y.pop || 0) - (x.pop || 0)).slice(0, 40).forEach(a => {
       const [w, h] = px(mainRing(a)); if (w < 64 || h < 26) return;
-      const m = byCode[a.kommun]; const own = hasOwn && vk(a) != null; const v = own ? vk(a) : (m ? vk(m) : null);
+      const m = byCode[a.kommun]; const own = hasOwn && vk(a) != null;
+      const v = own ? vk(a) : (noInherit(ind) ? null : (m ? vk(m) : null));
       const t = sc.t(v), dark = !sc.cats && t != null && t > .55; const val = v != null ? fmtOf(ind)(v) + (own ? "" : " °") : "–";
       const name = w >= 120 && h >= 36 ? `<b>${esc(a.name)}</b><br>` : "";
       labs.push(L.marker(centroid(mainRing(a)), { interactive: false, icon: L.divIcon({ className: "lflab" + (dark ? " lflab-dark" : ""), iconSize: null, html: name + val }) }));
@@ -1237,7 +1273,52 @@ function lfLabels() {
    the hash and setLegend can iterate without any of them knowing what the
    overlays actually draw. Phases 4, 6 and 7 add entries here.
    Until one exists this is an empty list and every loop over it is a no-op. */
-const OV = [];                    /* [{id, label, flag, avail(), build(), legend()}] */
+/* --- the police-designated areas, as an outline overlay ---
+   One small file (126 kB), not per kommun: 65 polygons nationally. Drawn as an
+   outline over the choropleth with no fill click target, so the area popup
+   underneath still opens and shows the usoLine. */
+const USO = { data: null, loading: false };
+function usoLoad() {
+  if (USO.data || USO.loading) return;
+  USO.loading = true;
+  fetch("polisen_uso.geojson").then(r => r.json()).then(j => {
+    USO.data = j; USO.loading = false; lfOverlays(); ovLegends();
+  }).catch(() => { USO.loading = false; USO.data = { features: [] }; });
+}
+const USO_COL = { utsatt: "#C2603F", sarskilt: "#8E2B1B" };
+function usoBuild() {
+  usoLoad();
+  if (!USO.data || LF.usoDrawn) return;
+  lfDrop("usoLayer");
+  const g = L.layerGroup();
+  for (const f of USO.data.features || []) {
+    const col = USO_COL[f.properties.class] || USO_COL.utsatt;
+    L.geoJSON(f, {
+      style: { color: col, weight: f.properties.class === "sarskilt" ? 2.2 : 1.6,
+               opacity: .95, fill: true, fillColor: col,
+               fillOpacity: f.properties.class === "sarskilt" ? .16 : .09,
+               dashArray: f.properties.class === "sarskilt" ? null : "5,3" },
+      interactive: false,
+    }).addTo(g);
+  }
+  g.addTo(LF.map); LF.usoLayer = g; LF.usoDrawn = true;
+}
+function usoLegend() {
+  if (!USO.data) return `<div class="lgtitle">Vulnerable areas<span>loading…</span></div>`;
+  const n = (USO.data.features || []).length;
+  const c = { utsatt: 0, sarskilt: 0 };
+  for (const f of USO.data.features || []) c[f.properties.class] = (c[f.properties.class] || 0) + 1;
+  return `<div class="lgtitle">Police-designated areas<span>${n} areas, Dec 2025</span></div>` +
+    `<div class="lgrow"><i style="background:${USO_COL.sarskilt};opacity:.7"></i>Särskilt utsatt (${c.sarskilt})</div>` +
+    `<div class="lgrow"><i style="background:${USO_COL.utsatt};opacity:.5"></i>Utsatt (${c.utsatt})</div>` +
+    `<div class="lgnote">Källa: Polismyndigheten. A police assessment of an area's conditions, not a rating of its residents.</div>`;
+}
+
+const OV = [
+  { id: "uso", label: "Vulnerable areas", flag: "uso",
+    title: "Outline the areas the police have designated as utsatt or särskilt utsatt (Dec 2025)",
+    build: usoBuild, legend: usoLegend },
+];                                /* [{id, label, flag, avail(), build(), legend()}] */
 const ovOn = o => !!MK[o.flag];
 const ovList = () => OV.filter(o => !o.avail || o.avail());
 

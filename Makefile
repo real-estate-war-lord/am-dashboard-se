@@ -2,7 +2,7 @@
 # Targets that exist today. `build` and `serve` tell you what is missing
 # rather than failing cryptically — the build scripts land after the data pull.
 
-.PHONY: help selftest test verify geo land simplify riksbank kolada external discover dry fetch status validate links srclinks build serve
+.PHONY: help selftest test verify geo land simplify riksbank kolada external discover dry fetch status validate links srclinks bra polisen build serve
 
 help:
 	@echo "make selftest   offline checks, no network (1 s)"
@@ -20,6 +20,8 @@ help:
 	@echo "make test       render every view headlessly against the built page"
 	@echo "make verify     recompute 5 kommuner x 3 indicators straight from the API"
 	@echo "make external   Boverket BME, Kronofogden and Kolada -> data/external/"
+	@echo "make bra        reported offences per kommun from Bra SOL (resumable)"
+	@echo "make polisen    police-designated vulnerable areas -> area shares"
 	@echo "make build      build the dashboard (needs the pull + the registry)"
 	@echo "make serve      serve dist/ at http://localhost:8080"
 
@@ -74,6 +76,14 @@ verify:
 
 external:
 	python3 scripts/import_bme.py && python3 scripts/import_kronofogden.py && python3 scripts/fetch_kolada.py
+
+# Bra has no open-data API; SOL is the only machine route to kommun-level crime.
+# Resumable: a file already in data/raw/bra/ is not fetched again.
+bra:
+	python3 scripts/fetch_bra.py --quarters && python3 scripts/import_bra.py
+
+polisen:
+	python3 scripts/fetch_polisen.py
 
 test:
 	@test -f dist/index.html || { echo "dist/index.html missing — run 'make build' first."; exit 1; }

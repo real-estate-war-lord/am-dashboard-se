@@ -246,3 +246,121 @@ for the expected value.
 | a projection has no median across kommuner | the median band is suppressed on Outlook charts — SCB published no such figure |
 | TAB6008's born-in-Sweden / foreign-born split is pulled but unused | kept as the cross-check; no indicator claims it |
 
+## Phase 3 — Safety
+
+### Check table
+
+| Indicator | Definition (Brå's own category) | Level | Coverage | History |
+|---|---|---|---|---|
+| `crime_1000` | Totalt antal brott, per 1 000 inh. | kommun | 290/290 | 1996–2025 + **48 quarters** |
+| `violence_1000` | 3–7 kap. Brott mot person | kommun | 290/290 | 1996–2025 |
+| `theft_1000` | 8 kap. Stöld, rån m.m. | kommun | 290/290 | 1996–2025 |
+| `burglary_1000dw` | Stöld genom inbrott i bostad ÷ SCB TAB824 stock | kommun | 290/290 | 1996–2025 |
+| `vandalism_1000` | 12 kap. Skadegörelsebrott | kommun | 290/290 | 1996–2025 |
+| `drugs_weapons_1000` | narkotikastrafflagen + vapenlagen 9:1–2 | kommun | 290/290 | 1996–2025 |
+| `crime_trend` | y/y change in the published rate | kommun | 290/290 | diverging scale |
+| `vulnerable_area_share` | share of land inside a police-designated area | **kommun / RegSO / DeSO** | 29 / 180 / 376 | snapshot 2025-12-01 |
+
+The six offence indicators are `lower_better`. `crime_trend` is diverging about
+zero. `vulnerable_area_share` is `neutral` — a police designation describes where
+resources are directed, not the people who live there.
+
+Only `drugs_weapons_1000` is a composite, and it is the sum of two rows Brå
+publishes separately. `violence_1000` is deliberately Brå's own published chapter
+3–7 aggregate rather than a "violence" composite assembled here; the label says
+so. Nothing else is arithmetic beyond dividing Brå's own per-100 000 rate by 100.
+
+### Route
+
+Brå has no open-data API — its own page says so — so SOL is the only machine
+route to kommun-level crime. `scripts/fetch_bra.py` drives it as a browser would:
+session → selection form → POST selection → run → tab-separated result.
+Resumable; raw exports gitignored under `data/raw/bra/`.
+
+### ⚠ clearance rate omitted
+
+`clearance_pct` is **not shipped**. Brå publishes personuppklaringsprocent by
+offence type for the whole country only; `handlagda-brott` has no kommun cut and
+SOL has no handlagda module. Omitted rather than substituted with a modelled or
+regional figure. `tests/smoke.js` asserts no such indicator exists, so it cannot
+reappear by accident.
+
+### Bugs found and fixed
+
+1. **`&nbsp;` ends in a semicolon**, which is also SOL's field separator, so the
+   measure row split into 122 fields where the data rows had 62 and every column
+   index after it was wrong. The first parser survived only because the surplus
+   columns fell off the end. Entities are now decoded *before* splitting.
+2. **Heby was silently missing.** SOL labels it "Heby kommun (Uppsala län from
+   2007)" — it appears twice, split by its 2007 move from Västmanland — and the
+   region matcher required the name to end in " kommun". Coverage was 289/290.
+   The current entity (8556) is used and its series starts at 2007; the two are
+   never spliced.
+3. **Slivers were being reported as designations.** Eight areas had an
+   intersection that rounded to 0.000 % — boundaries grazing each other, a
+   digitising artefact. An intersection below one hectare is no longer a
+   designation. 724 rows → 585.
+4. **The designation was inheriting down the hierarchy.** Every RegSO in
+   Stockholm without its own value was tinted with the kommun's 4.41 % and
+   labelled "4,4 % °" — the map said the entire city was police-designated. A new
+   `no_inherit` flag stops the fallback for this indicator in the fill, the
+   labels, the popup and `eVal`; ordinary indicators still inherit with °, which
+   the tests assert both ways.
+5. **`num1`/`num2` were not in `FMT`.** Caught by the existing guard — the exact
+   trap CLAUDE.md records. Added with the indicators.
+6. **The overlay legend read "loading…" over a drawn overlay**, because a lazily
+   loaded layer draws after the legend pass. `ovLegends()` is now called when the
+   data lands too.
+
+### Verification
+
+`scripts/verify_bra.py` opens a **fresh SOL session** and re-selects five
+kommuner; the burglary denominator is fetched straight from the SCB API. Nothing
+is read from `data/raw/` or `data/external/`.
+
+**30 of 30 values match** (tolerance 0.005 per 1 000):
+
+| kommun | crime | person | theft | burglary /1 000 dw | vandalism | drugs+weapons |
+|---|---:|---:|---:|---:|---:|---:|
+| Stockholm | 191.59 | 33.27 | 37.42 | 11.168 (5 866 / 525 252) | 62.08 | 17.27 |
+| Göteborg | 138.78 | 28.76 | 37.22 | 11.334 (3 541 / 312 429) | 20.50 | 13.87 |
+| Malmö | 161.83 | 36.05 | 48.01 | 12.468 (2 291 / 183 757) | 10.77 | 14.12 |
+| Heby | 94.97 | 26.35 | 10.97 | 5.923 (41 / 6 922) | 6.36 | 9.44 |
+| Malå | 75.38 | 25.92 | 11.60 | 6.223 (10 / 1 607) | 4.09 | 5.11 |
+
+The police polygons were verified independently: the spatial join finds exactly
+**29 kommuner**, matching the 29 distinct `ORT` values in the source, with
+Västra Frölunda correctly resolving to Göteborg and "Upplands Bro" to
+Upplands-Bro.
+
+### Geometry
+
+`scripts/sweref.py` implements SWEREF99 TM ↔ WGS84 (Lantmäteriet's Gauss-Krüger
+series) because pyproj is not a dependency and one transform does not justify
+adding it. Round-trip error over eight points across Sweden: **0.0069 mm**.
+The intersection is done in **metres**, by moving our boundaries into the grid —
+an area share computed in degrees would be wrong by the cosine of the latitude,
+and Sweden spans 14 degrees of it. shapely is used here only, behind
+`requirements-geo.txt`; the outputs are committed and `make build` does not need it.
+
+### Gates
+
+| Gate | Result |
+|---|---|
+| `make validate` | clean — 59 indicators |
+| `make links` | **83 of 83** |
+| `make test` | clean — 20 new Safety assertions |
+| `make build` | clean, 15.9 MB (+126 kB overlay) |
+| `scripts/verify_bra.py` | **30 of 30 match a fresh Brå session** |
+| screenshots | `v12_safety_map.png`, `v12_uso_overlay.png` |
+
+### ⚠ raised
+
+| ⚠ | Decision |
+|---|---|
+| clearance not published per kommun | omitted; asserted absent |
+| Brå publishes nothing below kommun except stadsdelar in 3 cities | RegSO/DeSO inherit crime with °; the designation does not inherit at all |
+| reporting propensity differs between kommuner | stated in every Safety indicator's caveat |
+| drug and weapons offences reflect enforcement effort | said so in the indicator's own description |
+| SOL is a 2000s JSP app that could change without notice | the fetcher asserts Stockholm's row count and fails loudly on a short file |
+

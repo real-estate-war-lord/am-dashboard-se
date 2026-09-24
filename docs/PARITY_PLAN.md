@@ -13,7 +13,7 @@ the phase checklist below, pick the first unticked phase, and read
 - [x] **Phase 0** — Plan file + probe
 - [x] **Phase 1** — UI foundation from DK v2.0–v2.5.1
 - [x] **Phase 2** — Population outlook (demographics)
-- [ ] **Phase 3** — Safety (crime)
+- [x] **Phase 3** — Safety (crime)
 - [ ] **Phase 4** — Schools
 - [ ] **Phase 5** — Test property + Analysis + Compare
 - [ ] **Phase 6** — Climate risk
@@ -39,6 +39,12 @@ scale centred on flat, RegSO/DeSO inherit with °. TAB6008 pulled as an independ
 recomputation and agrees on all 4 350 cells. verify_outlook.py: **35 of 35 values
 match the API**. Five real bugs found by the verifier and the screenshots, including
 the `100+` percent-encoding trap and a chart axis reaching -80 532 on a population.
+
+**Phase 3** — eight Safety indicators from Brå SOL (1996-2025 + 48 quarters) and
+Polisen's designated areas intersected into kommun/RegSO/DeSO. verify_bra.py: **30
+of 30 match a fresh SOL session**, burglary denominators from the SCB API. Clearance
+omitted — not published per kommun. Six bugs found, the worst being the designation
+inheriting down so the whole of Stockholm read as 4.4 % police-designated.
 
 _(each phase appends a 5-line status here when it is ticked)_
 

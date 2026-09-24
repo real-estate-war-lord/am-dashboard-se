@@ -5765,6 +5765,490 @@
      "updated": "2024-06-11T06:00:00Z"
     }
    ]
+  },
+  {
+   "key": "crime_1000",
+   "label": "Reported offences",
+   "short": "Crime",
+   "unit": "per 1 000 inhabitants",
+   "level": "kommun",
+   "levels": [
+    "kommun",
+    "regso",
+    "deso"
+   ],
+   "hue": [
+    176,
+    90,
+    60
+   ],
+   "sources": [
+    {
+     "db": "bra",
+     "key": "total",
+     "file": "bra_crime",
+     "geo": "kommun",
+     "table": "SOL menyid 101"
+    }
+   ],
+   "calc": "bra_per_1000",
+   "fmt": "num1",
+   "moe": null,
+   "desc": "All reported offences (Brå 'Totalt antal brott'), per 1 000 inhabitants. Brå's own published rate per 100 000, divided by 100.",
+   "source": "Brå, anmälda brott (Statistik On-Line)",
+   "group": "Safety",
+   "direction": "lower_better",
+   "direction_note": "reported offences — fewer is the sound end, and Brå publishes them as a harm measure",
+   "warn": "Reported offences, not convictions, and reporting propensity differs between kommuner and over time. A kommun where a large offence series is registered at one address can move sharply for one year. Brå does not publish below kommun level, except stadsdelsområden in Stockholm, Göteborg and Malmö.",
+   "quarters": true,
+   "src_verify": [
+    {
+     "level": "kommun",
+     "db": "bra",
+     "publisher": "Brå, Statistik On-Line (anmälda brott)",
+     "label": "Brå, Statistik On-Line (anmälda brott)",
+     "page": "https://statistik.bra.se/solwebb/action/anmalda/urval/urval?menyid=101"
+    },
+    {
+     "level": "regso",
+     "db": "bra",
+     "publisher": "Brå, Statistik On-Line (anmälda brott)",
+     "label": "Brå, Statistik On-Line (anmälda brott)",
+     "page": "https://statistik.bra.se/solwebb/action/anmalda/urval/urval?menyid=101"
+    },
+    {
+     "level": "deso",
+     "db": "bra",
+     "publisher": "Brå, Statistik On-Line (anmälda brott)",
+     "label": "Brå, Statistik On-Line (anmälda brott)",
+     "page": "https://statistik.bra.se/solwebb/action/anmalda/urval/urval?menyid=101"
+    }
+   ]
+  },
+  {
+   "key": "violence_1000",
+   "label": "Offences against the person",
+   "short": "Person",
+   "unit": "per 1 000 inhabitants",
+   "level": "kommun",
+   "levels": [
+    "kommun",
+    "regso",
+    "deso"
+   ],
+   "hue": [
+    176,
+    90,
+    60
+   ],
+   "sources": [
+    {
+     "db": "bra",
+     "key": "person",
+     "file": "bra_crime",
+     "geo": "kommun",
+     "table": "SOL menyid 101"
+    }
+   ],
+   "calc": "bra_per_1000",
+   "fmt": "num1",
+   "moe": null,
+   "desc": "Brå's chapter 3–7 aggregate 'Brott mot person' — offences against life and health, liberty and peace, defamation, sexual offences and offences against the family — per 1 000 inhabitants. This is Brå's own published category, not a violence composite assembled here.",
+   "source": "Brå, anmälda brott (Statistik On-Line)",
+   "group": "Safety",
+   "direction": "lower_better",
+   "direction_note": "reported offences — fewer is the sound end, and Brå publishes them as a harm measure",
+   "warn": "Reported offences, not convictions, and reporting propensity differs between kommuner and over time. A kommun where a large offence series is registered at one address can move sharply for one year. Brå does not publish below kommun level, except stadsdelsområden in Stockholm, Göteborg and Malmö.",
+   "quarters": false,
+   "src_verify": [
+    {
+     "level": "kommun",
+     "db": "bra",
+     "publisher": "Brå, Statistik On-Line (anmälda brott)",
+     "label": "Brå, Statistik On-Line (anmälda brott)",
+     "page": "https://statistik.bra.se/solwebb/action/anmalda/urval/urval?menyid=101"
+    },
+    {
+     "level": "regso",
+     "db": "bra",
+     "publisher": "Brå, Statistik On-Line (anmälda brott)",
+     "label": "Brå, Statistik On-Line (anmälda brott)",
+     "page": "https://statistik.bra.se/solwebb/action/anmalda/urval/urval?menyid=101"
+    },
+    {
+     "level": "deso",
+     "db": "bra",
+     "publisher": "Brå, Statistik On-Line (anmälda brott)",
+     "label": "Brå, Statistik On-Line (anmälda brott)",
+     "page": "https://statistik.bra.se/solwebb/action/anmalda/urval/urval?menyid=101"
+    }
+   ]
+  },
+  {
+   "key": "theft_1000",
+   "label": "Theft and robbery",
+   "short": "Theft",
+   "unit": "per 1 000 inhabitants",
+   "level": "kommun",
+   "levels": [
+    "kommun",
+    "regso",
+    "deso"
+   ],
+   "hue": [
+    176,
+    90,
+    60
+   ],
+   "sources": [
+    {
+     "db": "bra",
+     "key": "theft",
+     "file": "bra_crime",
+     "geo": "kommun",
+     "table": "SOL menyid 101"
+    }
+   ],
+   "calc": "bra_per_1000",
+   "fmt": "num1",
+   "moe": null,
+   "desc": "Brå's chapter 8 aggregate 'Stöld, rån m.m.', per 1 000 inhabitants.",
+   "source": "Brå, anmälda brott (Statistik On-Line)",
+   "group": "Safety",
+   "direction": "lower_better",
+   "direction_note": "reported offences — fewer is the sound end, and Brå publishes them as a harm measure",
+   "warn": "Reported offences, not convictions, and reporting propensity differs between kommuner and over time. A kommun where a large offence series is registered at one address can move sharply for one year. Brå does not publish below kommun level, except stadsdelsområden in Stockholm, Göteborg and Malmö.",
+   "quarters": false,
+   "src_verify": [
+    {
+     "level": "kommun",
+     "db": "bra",
+     "publisher": "Brå, Statistik On-Line (anmälda brott)",
+     "label": "Brå, Statistik On-Line (anmälda brott)",
+     "page": "https://statistik.bra.se/solwebb/action/anmalda/urval/urval?menyid=101"
+    },
+    {
+     "level": "regso",
+     "db": "bra",
+     "publisher": "Brå, Statistik On-Line (anmälda brott)",
+     "label": "Brå, Statistik On-Line (anmälda brott)",
+     "page": "https://statistik.bra.se/solwebb/action/anmalda/urval/urval?menyid=101"
+    },
+    {
+     "level": "deso",
+     "db": "bra",
+     "publisher": "Brå, Statistik On-Line (anmälda brott)",
+     "label": "Brå, Statistik On-Line (anmälda brott)",
+     "page": "https://statistik.bra.se/solwebb/action/anmalda/urval/urval?menyid=101"
+    }
+   ]
+  },
+  {
+   "key": "burglary_1000dw",
+   "label": "Residential burglary",
+   "short": "Burglary",
+   "unit": "per 1 000 dwellings",
+   "level": "kommun",
+   "levels": [
+    "kommun",
+    "regso",
+    "deso"
+   ],
+   "hue": [
+    176,
+    90,
+    60
+   ],
+   "sources": [
+    {
+     "db": "bra",
+     "key": "burglary",
+     "file": "bra_crime",
+     "geo": "kommun",
+     "table": "SOL menyid 101"
+    }
+   ],
+   "calc": "bra_per_1000_dwellings",
+   "fmt": "num2",
+   "moe": null,
+   "desc": "Burglary of a dwelling ('Stöld genom inbrott, inbrottsstöld i bostad, ej av skjutvapen'), per 1 000 dwellings. Count from Brå, dwelling stock from SCB TAB824 — both published per kommun, so the rate is too.",
+   "source": "Brå, anmälda brott (Statistik On-Line)",
+   "group": "Safety",
+   "direction": "lower_better",
+   "direction_note": "reported offences — fewer is the sound end, and Brå publishes them as a harm measure",
+   "warn": "Reported offences, not convictions, and reporting propensity differs between kommuner and over time. A kommun where a large offence series is registered at one address can move sharply for one year. Brå does not publish below kommun level, except stadsdelsområden in Stockholm, Göteborg and Malmö.",
+   "quarters": false,
+   "src_verify": [
+    {
+     "level": "kommun",
+     "db": "bra",
+     "publisher": "Brå, Statistik On-Line (anmälda brott)",
+     "label": "Brå, Statistik On-Line (anmälda brott)",
+     "page": "https://statistik.bra.se/solwebb/action/anmalda/urval/urval?menyid=101"
+    },
+    {
+     "level": "regso",
+     "db": "bra",
+     "publisher": "Brå, Statistik On-Line (anmälda brott)",
+     "label": "Brå, Statistik On-Line (anmälda brott)",
+     "page": "https://statistik.bra.se/solwebb/action/anmalda/urval/urval?menyid=101"
+    },
+    {
+     "level": "deso",
+     "db": "bra",
+     "publisher": "Brå, Statistik On-Line (anmälda brott)",
+     "label": "Brå, Statistik On-Line (anmälda brott)",
+     "page": "https://statistik.bra.se/solwebb/action/anmalda/urval/urval?menyid=101"
+    }
+   ]
+  },
+  {
+   "key": "vandalism_1000",
+   "label": "Criminal damage",
+   "short": "Vandalism",
+   "unit": "per 1 000 inhabitants",
+   "level": "kommun",
+   "levels": [
+    "kommun",
+    "regso",
+    "deso"
+   ],
+   "hue": [
+    176,
+    90,
+    60
+   ],
+   "sources": [
+    {
+     "db": "bra",
+     "key": "vandalism",
+     "file": "bra_crime",
+     "geo": "kommun",
+     "table": "SOL menyid 101"
+    }
+   ],
+   "calc": "bra_per_1000",
+   "fmt": "num1",
+   "moe": null,
+   "desc": "Brå's chapter 12 aggregate 'Skadegörelsebrott', which includes graffiti, per 1 000 inhabitants.",
+   "source": "Brå, anmälda brott (Statistik On-Line)",
+   "group": "Safety",
+   "direction": "lower_better",
+   "direction_note": "reported offences — fewer is the sound end, and Brå publishes them as a harm measure",
+   "warn": "Reported offences, not convictions, and reporting propensity differs between kommuner and over time. A kommun where a large offence series is registered at one address can move sharply for one year. Brå does not publish below kommun level, except stadsdelsområden in Stockholm, Göteborg and Malmö.",
+   "quarters": false,
+   "src_verify": [
+    {
+     "level": "kommun",
+     "db": "bra",
+     "publisher": "Brå, Statistik On-Line (anmälda brott)",
+     "label": "Brå, Statistik On-Line (anmälda brott)",
+     "page": "https://statistik.bra.se/solwebb/action/anmalda/urval/urval?menyid=101"
+    },
+    {
+     "level": "regso",
+     "db": "bra",
+     "publisher": "Brå, Statistik On-Line (anmälda brott)",
+     "label": "Brå, Statistik On-Line (anmälda brott)",
+     "page": "https://statistik.bra.se/solwebb/action/anmalda/urval/urval?menyid=101"
+    },
+    {
+     "level": "deso",
+     "db": "bra",
+     "publisher": "Brå, Statistik On-Line (anmälda brott)",
+     "label": "Brå, Statistik On-Line (anmälda brott)",
+     "page": "https://statistik.bra.se/solwebb/action/anmalda/urval/urval?menyid=101"
+    }
+   ]
+  },
+  {
+   "key": "drugs_weapons_1000",
+   "label": "Drug and weapons offences",
+   "short": "Drugs/weapons",
+   "unit": "per 1 000 inhabitants",
+   "level": "kommun",
+   "levels": [
+    "kommun",
+    "regso",
+    "deso"
+   ],
+   "hue": [
+    176,
+    90,
+    60
+   ],
+   "sources": [
+    {
+     "db": "bra",
+     "key": "drugs_weapons",
+     "file": "bra_crime",
+     "geo": "kommun",
+     "table": "SOL menyid 101"
+    }
+   ],
+   "calc": "bra_per_1000",
+   "fmt": "num1",
+   "moe": null,
+   "desc": "Offences against the narcotics act plus offences against the weapons act (chapter 9 §§1–2), per 1 000 inhabitants. The sum of two rows Brå publishes separately. These are offences the police largely find by looking, so the figure reflects enforcement effort as much as underlying prevalence.",
+   "source": "Brå, anmälda brott (Statistik On-Line)",
+   "group": "Safety",
+   "direction": "lower_better",
+   "direction_note": "reported offences — fewer is the sound end, and Brå publishes them as a harm measure",
+   "warn": "Reported offences, not convictions, and reporting propensity differs between kommuner and over time. A kommun where a large offence series is registered at one address can move sharply for one year. Brå does not publish below kommun level, except stadsdelsområden in Stockholm, Göteborg and Malmö.",
+   "quarters": false,
+   "src_verify": [
+    {
+     "level": "kommun",
+     "db": "bra",
+     "publisher": "Brå, Statistik On-Line (anmälda brott)",
+     "label": "Brå, Statistik On-Line (anmälda brott)",
+     "page": "https://statistik.bra.se/solwebb/action/anmalda/urval/urval?menyid=101"
+    },
+    {
+     "level": "regso",
+     "db": "bra",
+     "publisher": "Brå, Statistik On-Line (anmälda brott)",
+     "label": "Brå, Statistik On-Line (anmälda brott)",
+     "page": "https://statistik.bra.se/solwebb/action/anmalda/urval/urval?menyid=101"
+    },
+    {
+     "level": "deso",
+     "db": "bra",
+     "publisher": "Brå, Statistik On-Line (anmälda brott)",
+     "label": "Brå, Statistik On-Line (anmälda brott)",
+     "page": "https://statistik.bra.se/solwebb/action/anmalda/urval/urval?menyid=101"
+    }
+   ]
+  },
+  {
+   "key": "crime_trend",
+   "label": "Reported offences, change y/y",
+   "short": "Crime y/y",
+   "unit": "%",
+   "level": "kommun",
+   "levels": [
+    "kommun",
+    "regso",
+    "deso"
+   ],
+   "hue": [
+    176,
+    90,
+    60
+   ],
+   "sources": [
+    {
+     "db": "bra",
+     "key": "total",
+     "file": "bra_crime",
+     "geo": "kommun",
+     "table": "SOL menyid 101"
+    }
+   ],
+   "calc": "bra_trend",
+   "fmt": "signpct1",
+   "moe": null,
+   "desc": "Change in reported offences per 100 000 inhabitants against the year before, per cent. Both years are Brå's published rates.",
+   "source": "Brå, anmälda brott (Statistik On-Line)",
+   "group": "Safety",
+   "direction": "lower_better",
+   "direction_note": "reported offences — fewer is the sound end, and Brå publishes them as a harm measure",
+   "warn": "Reported offences, not convictions, and reporting propensity differs between kommuner and over time. A kommun where a large offence series is registered at one address can move sharply for one year. Brå does not publish below kommun level, except stadsdelsområden in Stockholm, Göteborg and Malmö.",
+   "quarters": false,
+   "scale": "diverging",
+   "center": 0,
+   "hue_neg": [
+    28,
+    107,
+    92
+   ],
+   "hue_pos": [
+    176,
+    51,
+    27
+   ],
+   "src_verify": [
+    {
+     "level": "kommun",
+     "db": "bra",
+     "publisher": "Brå, Statistik On-Line (anmälda brott)",
+     "label": "Brå, Statistik On-Line (anmälda brott)",
+     "page": "https://statistik.bra.se/solwebb/action/anmalda/urval/urval?menyid=101"
+    },
+    {
+     "level": "regso",
+     "db": "bra",
+     "publisher": "Brå, Statistik On-Line (anmälda brott)",
+     "label": "Brå, Statistik On-Line (anmälda brott)",
+     "page": "https://statistik.bra.se/solwebb/action/anmalda/urval/urval?menyid=101"
+    },
+    {
+     "level": "deso",
+     "db": "bra",
+     "publisher": "Brå, Statistik On-Line (anmälda brott)",
+     "label": "Brå, Statistik On-Line (anmälda brott)",
+     "page": "https://statistik.bra.se/solwebb/action/anmalda/urval/urval?menyid=101"
+    }
+   ]
+  },
+  {
+   "key": "vulnerable_area_share",
+   "label": "Police-designated vulnerable area",
+   "short": "Vulnerable area",
+   "unit": "% of land area",
+   "level": "deso",
+   "levels": [
+    "kommun",
+    "regso",
+    "deso"
+   ],
+   "hue": [
+    150,
+    60,
+    45
+   ],
+   "sources": [
+    {
+     "db": "polisen",
+     "file": "polisen_uso",
+     "geo": "all",
+     "table": "utsatta områden 2025"
+    }
+   ],
+   "calc": "polisen_share",
+   "fmt": "pct1",
+   "moe": null,
+   "desc": "Share of the area's land that lies inside an area the police have designated as utsatt område or särskilt utsatt område. Two classes, not three — riskområde no longer exists. Computed by intersecting Polisen's own polygons with our boundaries in SWEREF99 TM metres. An area with no designation is blank, not 0 %, and never inherits its kommun's figure.",
+   "source": "Polismyndigheten, utsatta områden (published November 2025)",
+   "group": "Safety",
+   "direction": "neutral",
+   "direction_note": "a police designation describes where resources are directed; it is not a score for the people who live there",
+   "asof": "2025-12-01",
+   "warn": "A police assessment of an area's conditions, current from 2025-12-01 and revised roughly every two years. It describes policing, not the people who live there, and the boundary is the police's own. An area that is not designated has no value here — it is not 0 %.",
+   "src_verify": [
+    {
+     "level": "kommun",
+     "db": "polisen",
+     "publisher": "Polismyndigheten, utsatta områden 2025",
+     "label": "Polismyndigheten, utsatta områden 2025",
+     "page": "https://polisen.se/om-polisen/polisens-arbete/utsatta-omraden/"
+    },
+    {
+     "level": "regso",
+     "db": "polisen",
+     "publisher": "Polismyndigheten, utsatta områden 2025",
+     "label": "Polismyndigheten, utsatta områden 2025",
+     "page": "https://polisen.se/om-polisen/polisens-arbete/utsatta-omraden/"
+    },
+    {
+     "level": "deso",
+     "db": "polisen",
+     "publisher": "Polismyndigheten, utsatta områden 2025",
+     "label": "Polismyndigheten, utsatta områden 2025",
+     "page": "https://polisen.se/om-polisen/polisens-arbete/utsatta-omraden/"
+    }
+   ],
+   "no_inherit": true
   }
  ],
  "src_periods": {

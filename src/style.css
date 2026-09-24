@@ -1382,6 +1382,12 @@ a.srcv:hover{border-bottom-style:solid}
 .fcline span em{font-style:normal;color:var(--muted);margin-right:4px}
 .fcline .fcsrc{flex-basis:100%;color:var(--muted);font-size:9.5px}
 .lfpop .fcline{margin:6px 0 4px;font-size:10.5px}
+/* the police designation — a flag with a date, never a rating */
+.usoline{display:flex;flex-wrap:wrap;align-items:baseline;gap:5px 10px;margin:8px 0 2px;padding:6px 9px;border-radius:7px;font-family:var(--mono);font-size:11px;border:1px solid rgba(150,60,45,.30);background:rgba(150,60,45,.05)}
+.usoline.sarskilt{border-color:rgba(150,60,45,.55);background:rgba(150,60,45,.09)}
+.usoline .usotag{font-family:var(--body);font-weight:600;color:#963C2D}
+.usoline .usosrc{flex-basis:100%;color:var(--muted);font-size:9.5px}
+.lfpop .usoline{margin:6px 0 4px;font-size:10.5px}
 .maplegs:empty{display:none}
 /* quick jumps sit in the toolbar as a plain segmented control */
 .tools .seg.jumps{margin-left:auto}

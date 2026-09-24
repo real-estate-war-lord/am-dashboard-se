@@ -47,6 +47,16 @@ ALL_LEVELS = LEVELS + ("none",)
 # Sources that are a file import rather than a queryable API: the honest link is
 # the publisher's own page for the dataset, which the registry records per source.
 PAGE_ONLY = {
+    # Brå's SOL is a stateful session app: there is no URL that reproduces one
+    # kommun's figure, so the honest "verify at source" is the selection form
+    # itself, which is where a reader would go to rebuild the query by hand.
+    # Brå's own page states it has no public open-data API.
+    # Polisen publishes the designation as one file, so the verifiable thing is
+    # that file itself plus the report that explains the classes.
+    "polisen": ("Polismyndigheten, utsatta områden 2025",
+                "https://polisen.se/om-polisen/polisens-arbete/utsatta-omraden/"),
+    "bra": ("Brå, Statistik On-Line (anmälda brott)",
+            "https://statistik.bra.se/solwebb/action/anmalda/urval/urval?menyid=101"),
     "boverket": ("Boverket, Bostadsmarknadsenkäten",
                  "https://www.boverket.se/sv/samhallsplanering/bostadsmarknad/"
                  "bostadsmarknadsenkaten-i-korthet/"),

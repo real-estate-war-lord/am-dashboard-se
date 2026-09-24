@@ -75,11 +75,21 @@ def main() -> int:
         shutil.copytree(src_deso, dst)
         n_deso = len(list(dst.glob("*.json")))
 
+    # overlay geometry that is small enough to ship whole and fetched on demand
+    n_ov = 0
+    for name in ("polisen_uso.geojson",):
+        src = PROC.parent / "geo" / name
+        if src.exists():
+            shutil.copyfile(src, out.parent / name)
+            n_ov += 1
+
     print(f"wrote {out} ({out.stat().st_size / 1e6:.1f} MB) · "
           f"{len(data['kommuner'])} kommuner · {len(data['regso'])} RegSO · "
           f"{len(data['indicators'])} indicators · {len(market.get('series') or {})} macro series")
     if n_deso:
         print(f"copied {n_deso} DeSO files → {out.parent / 'deso'}")
+    if n_ov:
+        print(f"copied {n_ov} overlay layer(s) → {out.parent}")
     miss = market.get("missing") or []
     if miss:
         print(f"macro series without data (shown as 'no data'): {', '.join(miss)}")
