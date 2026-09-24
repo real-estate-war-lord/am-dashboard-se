@@ -57,6 +57,19 @@ const fmtOf = i => {
   return FMT[i.fmt] || FMT.int;
 };
 const isPct = i => (i.fmt || "").startsWith("pct") || i.fmt === "signpct1";
+/* ---------- direction ----------
+   Every indicator declares `direction` in config/indicators.json:
+   higher_better | lower_better | neutral. It decides three things and nothing
+   else: which end a rank counts from, whether a delta is drawn green or red,
+   and whether the legend says so. `neutral` is the default for a descriptor —
+   a share of flerbostadshus has no better end, and colouring one green would be
+   editorialising. An indicator with no `direction` is treated as neutral rather
+   than silently assumed to be higher-is-better; scripts/validate_indicators.py
+   requires the field, so this is a belt-and-braces fallback, not a policy. */
+const indOf = k => IND.find(i => i.key === k) || null;
+const dirOf = i => { const d = (typeof i === "string" ? indOf(i) : i); return (d && d.direction) || "neutral"; };
+const lowerBetter = i => dirOf(i) === "lower_better";
+const neutralDir = i => dirOf(i) === "neutral";
 const median = arr => { const v = arr.filter(x => x != null && !isNaN(x)).sort((a, b) => a - b); if (!v.length) return null; const m = v.length >> 1; return v.length % 2 ? v[m] : (v[m - 1] + v[m]) / 2; };
 const byCode = {}; MUNI.forEach(m => byCode[m.code] = m);
 const byRegso = {}; AREAS.forEach(a => byRegso[a.code] = a);
@@ -85,7 +98,7 @@ const desoMode = () => !!(MK.kommun && MK.sub === "deso" && desoLoaded(MK.kommun
 const AR = { type: null, code: null, group: "", ind: null, sub: "regso", tab: "ind" };   /* area page: group = tile group, tab = lower panel */
 const UI = { indxOpen: false };                                                    /* fold states that survive a re-render */
 const MKT = { src: false };                                                        /* market: sources panel open */
-const CH = { ind: (IND[0] || {}).key, areas: [], y0: "", y1: "", median: true, title: "", mode: "auto", dist: "age" };   /* chart generator */
+const CH = { ind: (IND[0] || {}).key, areas: [], y0: "", y1: "", median: true, title: "", mode: "auto", dist: "age", fq: "year" };   /* chart generator; fq = yearly | quarterly */
 const T = { q: "", level: "kommun", lan: "", minPop: 0 };                           /* table view filters */
 const LAN = { "01": "Stockholm", "03": "Uppsala", "04": "Södermanland", "05": "Östergötland", "06": "Jönköping",
   "07": "Kronoberg", "08": "Kalmar", "09": "Gotland", "10": "Blekinge", "12": "Skåne", "13": "Halland",
@@ -123,9 +136,11 @@ function hashFor() {
   let p;
   if (S.view === "area") { p = `area/${AR.type}/${AR.code}`; if (AR.group) q.push(`g=${encodeURIComponent(AR.group)}`); if (AR.sub !== "regso") q.push(`sub=${AR.sub}`); if (AR.tab !== "ind") q.push(`t=${AR.tab}`); }
   else if (S.view === "table") p = `table/${T.level}`;
-  else if (S.view === "charts") { p = "charts"; q.length = 0; q.push(`ind=${encodeURIComponent(CH.ind)}`, `a=${CH.areas.join(",")}`, `y0=${CH.y0}`, `y1=${CH.y1}`, `med=${CH.median ? 1 : 0}`); if (CH.mode !== "auto") q.push(`mode=${CH.mode}`); if (CH.mode === "dist") q.push(`dist=${CH.dist}`); }
+  else if (S.view === "charts") { p = "charts"; q.length = 0; q.push(`ind=${encodeURIComponent(CH.ind)}`, `a=${CH.areas.join(",")}`, `y0=${CH.y0}`, `y1=${CH.y1}`, `med=${CH.median ? 1 : 0}`); if (CH.mode !== "auto") q.push(`mode=${CH.mode}`); if (CH.mode === "dist") q.push(`dist=${CH.dist}`); if (CH.fq !== "year") q.push(`fq=${CH.fq}`); }
+  else if (S.view === "sheet") { p = sheetHash(SH.kind, ...SH.parts); }
   else if (S.view === "market") { p = "market"; if (MKT.src) q.push("src=1"); }
-  else if (S.view === "makro") p = "map" + (MK.kommun ? "/" + MK.kommun + (MK.sub === "deso" ? "/deso" : "") : "");
+  else if (S.view === "makro") { p = "map" + (MK.kommun ? "/" + MK.kommun + (MK.sub === "deso" ? "/deso" : "") : "");
+    for (const o of ovList()) if (ovOn(o)) q.push(`${o.id}=1`); }
   else p = S.view;
   return p + "?" + q.join("&");
 }
@@ -141,8 +156,11 @@ function parseHash() {
   else if (v === "table") { S.view = "table"; if (["kommun", "regso", "deso"].includes(parts[1])) T.level = parts[1]; }
   else if (v === "sources") { S.view = "market"; MKT.src = true; }
   else if (v === "market") { S.view = "market"; MKT.src = q.src === "1"; }
-  else if (v === "charts") { S.view = "charts"; CH.ind = q.ind || CH.ind; CH.areas = q.a ? q.a.split(",").filter(Boolean) : CH.areas; CH.y0 = q.y0 || CH.y0; CH.y1 = q.y1 || CH.y1; CH.median = q.med !== "0"; CH.mode = q.mode || "auto"; CH.dist = q.dist || "size"; }
-  else { S.view = "makro"; MK.kommun = parts[1] && byCode[parts[1]] ? parts[1] : null;
+  else if (SHEETS[v] && parts.length > 1) { S.view = "sheet"; SH.kind = v; SH.parts = parts.slice(1); }
+  else if (v === "charts") { S.view = "charts"; CH.ind = q.ind || CH.ind; CH.areas = q.a ? q.a.split(",").filter(Boolean) : CH.areas; CH.y0 = q.y0 || CH.y0; CH.y1 = q.y1 || CH.y1; CH.median = q.med !== "0"; CH.mode = q.mode || "auto"; CH.dist = q.dist || "size"; CH.fq = q.fq === "q" ? "q" : "year"; }
+  else { S.view = "makro";
+         for (const o of OV) MK[o.flag] = q[o.id] === "1";
+         MK.kommun = parts[1] && byCode[parts[1]] ? parts[1] : null;
          MK.sub = parts[2] === "deso" ? "deso" : "regso";
          if (MK.sub === "deso") loadDeso(MK.kommun); }
   if (!curInds().some(i => i.key === MK.ind)) MK.ind = (curInds()[0] || {}).key;
@@ -185,6 +203,8 @@ function crumbs() {
   else if (S.view === "makro") { const m = MK.kommun ? byCode[MK.kommun] : null;
     if (m) { tail = m.name; kind = desoMode() ? "DeSO areas" : "RegSO areas"; }
     else { tail = "Map"; kind = "kommuner and RegSO"; } }
+  else if (S.view === "sheet") { const def = SHEETS[SH.kind];
+    tail = (def && def.crumb && def.crumb(SH.parts)) || SH.parts.join(" / "); kind = (def && def.label) || ""; }
   else { tail = viewOf(S.view)[1]; kind = { table: "every area side by side", charts: "PNG and CSV export", market: "national series and sources" }[S.view] || ""; }
   return { c, tail, kind };
 }
@@ -192,7 +212,7 @@ function renderTop() {
   const { c, tail, kind } = crumbs();
   document.getElementById("hd").innerHTML = `<nav class="crumbs">${c.map(([l, h]) => `<button data-go="${esc(h)}">${esc(l)}</button><i>›</i>`).join("")}<b>${esc(tail)}</b>${kind ? `<span class="dim">${esc(kind)}</span>` : ""}</nav>`;
 }
-const RENDER = { makro: vMakro, table: vTable, area: vArea, charts: vCharts, market: vMarket };
+const RENDER = { makro: vMakro, table: vTable, area: vArea, charts: vCharts, market: vMarket, sheet: vSheet };
 function render() {
   renderNav(); renderTop();
   const body = document.getElementById("body");
@@ -210,7 +230,13 @@ document.addEventListener("click", e => {
   if (g("[data-xall]")) { exportAll(); return; }
   if (g("[data-mkown]")) { MK.own = !MK.own; renderKeep(); return; }
   if (g("[data-fs]")) { toggleFullscreen(); return; }
+  if (g("[data-back]")) { history.back(); return; }
+  if ((el = g("[data-ov]"))) { const o = OV.find(x => x.id === el.dataset.ov);
+    if (o) { MK[o.flag] = !MK[o.flag]; LF[o.id + "Drawn"] = false; syncHash(); renderKeep(); } return; }
+  /* a jump moves the camera and returns — no selection change, so no re-render */
+  if ((el = g("[data-mapjump]"))) { mapJump(el.dataset.mapjump); return; }
   if ((el = g("[data-chmode]"))) { CH.mode = el.dataset.chmode; syncHash(); renderKeep(); return; }
+  if ((el = g("[data-chfq]"))) { CH.fq = el.dataset.chfq; syncHash(); renderKeep(); return; }
   if ((el = g("[data-chadd]"))) { chartAddMany(el.dataset.chadd.split("|")); return; }
   if ((el = g("[data-chrm]"))) { CH.areas = CH.areas.filter(a => a !== el.dataset.chrm); syncHash(); renderKeep(); return; }
   if (g("[data-chpng]")) { chartPng(); return; }
@@ -248,6 +274,14 @@ document.addEventListener("keydown", e => {
   if (e.key === "Enter" && e.target.id === "areaq") { areaSearchGo(e.target.value); return; }
   if (e.key === "Enter" && e.target.id === "chq") { chartAdd(null, e.target.value); return; }
   if (e.key === "Escape" && S.view === "area") history.back();
+  /* Quick jumps. Only on the map view, never with a modifier (Cmd-S must stay
+     Save), and never while the reader is typing — the area search box is one
+     keystroke away from these keys. */
+  if (S.view !== "makro" || e.metaKey || e.ctrlKey || e.altKey) return;
+  const t = e.target;
+  if (t && (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.isContentEditable)) return;
+  const j = MAP_JUMPS.find(x => x.key.toLowerCase() === (e.key || "").toLowerCase());
+  if (j) { mapJump(j.id); }
 });
 
 /* ---------- info tooltips (ⓘ) ---------- */
@@ -288,12 +322,44 @@ function enableSort(root) {
    them back to a label and a colour. */
 const catsOf = i => (i && i.cats) || null;
 const catOf = (i, v) => { const c = catsOf(i); return c ? c.find(x => x.v === v) || null : null; };
-function mkShade(t, key) {
+const PAPER = [232, 237, 231];
+function mkShade(t, key, sc) {
   /* five steps from a light tint to the full hue, the top class deeper still — differences read at a glance */
-  const i = IND.find(x => x.key === key); const hue = (i && i.hue) || [10, 88, 70];
-  const a = [232, 237, 231]; const s = 0.1 + 0.9 * Math.pow(Math.max(0, Math.min(1, t)), .9); const k = t >= .99 ? .72 : 1;
-  const c = a.map((x, j) => Math.round((x + (hue[j] - x) * s) * k));
+  const i = IND.find(x => x.key === key);
+  if (sc && sc.diverging) {
+    /* below the centre runs out to hue_neg, above it to hue_pos, and the middle
+       class stays paper — the eye reads the sign before it reads the size */
+    const lo = (i && i.hue_neg) || [176, 51, 27], hi = (i && i.hue_pos) || [28, 107, 92];
+    const d = (Math.max(0, Math.min(1, t)) - .5) * 2;
+    const hue = d < 0 ? lo : hi; const s = 0.12 + 0.88 * Math.pow(Math.abs(d), .85);
+    const c = PAPER.map((x, j) => Math.round(x + (hue[j] - x) * s));
+    return `rgb(${c[0]},${c[1]},${c[2]})`;
+  }
+  const hue = (i && i.hue) || [10, 88, 70];
+  const s = 0.1 + 0.9 * Math.pow(Math.max(0, Math.min(1, t)), .9); const k = t >= .99 ? .72 : 1;
+  const c = PAPER.map((x, j) => Math.round((x + (hue[j] - x) * s) * k));
   return `rgb(${c[0]},${c[1]},${c[2]})`;
+}
+/* Some indicators have a meaningful centre rather than a meaningful maximum —
+   a projected population change is above or below flat, and shading it as a
+   single ramp would make "-8 %" and "+1 %" two shades of the same colour.
+   A diverging indicator declares `scale: "diverging"`, a `center` (usually 0)
+   and two hues; breaks are quantiles of |v - centre| mirrored about it, so the
+   two arms always get the same class widths and the centre class is genuinely
+   "near flat". */
+function divergingScale(vals, ind) {
+  const c = ind.center != null ? ind.center : 0;
+  const dev = vals.map(v => Math.abs(v - c)).sort((a, b) => a - b);
+  if (!dev.length) return null;
+  const q = p => dev[Math.min(dev.length - 1, Math.floor(p * dev.length))];
+  const arm = [q(.4), q(.75)].filter((b, i, a) => b > 0 && (i === 0 || b > a[i - 1]));
+  if (!arm.length) return null;
+  const breaks = arm.slice().reverse().map(b => c - b).concat(arm.map(b => c + b));
+  const n = breaks.length + 1;
+  const mid = (n - 1) / 2;
+  const t = v => { if (v == null || isNaN(v)) return null; let k = 0; while (k < breaks.length && v > breaks[k]) k++; return k / (n - 1); };
+  return { t, lo: Math.min(...vals), hi: Math.max(...vals), breaks, classes: n, n: vals.length,
+           diverging: true, center: c, mid };
 }
 /* quintile classes: each colour step holds a fifth of the areas, so a few outliers cannot flatten the map */
 function scaleOf(list, vk, fixed, ind) {
@@ -306,6 +372,7 @@ function scaleOf(list, vk, fixed, ind) {
   }
   const vals = list.map(vk).filter(v => v != null && !isNaN(v)).sort((a, b) => a - b);
   if (!vals.length) return { t: () => null, lo: null, hi: null, breaks: [] };
+  if (ind && ind.scale === "diverging") { const d = divergingScale(vals, ind); if (d) return d; }
   const q = p => vals[Math.min(vals.length - 1, Math.floor(p * vals.length))];
   /* fixed breaks where the scale has a natural meaning (shares of a building); otherwise quintiles —
      repeated quantiles (many identical values) collapse into fewer, non-empty classes */
@@ -323,12 +390,30 @@ function legendHtml(sc, ind, key, note) {
     return `<div class="lgtitle">${esc(ind.short || ind.label)}<span>${esc(ind.unit || "")}</span></div>` +
       rows2.join("") + `<div class="lgrow"><i style="background:#C4CBC4"></i>no answer</div>${note ? `<div class="lgnote">${note}</div>` : ""}`;
   }
-  const rows = []; for (let c = n - 1; c >= 0; c--) rows.push(`<div class="lgrow"><i style="background:${mkShade(n > 1 ? c / (n - 1) : .5, key)}"></i>${lab(c)}</div>`);
+  const rows = []; for (let c = n - 1; c >= 0; c--) rows.push(`<div class="lgrow"><i style="background:${mkShade(n > 1 ? c / (n - 1) : .5, key, sc)}"></i>${lab(c)}</div>`);
+  /* The ramp itself is always "darkest = highest"; rather than invert the colours
+     for a lower-is-better indicator — which would make two maps side by side
+     unreadable — the legend says so in one line. */
+  const dnote = sc.diverging ? `\u2195 diverging about ${f(sc.center)}`
+    : lowerBetter(ind) ? "\u2193 lower is better \u00b7 darkest = highest"
+    : dirOf(ind) === "higher_better" ? "\u2191 higher is better \u00b7 darkest = highest" : "";
   return `<div class="lgtitle">${esc(ind.short || ind.label)}<span>${esc(ind.unit || "")}</span></div>` +
     (n ? rows.join("") : `<div class="lgrow dim">no data</div>`) +
-    `<div class="lgrow"><i style="background:#C4CBC4"></i>no data</div>${note ? `<div class="lgnote">${note}</div>` : ""}`;
+    `<div class="lgrow"><i style="background:#C4CBC4"></i>no data</div>` +
+    (dnote ? `<div class="lgnote">${esc(dnote)}</div>` : "") +
+    `${note ? `<div class="lgnote">${note}</div>` : ""}`;
 }
-function setLegend(id, sc, ind, key, note) { const el = document.getElementById(id); if (el) el.innerHTML = legendHtml(sc, ind, key, note); }
+function setLegend(id, sc, ind, key, note) {
+  const el = document.getElementById(id); if (el) el.innerHTML = legendHtml(sc, ind, key, note);
+  /* Every overlay legend is rewritten on every pass — including the ones whose
+     overlay is off, which write "" — so no path can leave a stale box behind.
+     `.maplegend:empty{display:none}` in style.css is what keeps an empty one
+     from showing as a white bar. */
+  for (const o of ovList()) {
+    const e2 = document.getElementById("lg-" + o.id);
+    if (e2) e2.innerHTML = (ovOn(o) && o.legend) ? o.legend() : "";
+  }
+}
 const GROUP_ORDER = ["Demographics", "Income & jobs", "Housing stock", "Rents", "Prices & market", "Construction", "Municipal finances", "Area quality"];
 function indSelect() {
   const L = curInds();
@@ -362,6 +447,63 @@ function asofText(i) {
   const asofSrc = (MK.year !== LATEST && i.hist_asof && i.hist_asof[MK.year]) ? i.hist_asof[MK.year] : i.asof;
   return asofSrc ? Object.entries(asofSrc).map(([g, p]) => `${g === "regso" ? "RegSO" : g === "deso" ? "DeSO" : "kommuner"}: ${esc(p)}`).join(" · ") : "";
 }
+/* ---------- verify at source ----------
+   A link that reproduces the publisher's own query for exactly the cells shown,
+   so a reader can fetch the number and get the same answer. The URL is built
+   here and, independently, in scripts/check_source_links.py — that duplication
+   is on purpose: the checker re-fetches every one of them, so if the two drift
+   apart the sweep stops matching the page and says so, instead of the reader
+   finding out.
+
+   The level a figure is DISPLAYED at is not always the level it is PUBLISHED
+   at. `code_level` says which to send; brf_price is drawn per kommun but comes
+   from a län table, and asking that table for a kommun code is a 400. */
+const SRC_PERIODS = D.src_periods || {};
+function srcPeriods(e, year) {
+  const newest = e.newest_period || "";
+  if ((e.time_kind || "year") === "year") return [newest && year > newest ? newest : year];
+  const codes = SRC_PERIODS[e.table] || [];
+  const hit = codes.filter(c => c.indexOf(year) === 0);
+  return hit.length ? hit : (newest ? [newest] : []);
+}
+function srcCode(e, level, code) {
+  const cl = e.code_level;
+  if (e.level === "national") return (e.region_levels || []).includes("riket") ? "00" : null;
+  if (cl === "riket") return "00";
+  if (cl === "lan") return (code || "").slice(0, 2) || null;
+  if (cl === "riksomrade") return null;
+  return code || null;
+}
+function srcUrl(e, level, code, year) {
+  if (!e) return null;
+  if (e.db === "kolada") return code ? `${e.api}/${code}` : e.api;
+  if (e.db !== "scb") return e.page || null;
+  const tids = srcPeriods(e, year || LATEST);
+  if (!tids.length) return null;
+  const q = ["lang=en", "outputFormat=csv"];
+  const rc = srcCode(e, level, code);
+  if (rc && e.region_dim) q.push(`valueCodes[${e.region_dim}]=${encodeURIComponent(rc)}`);
+  q.push(`valueCodes[${e.time_dim}]=${encodeURIComponent(tids.join(","))}`);
+  for (const d in (e.vars || {})) q.push(`valueCodes[${d}]=${encodeURIComponent(e.vars[d].join(","))}`);
+  return e.api + "?" + q.join("&");
+}
+/* the entry that can answer for this level, else the one nearest above it */
+function pickSrc(i, level) {
+  const L = i.src_verify || []; if (!L.length) return null;
+  return L.find(e => e.level === level)
+      || L.find(e => e.level === "kommun")
+      || L.find(e => e.level === "national") || L[0];
+}
+function indSrcLink(i, level, code, year) {
+  const e = pickSrc(i, level || "kommun"); if (!e) return "";
+  const u = srcUrl(e, level, code, year);
+  if (!u) return "";
+  const what = e.db === "scb" ? "downloads the CSV for exactly these cells"
+    : e.db === "kolada" ? "returns this KPI as JSON" : "opens the publisher's page";
+  return `<a class="srcv" href="${esc(u)}" target="_blank" rel="noopener"
+    title="${esc(e.label)} — ${what}">Verify at source ↗</a>`;
+}
+
 function indExplain(i) {
   const pool = curPool();
   const cov = `${MUNI.filter(m => m[i.key] != null).length}/${MUNI.length} kommuner${(i.levels || []).includes("regso") ? `, ${AREAS.filter(a => a[i.key] != null).length}/${AREAS.length} RegSO` : ""}${(i.levels || []).includes("deso") ? ", DeSO per kommun" : ""}`;
@@ -372,7 +514,7 @@ function indExplain(i) {
   return `<details class="indx" ${UI.indxOpen ? "open" : ""}>
     <summary><b>${esc(i.label)}</b><span class="tag">${i.level === "deso" ? "DeSO level" : i.level === "regso" ? "RegSO level" : i.level === "none" ? "national" : "kommun level"}</span><span class="tag">${esc(i.unit || "")}</span>${asofShort() ? `<span class="dim">as of ${esc(asofShort())}</span>` : ""}${i.warn ? `<span class="warnline">⚠</span>` : ""}<i class="more">ⓘ details</i></summary>
     <div class="indx-body"><p>${esc(i.desc || "")}</p>
-    <p class="dim"><em>Source</em> ${esc(i.source || "–")}${asof ? ` · <em>As of</em> ${asof}` : ""} · <em>Coverage</em> ${cov}${ys.length > 1 ? ` · <em>History</em> ${ys[0]}–${LATEST}` : ""}</p>
+    <p class="dim"><em>Source</em> ${esc(i.source || "–")}${asof ? ` · <em>As of</em> ${asof}` : ""} · <em>Coverage</em> ${cov}${ys.length > 1 ? ` · <em>History</em> ${ys[0]}–${LATEST}` : ""} ${indSrcLink(i, MK.kommun ? (desoMode() ? "deso" : "regso") : "kommun", MK.kommun, MK.year === LATEST ? LATEST : MK.year)}</p>
     ${i.warn ? `<p class="warnline">⚠ ${esc(i.warn)}</p>` : ""}</div>
   </details>`;
 }
@@ -411,9 +553,15 @@ function srcNote(extra = "") {
     ${esc((D.meta && D.meta.note) || "")}</div>${extra}<p class="cap">Full definitions and table stamps under <button class="lk mini" data-go="market?src=1">Market › Sources</button>. Built ${esc((D.meta && D.meta.built) || "–")}.</p></details>`;
 }
 function rankOf(o, key, peers) {
+  /* #1 is the best end, not the highest — on unemployment or forced sales that
+     is the lowest value. A neutral indicator still gets a position so the reader
+     can see where the area sits, but it is reported as "highest first" and
+     carries `neutral` so the caller can drop the good/bad colour. */
   const v = V(o, key); if (v == null) return null;
+  const ind = indOf(key);
   const vals = peers.map(p => V(p, key)).filter(x => x != null);
-  return { r: 1 + vals.filter(x => x > v).length, n: vals.length };
+  const lb = lowerBetter(ind);
+  return { r: 1 + vals.filter(x => (lb ? x < v : x > v)).length, n: vals.length, neutral: neutralDir(ind) };
 }
 function muniStrip(m) {
   /* the selected municipality in one line: population, region, selected indicator + rank, link to its page */
@@ -434,11 +582,13 @@ function vMakro() {
   return `
   <div class="card accent" id="mapcard">
     <div class="card-head tools-only">
-      <div class="tools">${areaSearch()}${subToggle()}${indSelect() + yearSelect()}${D.portfolio ? `<button class="lk mini ${MK.own ? "primary" : ""}" data-mkown>● Own properties</button>` : ""}<button class="lk" data-fs title="Full screen (Esc to exit)">⤢ Full screen</button></div>
+      <div class="tools">${areaSearch()}${subToggle()}${indSelect() + yearSelect()}${ovTools()}${jumpTools()}${D.portfolio ? `<button class="lk mini ${MK.own ? "primary" : ""}" data-mkown>● Own properties</button>` : ""}<button class="lk" data-fs title="Full screen (Esc to exit)">⤢ Full screen</button></div>
       ${indQuick()}</div>
     ${indExplain(ind)}
     ${muni ? muniStrip(muni) : ""}
-    <div class="mapwrap"><div id="lfmap"></div><div class="maplegend" id="maplegend"></div></div>
+    <div class="mapwrap"><div id="lfmap"></div>
+      <div class="maplegs">${ovList().map(o => `<div class="maplegend" id="lg-${o.id}"></div>`).join("")}</div>
+      <div class="maplegend" id="maplegend"></div></div>
     ${srcNote(`<p class="cap">${muni ? "Click a polygon for its figures and a link to its page." : "Click a polygon for its figures; open a kommun with the search box above or from the popup. Table view lists everything side by side."} Colour classes: quintiles of the visible areas. Boundaries: SCB RegSO/DeSO 2025 (CC0), clipped to the coastline with OSM land polygons (ODbL); basemap OpenStreetMap.</p>`)}
   </div>`;
 }
@@ -604,15 +754,19 @@ function tileStats(e, i) {
   const rk = cur.own ? rankOf(e.o, i.key, e.peers) : null;
   return { cur, ys, y0, own, med, yoy, since, vsMed, rk, unit };
 }
-const cls = d => d > 0 ? "up" : d < 0 ? "dn" : "";
+/* A rise is green only where a rise is good. On unemployment it is red, and on
+   a descriptor it is neither — `cls` returns "" and the delta is drawn plain. */
+const cls = (d, key) => { const i = key ? indOf(key) : null;
+  if (d == null || !d) return ""; if (i && neutralDir(i)) return "";
+  const good = i && lowerBetter(i) ? d < 0 : d > 0; return good ? "up" : "dn"; };
 function tileHtml(e, i, on) {
   const s = tileStats(e, i); if (!s) return "";
   return `<div class="tile ${on ? "on" : ""}" data-arind="${esc(i.key)}" title="${esc(i.desc || i.label)} — click to focus the chart and map">
     <button class="tch" data-go="${chartLink(i.key, e.type, e.code)}" title="Open in Charts">↗</button>
     <span class="tl">${esc(i.label)}${s.cur.own ? "" : " °"}</span>
-    <div class="tv"><b>${fmtOf(i)(s.cur.v)}</b>${moeSpan(i, s.cur.v, moeOf(i, s.cur.own ? e.o : e.kommun))}${s.yoy != null ? `<i class="${cls(s.yoy)}">${sign(s.yoy, x => nf(x, 1))}${s.unit} y/y</i>` : ""}</div>
+    <div class="tv"><b>${fmtOf(i)(s.cur.v)}</b>${moeSpan(i, s.cur.v, moeOf(i, s.cur.own ? e.o : e.kommun))}${s.yoy != null ? `<i class="${cls(s.yoy, i.key)}">${sign(s.yoy, x => nf(x, 1))}${s.unit} y/y</i>` : ""}</div>
     ${tileSpark(s.ys, s.own, s.med, i)}
-    <div class="tm">${s.rk ? `<span>#${s.rk.r} of ${s.rk.n}</span>` : `<span class="dim">municipality value</span>`}${s.vsMed != null ? `<span><i class="${cls(s.vsMed)}">${sign(s.vsMed, x => nf(x, 1))}${s.unit}</i> vs median</span>` : ""}</div>
+    <div class="tm">${s.rk ? `<span title="${s.rk.neutral ? "position, highest first — this indicator has no better end" : (lowerBetter(i) ? "rank, lowest first" : "rank, highest first")}">${s.rk.neutral ? "" : "#"}${s.rk.r} of ${s.rk.n}</span>` : `<span class="dim">municipality value</span>`}${s.vsMed != null ? `<span><i class="${cls(s.vsMed, i.key)}">${sign(s.vsMed, x => nf(x, 1))}${s.unit}</i> vs median</span>` : ""}</div>
   </div>`;
 }
 /* headline row under the area title: the five figures that answer "what kind of area is this" */
@@ -621,7 +775,7 @@ function headlineHtml(e) {
   if (!inds.length) return "";
   return `<div class="hl">${inds.map(i => { const s = tileStats(e, i); return `<button class="hlc ${MK.ind === i.key ? "on" : ""}" data-arind="${esc(i.key)}" title="${esc(i.desc || i.label)} — click to focus the chart and map">
     <span>${esc(i.short || i.label)}${s.cur.own ? "" : " °"}</span><b>${fmtOf(i)(s.cur.v)}${moeSpan(i, s.cur.v, moeOf(i, s.cur.own ? e.o : e.kommun))}</b>
-    <em>${s.yoy != null ? `<i class="${cls(s.yoy)}">${sign(s.yoy, x => nf(x, 1))}${s.unit}</i> y/y` : ""}${s.rk ? `${s.yoy != null ? " · " : ""}#${s.rk.r} of ${s.rk.n}` : ""}</em></button>`; }).join("")}</div>`;
+    <em>${s.yoy != null ? `<i class="${cls(s.yoy, i.key)}">${sign(s.yoy, x => nf(x, 1))}${s.unit}</i> y/y` : ""}${s.rk ? `${s.yoy != null ? " · " : ""}#${s.rk.r} of ${s.rk.n}` : ""}</em></button>`; }).join("")}</div>`;
 }
 function multiLine(series, ind, ys) {
   const all = series.flatMap(s => s.pts.map(p => p.v)).filter(v => v != null);
@@ -749,6 +903,44 @@ function distCard(e) {
     </div>
     <p class="cap">Källa: SCB — population by age and sex (TAB6574), income structure (TAB6683), dwellings by tenure (${e.type === "kommun" ? "TAB824" : "TAB6638"}), employment by industry (TAB6681, summed from RegSO at kommun level), self-sufficiency (TAB6766). Mean amounts are per person over the whole population, so components most people do not receive read low.</p>`;
 }
+/* ---------- datasheet shell ----------
+   One page for one thing that is not an area: a school, an infrastructure
+   project, a public building. Phases 4 and 7 supply the content; the shape is
+   fixed here so all three look and behave the same and the routing exists
+   before there is anything to route to.
+
+   A sheet is a hash route `#<kind>/<id…>`, and SHEETS is the only place that
+   knows which kinds exist — add an entry and the route, the back button and the
+   breadcrumb all work. `spec` is what the phase's renderer returns:
+     { title, tags:[…], tools:"<html>", tiles:"<html>", body:"<html>",
+       mapInit: fn|null, missing:"…" }
+   `missing` is what to say when the id is not found — never a blank page, and
+   never a zero. */
+const SHEETS = {};                 /* kind -> { label, render(parts) -> spec } */
+const SH = { kind: null, parts: [] };
+const sheetHash = (kind, ...parts) => [kind].concat(parts.map(encodeURIComponent)).join("/");
+
+function vSheet() {
+  const def = SHEETS[SH.kind];
+  const back = `<div class="back"><button data-go="map">‹ Macro map</button></div>`;
+  if (!def) return back + `<div class="card"><p class="empty">Unknown page.</p></div>`;
+  let spec;
+  try { spec = def.render(SH.parts); } catch (e) { console.warn("sheet " + SH.kind, e); spec = null; }
+  if (!spec) return back + `<div class="card"><p class="empty">${esc(def.missing || "Not found.")}</p></div>`;
+  if (spec.missing) return back + `<div class="card"><p class="empty">${esc(spec.missing)}</p></div>`;
+  if (spec.mapInit) setTimeout(spec.mapInit, 0);
+  return `
+  <div class="card accent arhead">
+    <div class="arid">
+      <h2>${esc(spec.title || "")}</h2>
+      <div class="artags">${(spec.tags || []).map(t => `<span class="tag">${esc(t)}</span>`).join("")}</div>
+    </div>
+    <div class="tools"><button class="lk" data-back>‹ Back</button>${spec.tools || ""}</div>
+    ${spec.tiles || ""}
+  </div>
+  ${spec.body || ""}`;
+}
+
 function vArea() {
   const e = areaEntity();
   if (!e) return `<div class="back"><button data-go="map">‹ Macro map</button></div><div class="card"><p class="empty">Unknown area.</p></div>`;
@@ -817,7 +1009,7 @@ function arMapInit() {
   ctx.forEach(a => {
     const isOwn = own.includes(a); const t = sc.t(vk(a));
     const p = L.polygon(a.rings, { color: isOwn && (outline || kommuneLevel) ? "#141C18" : "#FFFFFF", smoothFactor: 0.25, weight: isOwn && outline ? 2.6 : isOwn && kommuneLevel ? 1.2 : kommuneLevel ? 1.5 : useQ ? 0.4 : 0.8,
-      fillColor: t == null ? "#C4CBC4" : (sc.color ? sc.color(t) : mkShade(t, ind.key)), fillOpacity: isOwn ? .85 : kommuneLevel ? .35 : .45 });
+      fillColor: t == null ? "#C4CBC4" : (sc.color ? sc.color(t) : mkShade(t, ind.key, sc)), fillOpacity: isOwn ? .85 : kommuneLevel ? .35 : .45 });
     const v = vk(a); const native = kommuneLevel || (sind && V(a, sind.key) != null);
     const label = kommuneLevel ? (byCode[a.kommun] || {}).name : a.name;
     p.bindTooltip(`<b>${esc(label)}</b>${v != null ? `<br>${esc(sind.short || sind.label)}: ${fmtOf(sind)(v)}${native ? "" : " °"}` : ""}`);
@@ -916,7 +1108,7 @@ function lfLayers() {
     /* thinner the finer the level: a 1.5 px stroke that reads as a border between
        kommuner turns into a white haze over a kommun's worth of DeSO. */
     const w = !drill ? 1.5 : sub === "deso" ? 0.4 : 0.8;
-    const fill = t == null ? "#C4CBC4" : (sc.color ? sc.color(t) : mkShade(t, ind.key));
+    const fill = t == null ? "#C4CBC4" : (sc.color ? sc.color(t) : mkShade(t, ind.key, sc));
     /* smoothFactor is Leaflet dropping vertices within N screen pixels. At the
        default 1 it undoes the simplification budget the geometry was built to,
        and the angularity shows at close zoom. */
@@ -996,9 +1188,80 @@ function lfLabels() {
   LF.labG = L.layerGroup(labs).addTo(LF.map);
 }
 
+/* ---------- overlays ----------
+   An overlay is five hooks and no registry: a flag on MK, a `data-*` button in
+   the toolbar, an `lf<Name>Layers()` builder, a legend box in the stacked
+   column, and a part in the hash. OV is only the list of names, so the toolbar,
+   the hash and setLegend can iterate without any of them knowing what the
+   overlays actually draw. Phases 4, 6 and 7 add entries here.
+   Until one exists this is an empty list and every loop over it is a no-op. */
+const OV = [];                    /* [{id, label, flag, avail(), build(), legend()}] */
+const ovOn = o => !!MK[o.flag];
+const ovList = () => OV.filter(o => !o.avail || o.avail());
+
+/* Leaflet's canvas renderer keeps redrawing after its map has gone, and a point
+   layer that outlives a re-render throws inside _redraw on a null context —
+   which in the Danish edition killed every later map interaction silently.
+   The guard is a one-time prototype patch, and lfDrop() is its other half:
+   remove a layer group and forget it in one step, so nothing can hold a stale
+   reference. Both land now, before Phase 4 adds the first point layer. */
+function lfGuardCanvas() {
+  if (typeof L === "undefined" || !L.Canvas || L.Canvas.prototype._amGuarded) return;
+  const cp = L.Canvas.prototype, _redraw = cp._redraw, _update = cp._update;
+  cp._redraw = function () { if (!this._map || !this._ctx) return; return _redraw.apply(this, arguments); };
+  cp._update = function () { if (!this._map) return; return _update.apply(this, arguments); };
+  cp._amGuarded = true;
+}
+function lfDrop(...names) {
+  for (const n of names) {
+    const g = LF[n]; if (!g) continue;
+    try { if (LF.map && LF.map.hasLayer(g)) LF.map.removeLayer(g); } catch (e) {}
+    LF[n] = null;
+  }
+}
+
+/* ---------- quick jumps ----------
+   Camera only. mapJump() moves the viewport and does nothing else: it never
+   sets MK.kommun, never touches the hash, never opens a popup. Zooming is a
+   camera movement, never a selection — the Danish edition shipped a
+   zoom-decides-the-level ladder in v2.5 and had to take it out again in v2.5.1
+   because it kept changing what the reader had selected out from under them. */
+const MAP_JUMPS = [
+  { id: "sthlm", label: "Stockholm", key: "S", codes: ["0180"] },
+  { id: "gbg",   label: "Göteborg",  key: "G", codes: ["1480"] },
+  { id: "malmo", label: "Malmö",     key: "M", codes: ["1280"] },
+  { id: "se",    label: "Sweden",    key: "W", codes: null },
+];
+function mapJump(id) {
+  const j = MAP_JUMPS.find(x => x.id === id); if (!j || !LF.map) return;
+  if (!j.codes) { LF.map.setView([62.5, 16.5], 5); return; }
+  const b = boundsOf(j.codes.flatMap(c => muniAreas(c)));
+  if (b) LF.map.fitBounds(b, { padding: [24, 24] });
+}
+/* Redraws every overlay that is on and drops every overlay that is off. Called
+   after the choropleth is (re)built and on every viewport change, so an overlay
+   that loads its data per kommun can fill in as the reader pans. */
+function lfOverlays() {
+  if (!LF.map) return;
+  for (const o of ovList()) {
+    if (ovOn(o)) { try { o.build(); } catch (e) { console.warn("overlay " + o.id, e); } }
+    else { lfDrop(o.id + "Layer"); LF[o.id + "Drawn"] = false; }
+  }
+}
+function ovTools() {
+  const L2 = ovList(); if (!L2.length) return "";
+  return `<div class="seg">${L2.map(o =>
+    `<button class="sg ${ovOn(o) ? "on" : ""}" data-ov="${o.id}" title="${esc(o.title || o.label)}">${esc(o.label)}</button>`).join("")}</div>`;
+}
+function jumpTools() {
+  return `<div class="seg jumps">${MAP_JUMPS.map(j =>
+    `<button class="sg" data-mapjump="${j.id}" title="Move the map to ${esc(j.label)} (key ${j.key}) — this does not change the selection">${esc(j.label)}</button>`).join("")}</div>`;
+}
+
 function lfInit() {
   const el = document.getElementById("lfmap");
   if (!el || typeof L === "undefined") return;
+  lfGuardCanvas();
   if (LF.map) { try { LF.map.remove(); } catch (e) {} LF.map = null; }
   const map = L.map(el, { center: LF.center, zoom: LF.zoom, scrollWheelZoom: true, zoomSnap: 0.5, zoomDelta: 1, wheelPxPerZoomLevel: 30, wheelDebounceTime: 20 });
   LF.map = map;
@@ -1020,8 +1283,11 @@ function lfInit() {
        the reference survived, so every zoomend threw and labels stopped being
        rebuilt. Labels are sized against the screen, so they are always redone. */
     if (lvl !== LF.level) lfLayers(); else lfLabels();
+    lfOverlays();
   });
+  map.on("moveend", lfOverlays);
   lfLayers();
+  lfOverlays();
   applyPendingFit();
 }
 
@@ -1055,6 +1321,27 @@ function chartAdd(id, text) {
   const q = document.getElementById("chq"); if (q) { q.value = ""; q.focus(); }
 }
 function chartInd() { return IND.concat(IND_DESO.filter(i => !IND.some(x => x.key === i.key))).find(i => i.key === CH.ind) || IND[0]; }
+/* ---------- Yearly | Quarterly ----------
+   Some series are published quarterly and shown as a rolling four-quarter sum,
+   which is the only honest way to compare a quarter with the one before it. An
+   indicator gets the toggle only when the build wrote `q_periods` for it, and
+   only when EVERY selected area actually has quarters — a mixed selection falls
+   back to yearly rather than drawing a line with holes in it. The caption then
+   states that each point is a rolling four-quarter window. */
+const chQPeriods = ind => (ind && ind.q_periods) || [];
+function chartQ() {
+  if (CH.fq !== "q") return false;
+  const ind = chartInd();
+  if (chQPeriods(ind).length < 2) return false;
+  const ents = CH.areas.map(chEntity).filter(Boolean);
+  return ents.every(e => e.o && e.o.q && e.o.q[ind.key]);
+}
+const chQVal = (o, key, t) => { const q = o && o.q && o.q[key]; return q && q[t] != null ? q[t] : null; };
+function chartPeriods() {
+  if (!chartQ()) return chartYears();
+  const ps = chQPeriods(chartInd());
+  return ps.filter(t => (!CH.y0 || t.slice(0, 4) >= CH.y0) && (!CH.y1 || t.slice(0, 4) <= CH.y1));
+}
 function chartYears() {
   const ents = CH.areas.map(chEntity).filter(Boolean); const pool = ents.length ? ents.map(e => e.o) : MUNI;
   const hy = histYears(CH.ind, pool.concat(MUNI));
@@ -1066,12 +1353,14 @@ function chartMode() {
 }
 function chartAutoTitle() { if (chartMode() === "dist") return `${(DIST_DEFS[CH.dist] || DIST_DEFS.age)[0]} — share`; const i = chartInd(); return `${i.label}${i.unit ? " · " + i.unit : ""}${chartMode() === "bar" ? " — latest" : ""}`; }
 function chartSeries() {
-  const ind = chartInd(), ys = chartYears(); const ents = CH.areas.map(chEntity).filter(Boolean);
+  const ind = chartInd(), q = chartQ(), ys = chartPeriods(); const ents = CH.areas.map(chEntity).filter(Boolean);
   const series = ents.map((e, k) => { const own = e.inds.some(i => i.key === ind.key);
-    const val = y => { const v = V(e.o, ind.key, y); if (v != null) return v; return e.type === "regso" && e.kommun ? V(e.kommun, ind.key, y) : null; };
+    const val = y => { if (q) return chQVal(e.o, ind.key, y);
+      const v = V(e.o, ind.key, y); if (v != null) return v; return e.type === "regso" && e.kommun ? V(e.kommun, ind.key, y) : null; };
     return { name: e.name, color: CH_COLORS[k % CH_COLORS.length], pts: ys.map(y => ({ y, v: own ? val(y) : null })), inherited: e.type === "regso" && V(e.o, ind.key) == null && e.kommun && V(e.kommun, ind.key) != null }; });
   if (CH.median) { const pool = ents.length && ents.every(e => e.type === "deso") ? allDeso() : ents.length && ents.every(e => e.type === "regso") ? AREAS : MUNI;
-    series.push({ name: pool === MUNI ? "Sweden — median of kommuner" : pool === AREAS ? "Sweden — median of RegSO" : "Median of DeSO", color: "#8A8C81", dash: true, pts: ys.map(y => ({ y, v: median(pool.map(p => V(p, ind.key, y))) })) }); }
+    series.push({ name: pool === MUNI ? "Sweden — median of kommuner" : pool === AREAS ? "Sweden — median of RegSO" : "Median of DeSO", color: "#8A8C81", dash: true,
+      pts: ys.map(y => ({ y, v: median(pool.map(p => q ? chQVal(p, ind.key, y) : V(p, ind.key, y))) })) }); }
   return { ind, ys, series: series.filter(s => s.pts.some(p => p.v != null)) };
 }
 /* self-contained SVG (inline styles, title, legend) so the same markup renders on screen and rasterises to PNG */
@@ -1087,7 +1376,10 @@ function chTitleBlock(withTitle, ind, L0, sub) {
 }
 function chFoot(L0, H, ind, extra) {
   const src = (ind.source || ""); const short = src.length > 90 ? src.slice(0, 88) + "…" : src;
-  return `<text x="${L0}" y="${H - 14}" font-family="${CH_MONO}" font-size="11" fill="#8A8C81">Source: ${esc(short)} · Macro Dashboard — Sweden, open data · built ${esc((D.meta && D.meta.built) || "")}${extra || ""}</text>`;
+  /* a rolling window has to say so on the chart itself, not only in the toolbar —
+     the PNG leaves the toolbar behind */
+  const roll = chartQ() ? " · each point is the rolling sum of the four quarters ending there" : "";
+  return `<text x="${L0}" y="${H - 14}" font-family="${CH_MONO}" font-size="11" fill="#8A8C81">Source: ${esc(short)} · Macro Dashboard — Sweden, open data · built ${esc((D.meta && D.meta.built) || "")}${roll}${extra || ""}</text>`;
 }
 /* bars: latest value per selected area, sorted, median as a dashed marker */
 function chartSvgBar(withTitle) {
@@ -1194,7 +1486,9 @@ function vCharts() {
       <select id="chy1" class="indsel"><option value="">to ${LATEST}</option>${YEARS.map(y => `<option value="${y}" ${CH.y1 === y ? "selected" : ""}>${y}</option>`).join("")}</select>
       <label class="hint" style="display:flex;align-items:center;gap:5px"><input type="checkbox" id="chmed" ${CH.median ? "checked" : ""}> median</label>
       <div class="seg">${[["auto", "Auto"], ["line", "Line"], ["bar", "Bars"], ["dist", "Distribution"]].map(([m, l]) => `<button class="sg ${CH.mode === m ? "on" : ""}" data-chmode="${m}">${l}</button>`).join("")}</div>
+      ${chQPeriods(chartInd()).length > 1 ? `<div class="seg">${[["year", "Yearly"], ["q", "Quarterly"]].map(([m, l]) => `<button class="sg ${CH.fq === m ? "on" : ""}" data-chfq="${m}" title="${m === "q" ? "Each point is the rolling sum of the four quarters ending there" : "One point per year"}">${l}</button>`).join("")}</div>` : ""}
       ${chartMode() === "dist" ? `<select id="chdist" class="indsel">${Object.entries(DIST_DEFS).map(([k, v]) => `<option value="${k}" ${CH.dist === k ? "selected" : ""}>${v[0]}</option>`).join("")}</select>` : ""}</div></div>
+    ${CH.fq === "q" && !chartQ() && chQPeriods(chartInd()).length > 1 ? `<p class="hint" style="margin:0 0 8px">Showing years: not every selected area has quarterly figures, and a line mixing the two would not be comparable.</p>` : ""}
     ${ents.length && CH.mode === "auto" && chartMode() === "bar" && chartYears().length < 2 ? `<p class="hint" style="margin:0 0 8px">This indicator is a single snapshot (no history) — shown as bars of the latest value. BBR distributions are under <b>Distribution</b>.</p>` : ""}
     <div class="tfilters">
       <span class="asrch"><input id="chq" list="arealist" class="indsel" placeholder="Add kommun or RegSO… (Enter)" autocomplete="off"><datalist id="arealist">${AREA_OPTS.map(o => `<option value="${esc(o.t)}"></option>`).join("")}</datalist></span>
@@ -1290,7 +1584,7 @@ function vMarket() {
   if (!Object.keys(lt).length) return `<div class="card"><p class="empty">No macro series built yet — run the pipeline (see Sources).</p></div>`;
   const tile = (key, label) => { const o = lt[key]; if (!o) return ""; const yoy = o.yoy;
     return `<div><span>${esc(label)}</span><b>${nf(o.v, o.dec ?? 1)}<i class="u">${esc(o.unit || "")}</i></b>
-      ${yoy != null ? `<em class="k ${yoy > 0 ? "up" : yoy < 0 ? "dn" : ""}">${sign(yoy, x => nf(x, 1) + " %")} y/y</em>` : ""}<em>${esc(o.label || "")} · ${esc(o.t || "")}</em>${spark((mac.series || {})[key])}</div>`; };
+      ${yoy != null ? `<em class="k ${cls(yoy, key)}">${sign(yoy, x => nf(x, 1) + " %")} y/y</em>` : ""}<em>${esc(o.label || "")} · ${esc(o.t || "")}</em>${spark((mac.series || {})[key])}</div>`; };
   const heroKeys = mac.hero || ["policy_rate", "mortgage_rate", "bond_10y", "cpi"];
   const tableKeys = mac.table || Object.keys(lt);
   return `

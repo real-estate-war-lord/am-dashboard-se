@@ -140,9 +140,22 @@ def main() -> int:
         seen.add(key)
 
         for field in ("label", "short", "unit", "level", "levels", "sources",
-                      "calc", "fmt", "desc", "source", "group"):
+                      "calc", "fmt", "desc", "source", "group", "direction"):
             if field not in ind:
                 errors.append(f"{key}: missing required field '{field}'")
+
+        # `direction` decides which end a rank counts from and whether a delta is
+        # drawn green or red. A missing or misspelt value would silently invert a
+        # rank, so it is checked here rather than defaulted in the page.
+        if ind.get("direction") not in ("higher_better", "lower_better", "neutral"):
+            errors.append(f"{key}: direction '{ind.get('direction')}' is not "
+                          "higher_better|lower_better|neutral")
+        # A diverging scale needs a centre and both hues, or mkShade falls back to
+        # colours the legend does not describe.
+        if ind.get("scale") == "diverging":
+            for f2 in ("center", "hue_neg", "hue_pos"):
+                if ind.get(f2) is None:
+                    errors.append(f"{key}: scale 'diverging' needs '{f2}'")
 
         if ind.get("level") not in ("kommun", "regso", "deso", "none"):
             errors.append(f"{key}: level '{ind.get('level')}' is not kommun|regso|deso|none")

@@ -232,6 +232,76 @@ const medInd = D.indicators.find(i => i.key === "income_med");
 const medTxt = fmtOf(medInd)(byCode["0180"].income_med);
 assert("median income is not rendered as a percentage", !/%/.test(medTxt), `renders as "${medTxt}"`);
 
+/* ---- v1.2 direction ----
+   The same class of trap as the fmt fallback: a missing `direction` would not
+   throw, it would silently rank the worst kommun #1 and paint a rise in
+   unemployment green. */
+console.log("\ndirection:");
+const DIRS = ["higher_better", "lower_better", "neutral"];
+const badDir = D.indicators.filter(i => !DIRS.includes(i.direction)).map(i => `${i.key}:${i.direction}`);
+assert("every indicator declares a valid direction", badDir.length === 0, badDir.join(", ") || `all ${D.indicators.length} declared`);
+
+const rankOf = vm.runInContext("rankOf", sandbox);
+const clsFn = vm.runInContext("cls", sandbox);
+const MUNI_ = vm.runInContext("MUNI", sandbox);
+/* unemployment is lower_better: the kommun with the lowest rate must rank #1 */
+const un = MUNI_.filter(m => m.unemp != null).sort((a, b) => a.unemp - b.unemp);
+if (un.length > 2) {
+  const best = rankOf(un[0], "unemp", MUNI_), worst = rankOf(un[un.length - 1], "unemp", MUNI_);
+  assert("lower_better ranks the lowest unemployment #1",
+    best.r === 1 && worst.r === un.length, `lowest #${best.r}, highest #${worst.r} of ${best.n}`);
+}
+/* income is higher_better: the highest must rank #1 */
+const inc = MUNI_.filter(m => m.income_med != null).sort((a, b) => b.income_med - a.income_med);
+if (inc.length > 2) {
+  const top = rankOf(inc[0], "income_med", MUNI_);
+  assert("higher_better ranks the highest income #1", top.r === 1, `#${top.r} of ${top.n}`);
+}
+assert("a rise in unemployment is not green", clsFn(1.5, "unemp") === "dn", `cls = "${clsFn(1.5, "unemp")}"`);
+assert("a fall in unemployment is green", clsFn(-1.5, "unemp") === "up", `cls = "${clsFn(-1.5, "unemp")}"`);
+assert("a rise in income is green", clsFn(1.5, "income_med") === "up", `cls = "${clsFn(1.5, "income_med")}"`);
+assert("a neutral indicator gets no good/bad colour", clsFn(1.5, "flats") === "", `cls = "${clsFn(1.5, "flats")}"`);
+/* ---- v1.2 verify-at-source ----
+   The link must reproduce the publisher's query for the cells on screen. Two
+   ways it silently goes wrong: sending a kommun code to a län table (400), and
+   sending a bare year to a monthly table (400). Both are asserted here, and
+   scripts/check_source_links.py then re-fetches every link for real. */
+console.log("\nverify at source:");
+const srcUrl = vm.runInContext("srcUrl", sandbox), pickSrc = vm.runInContext("pickSrc", sandbox);
+const withLink = D.indicators.filter(i => (i.src_verify || []).length);
+assert("every indicator carries a verify query", withLink.length === D.indicators.length,
+  `${withLink.length} of ${D.indicators.length}`);
+
+const uIncome = srcUrl(pickSrc(D.indicators.find(i => i.key === "income_med"), "kommun"), "kommun", "0180", D.meta.latest_year);
+assert("a kommun indicator asks for the kommun code", /valueCodes%5BRegion%5D=0180|valueCodes\[Region\]=0180/.test(uIncome), uIncome.slice(0, 110));
+
+/* brf_price is drawn per kommun but published per län — the link must send the
+   län code, or SCB answers 400 "Non-existent value". */
+const brf = D.indicators.find(i => i.key === "brf_price");
+if (brf) {
+  const e = pickSrc(brf, "kommun");
+  const u = srcUrl(e, "kommun", "1785", D.meta.latest_year);
+  assert("a län-published indicator sends the län code, not the kommun",
+    e.code_level === "lan" && /Region\]=17|Region%5D=17/.test(u), `code_level=${e.code_level}, ${u.slice(-60)}`);
+}
+/* unemp sits on a monthly table: a bare year is not a Tid code there */
+const un2 = D.indicators.find(i => i.key === "unemp");
+if (un2) {
+  const e = pickSrc(un2, "kommun");
+  const u = srcUrl(e, "kommun", "0180", D.meta.latest_year);
+  assert("a monthly table gets month codes, not a bare year",
+    e.time_kind === "month" && /M\d\d/.test(u), `time_kind=${e.time_kind}`);
+}
+/* never ask a table for a period it does not have */
+const ahead = D.indicators.filter(i => (i.src_verify || []).some(e =>
+  e.newest_period && String(e.newest_period) < String(D.meta.latest_year) &&
+  (srcUrl(e, e.level, "0180", D.meta.latest_year) || "").includes(D.meta.latest_year)));
+assert("no link asks a table for a period after its last one", ahead.length === 0,
+  ahead.map(i => i.key).join(", ") || "all clamped to the table's newest period");
+
+assert("a neutral indicator's rank is marked neutral",
+  (rankOf(MUNI_.find(m => m.flats != null), "flats", MUNI_) || {}).neutral === true, "neutral flag set");
+
 S.view = "makro"; MK.kommun = null; MK.ind = "income_med";
 const mapHtml = A.vMakro();
 assert('no "380,8 %" anywhere on the map view', !/380[.,]8\s*%/.test(mapHtml), "checked the rendered HTML");

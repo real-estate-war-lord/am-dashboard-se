@@ -495,6 +495,7 @@ def main() -> int:
         print(f"  population {level}: {best} · {len(vals.get(best) or {})} areas")
 
     # ---- indicators
+    src_periods = c.get("src_periods") or {}
     n_hist = int(c.get("history_years", 11))
     all_years: set = set()
     indicators_out = []
@@ -744,6 +745,9 @@ def main() -> int:
             "warnings": warnings,
         },
         "indicators": indicators_out,
+        # shared by every verify-at-source link on a monthly or quarterly table:
+        # a year is not a Tid code there, so the page needs the real period codes
+        "src_periods": src_periods,
         "kommuner": sorted(kommuner.values(), key=lambda m: -(m.get("pop") or 0)),
         "regso": sorted(regso.values(), key=lambda a: a["code"]),
         "deso_index": index,
@@ -758,10 +762,17 @@ def main() -> int:
 
 
 def meta_of(ind: dict, asof: dict, hist_asof: dict) -> dict:
-    out = {k: ind[k] for k in ("key", "label", "short", "unit", "level", "levels", "hue", "group")
+    # `direction` and the diverging-scale fields must travel with the indicator:
+    # the page reads them straight off window.DATA, and an indicator that lost
+    # its direction on the way out would rank the worst kommun #1 in silence.
+    out = {k: ind[k] for k in ("key", "label", "short", "unit", "level", "levels", "hue", "group",
+                               "direction", "direction_note", "scale", "center", "hue_neg", "hue_pos")
            if k in ind}
     if ind.get("cats"):
         out["cats"] = ind["cats"]
+    # the verify-at-source queries, built by scripts/build_src_links.py
+    if ind.get("src_verify"):
+        out["src_verify"] = ind["src_verify"]
     out.update({"fmt": ind.get("fmt", "pct1"), "desc": ind.get("desc", ""),
                 "source": ind.get("source", ""), "warn": ind.get("warn", ""),
                 "note": ind.get("note", ""), "moe": bool(ind.get("moe")),

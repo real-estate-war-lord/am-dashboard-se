@@ -90,3 +90,76 @@ Probe run 2026-09-24. `scripts/probe_parity.py` → `docs/PARITY_PROBE.md`
 `make validate` clean (44 indicators). `make test` clean. `make build` clean (14.8 MB).
 No screenshots this phase — nothing visual changed.
 
+## Phase 1 — UI foundation from DK v2.0–v2.5.1
+
+### Check table
+
+| Piece | Where | Note |
+|---|---|---|
+| `direction` on every indicator | `config/indicators.json`, written by `scripts/set_directions.py` | 4 higher_better, 4 lower_better, **36 neutral** |
+| direction-aware `rankOf` | `src/app.js` | #1 counts from the best end; a neutral indicator reports a position, not a rank |
+| direction-aware `cls` | `src/app.js` | a rise in unemployment is red; a neutral delta gets no colour at all |
+| legend direction note | `legendHtml` | "↓ lower is better · darkest = highest" — the ramp is never inverted |
+| diverging scale | `divergingScale`, `mkShade` | breaks mirrored about `center`; for Phase 2's Outlook |
+| canvas-renderer guard + `lfDrop` | `lfGuardCanvas` | lands **before** the first point layer, as the port order requires |
+| overlay-pill framework | `OV`, `ovTools`, `lfOverlays` | five hooks per overlay; `OV` is empty until Phase 4 |
+| stacked legend column | `.maplegs` in `style.css` | `setLegend` rewrites every overlay legend each pass; `:empty` hides the off ones |
+| quick jumps S / G / M / W | `MAP_JUMPS`, `mapJump` | `fitBounds` and nothing else — no selection, no hash, no popup |
+| Yearly \| Quarterly toggle | `CH.fq`, `chartQ`, `chartPeriods` | appears only when `q_periods` exists **and** every selected area has quarters |
+| datasheet shell | `SHEETS`, `vSheet` | routing and chrome only; Phases 4 and 7 supply content |
+| verify-at-source | `indSrcLink`, `scripts/build_src_links.py` | 70 queries across all 44 indicators |
+| `make links` / `make srclinks` | `Makefile` | full sweep split out of `validate` because it is the only target needing network |
+
+### The direction rule, and why 36 of 44 are neutral
+
+An indicator gets `higher_better` or `lower_better` only where the source itself,
+or an uncontested convention, says which end is good: unemployment, at-risk-of-poverty,
+forced sales and municipal debt down; income, median income, employment and equity ratio
+up. Everything else is `neutral`, which switches off the green/red delta and the rank
+sense. A share of flerbostadshus, a share aged 20–34 or a rent has no better end, and
+colouring one green would be this dashboard editorialising rather than reporting.
+`neutral` is the safe default because a wrong direction silently inverts a rank and a
+colour — the same class of silent error the `fmt` fallback already cost this repo once.
+`scripts/validate_indicators.py` now **requires** the field, and `tests/smoke.js` fails
+if any indicator lacks a valid one.
+
+### Bugs found and fixed while building verify-at-source
+
+The first cut produced links that 400'd on 46 of 69 queries. Three separate causes:
+
+1. **`0010` is a riksområde, not a kommun.** Classifying any four-digit Region code as a
+   kommun made every län-published indicator ask for a kommun that table has never
+   heard of. A four-digit code is a kommun only when its first two digits are one of
+   the 21 län.
+2. **The display level is not the publication level.** `brf_price` is drawn per kommun
+   but published per län; the entry now records `code_level` and the link sends the län
+   code. The smoke test asserts this specific case.
+3. **The dashboard's latest year runs ahead of individual tables.** A table ending in
+   2025 rejects 2026 outright, so each entry records its own `newest_period` and the
+   year is clamped to it.
+
+Plus the monthly/quarterly point from Phase 0: six of the 31 tables are not yearly, and
+a bare year is not a valid `Tid` code on them.
+
+`src_url` is implemented **twice** on purpose — once in `src/app.js` for the link and
+once in `scripts/check_source_links.py` for the sweep — so drift between them shows up
+as a failing sweep rather than as a reader finding a dead link.
+
+### Gates
+
+| Gate | Result |
+|---|---|
+| `make validate` | clean — 44 indicators, `direction` now required |
+| `make links` | **69 of 69 queries returned cells** |
+| `make test` | clean — 13 new assertions (5 direction, 5 verify-at-source, 3 existing) |
+| `make build` | clean, 14.9 MB |
+| screenshots | `docs/screenshots/v12_map.png`, `v12_charts.png` — temporary server on a random port, stopped |
+
+### ⚠ raised
+
+| ⚠ | Decision |
+|---|---|
+| SCB resets connections during a sustained sweep well below its stated 30/10 s | throttle to 10/10 s and retry a reset; a 400 is never retried, since a wrong query will not improve |
+| `socio` direction still unverified | stays `neutral`; carried to Phase 8 |
+| `OV` is empty, so the overlay pills render nothing yet | intended — the framework lands before its first consumer |
+

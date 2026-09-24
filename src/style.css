@@ -1361,6 +1361,21 @@ details.indx .indx-body p{margin:0 0 3px}
 .maplegend .lgrow i{width:16px;height:12px;border-radius:2px;flex:0 0 16px;border:1px solid rgba(0,0,0,.08)}
 .maplegend .lgnote{margin-top:5px;font-size:9.5px;color:var(--muted);white-space:normal;max-width:190px;line-height:1.35}
 .maplegend.small{right:8px;bottom:8px;padding:6px 8px 5px;font-size:10px;min-width:120px}
+/* Overlay legends stack in one scrolling column at the top right; the indicator
+   legend keeps the bottom right to itself. `:empty` is what stops an overlay
+   that is switched off from leaving a 180x17 white bar behind — setLegend()
+   rewrites every overlay legend on every pass, writing "" for the ones that are
+   off, and this rule hides those. */
+.maplegs{position:absolute;top:12px;right:12px;z-index:800;display:flex;flex-direction:column;align-items:flex-end;gap:8px;max-height:calc(100% - 24px);overflow-y:auto;pointer-events:none}
+.maplegs .maplegend{position:static;right:auto;bottom:auto;pointer-events:auto}
+.maplegend:empty{display:none}
+/* "Verify at source" — the publisher's own query for the cells on screen */
+a.srcv{font-family:var(--mono);font-size:10.5px;color:var(--accent,#1C6B5C);text-decoration:none;border-bottom:1px dotted currentColor;white-space:nowrap}
+a.srcv:hover{border-bottom-style:solid}
+.maplegs:empty{display:none}
+/* quick jumps sit in the toolbar as a plain segmented control */
+.tools .seg.jumps{margin-left:auto}
+
 .maplegend.small .lgrow i{width:13px;height:10px;flex-basis:13px}
 #mapcard:fullscreen .maplegend,#mapcard.fs-fallback .maplegend{bottom:20px}
 .mklegend{display:none}

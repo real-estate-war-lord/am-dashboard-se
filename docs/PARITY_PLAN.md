@@ -10,8 +10,8 @@ the phase checklist below, pick the first unticked phase, and read
 
 ## Phase checklist
 
-- [ ] **Phase 0** — Plan file + probe
-- [ ] **Phase 1** — UI foundation from DK v2.0–v2.5.1
+- [x] **Phase 0** — Plan file + probe
+- [x] **Phase 1** — UI foundation from DK v2.0–v2.5.1
 - [ ] **Phase 2** — Population outlook (demographics)
 - [ ] **Phase 3** — Safety (crime)
 - [ ] **Phase 4** — Schools
@@ -21,6 +21,18 @@ the phase checklist below, pick the first unticked phase, and read
 - [ ] **Phase 8** — Docs, verification, wrap-up
 
 ### Status log
+
+**Phase 0** (commit `95f7376`) — 35 capabilities probed, 33 routed; the 2 unrouted are
+key-gated with a documented fallback. Ten routes differ from the brief; all logged.
+Brå needed a TLS-intermediate fix (`scripts/http_util.py`), not a user-agent change.
+Clearance per kommun and SALSA bulk export do not exist — both omitted, not modelled.
+Polisen publishes polygons and **two** classes, not three.
+
+**Phase 1** — direction awareness, diverging scale, canvas guard, overlay framework,
+stacked legends, quick jumps S/G/M/W, Yearly|Quarterly toggle, datasheet shell and
+verify-at-source (70 queries, `make links` 69/69). 36 of 44 indicators are `neutral`
+by the stated rule. Three real bugs found and fixed in the link builder.
+Gates: validate / links / test / build all clean.
 
 _(each phase appends a 5-line status here when it is ticked)_
 

@@ -50,6 +50,7 @@ def main() -> int:
         "kommuner": makro.get("kommuner", []),
         "regso": makro.get("regso", []),
         "deso_index": makro.get("deso_index", {}),
+        "src_periods": makro.get("src_periods", {}),
         "macro": market,
     }
     payload = json.dumps(data, ensure_ascii=False, separators=(",", ":")).replace("</script", "<\\/script")

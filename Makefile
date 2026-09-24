@@ -2,7 +2,7 @@
 # Targets that exist today. `build` and `serve` tell you what is missing
 # rather than failing cryptically — the build scripts land after the data pull.
 
-.PHONY: help selftest test verify geo land simplify riksbank kolada external discover dry fetch status validate build serve
+.PHONY: help selftest test verify geo land simplify riksbank kolada external discover dry fetch status validate links srclinks build serve
 
 help:
 	@echo "make selftest   offline checks, no network (1 s)"
@@ -15,6 +15,8 @@ help:
 	@echo "make fetch      THE DATA PULL — 45-90 min, resumable, keeps the Mac awake"
 	@echo "make status     what is on disk right now"
 	@echo "make validate   check config/indicators.json against the metadata on disk"
+	@echo "make links      re-fetch every verify-at-source link (network, ~2 min)"
+	@echo "make srclinks   rebuild the verify-at-source queries from the metadata"
 	@echo "make test       render every view headlessly against the built page"
 	@echo "make verify     recompute 5 kommuner x 3 indicators straight from the API"
 	@echo "make external   Boverket BME, Kronofogden and Kolada -> data/external/"
@@ -56,6 +58,16 @@ status:
 
 validate:
 	python3 scripts/validate_indicators.py
+
+# Rebuild the per-indicator "Verify at source" queries from the metadata on disk.
+# Run after editing config/indicators.json, then `make build`.
+srclinks:
+	python3 scripts/build_src_links.py
+
+# The full sweep: fetch every verify-at-source link and check it returns cells.
+# Split out of `make validate` because it is the only target that needs network.
+links:
+	python3 scripts/check_source_links.py
 
 verify:
 	python3 scripts/verify_scb.py

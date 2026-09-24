@@ -98,7 +98,110 @@
    "moe": null,
    "desc": "Population change over the last 12 months, % of the population a year earlier.",
    "source": "SCB TAB6574 (population by region, age and sex, 31 Dec) · TAB6473 (monthly, kommun)",
-   "group": "Demographics"
+   "group": "Demographics",
+   "direction": "neutral",
+   "direction_note": "population growth is not good or bad in itself — a shrinking kommun and an overheating one are different problems, not a ranking",
+   "src_verify": [
+    {
+     "level": "kommun",
+     "db": "scb",
+     "table": "TAB6574",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6574/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6574?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "year",
+     "newest_period": "2025",
+     "code_level": "kommun",
+     "region_levels": [
+      "deso",
+      "kommun",
+      "lan",
+      "regso"
+     ],
+     "vars": {
+      "Alder": [
+       "totalt"
+      ],
+      "Kon": [
+       "1+2"
+      ],
+      "ContentsCode": [
+       "000007Y7"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB6574",
+     "updated": "2026-03-24T07:00:00Z"
+    },
+    {
+     "level": "regso",
+     "db": "scb",
+     "table": "TAB6574",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6574/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6574?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "year",
+     "newest_period": "2025",
+     "code_level": "regso",
+     "region_levels": [
+      "deso",
+      "kommun",
+      "lan",
+      "regso"
+     ],
+     "vars": {
+      "Alder": [
+       "totalt"
+      ],
+      "Kon": [
+       "1+2"
+      ],
+      "ContentsCode": [
+       "000007Y7"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB6574",
+     "updated": "2026-03-24T07:00:00Z"
+    },
+    {
+     "level": "deso",
+     "db": "scb",
+     "table": "TAB6574",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6574/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6574?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "year",
+     "newest_period": "2025",
+     "code_level": "deso",
+     "region_levels": [
+      "deso",
+      "kommun",
+      "lan",
+      "regso"
+     ],
+     "vars": {
+      "Alder": [
+       "totalt"
+      ],
+      "Kon": [
+       "1+2"
+      ],
+      "ContentsCode": [
+       "000007Y7"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB6574",
+     "updated": "2026-03-24T07:00:00Z"
+    }
+   ]
   },
   {
    "key": "young",
@@ -198,7 +301,116 @@
    "moe": null,
    "desc": "Persons aged 20–34 as % of the total population (ages 20–24 + 25–29 + 30–34 ÷ total).",
    "source": "SCB TAB6574",
-   "group": "Demographics"
+   "group": "Demographics",
+   "direction": "neutral",
+   "direction_note": "age structure is a descriptor",
+   "src_verify": [
+    {
+     "level": "kommun",
+     "db": "scb",
+     "table": "TAB6574",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6574/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6574?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "year",
+     "newest_period": "2025",
+     "code_level": "kommun",
+     "region_levels": [
+      "deso",
+      "kommun",
+      "lan",
+      "regso"
+     ],
+     "vars": {
+      "Alder": [
+       "20-24",
+       "25-29",
+       "30-34"
+      ],
+      "Kon": [
+       "1+2"
+      ],
+      "ContentsCode": [
+       "000007Y7"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB6574",
+     "updated": "2026-03-24T07:00:00Z"
+    },
+    {
+     "level": "regso",
+     "db": "scb",
+     "table": "TAB6574",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6574/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6574?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "year",
+     "newest_period": "2025",
+     "code_level": "regso",
+     "region_levels": [
+      "deso",
+      "kommun",
+      "lan",
+      "regso"
+     ],
+     "vars": {
+      "Alder": [
+       "20-24",
+       "25-29",
+       "30-34"
+      ],
+      "Kon": [
+       "1+2"
+      ],
+      "ContentsCode": [
+       "000007Y7"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB6574",
+     "updated": "2026-03-24T07:00:00Z"
+    },
+    {
+     "level": "deso",
+     "db": "scb",
+     "table": "TAB6574",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6574/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6574?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "year",
+     "newest_period": "2025",
+     "code_level": "deso",
+     "region_levels": [
+      "deso",
+      "kommun",
+      "lan",
+      "regso"
+     ],
+     "vars": {
+      "Alder": [
+       "20-24",
+       "25-29",
+       "30-34"
+      ],
+      "Kon": [
+       "1+2"
+      ],
+      "ContentsCode": [
+       "000007Y7"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB6574",
+     "updated": "2026-03-24T07:00:00Z"
+    }
+   ]
   },
   {
    "key": "single",
@@ -284,7 +496,101 @@
    "desc": "Single persons without children (ESUB) as % of all households.",
    "source": "SCB TAB6568",
    "warn": "ESUB is 'single without children'. ESMB — single WITH children — is not a one-person household and is deliberately excluded.",
-   "group": "Demographics"
+   "group": "Demographics",
+   "direction": "neutral",
+   "direction_note": "household structure is a descriptor",
+   "src_verify": [
+    {
+     "level": "kommun",
+     "db": "scb",
+     "table": "TAB6568",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6568/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6568?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "year",
+     "newest_period": "2025",
+     "code_level": "kommun",
+     "region_levels": [
+      "deso",
+      "kommun",
+      "lan",
+      "regso"
+     ],
+     "vars": {
+      "Hushallstyp": [
+       "ESUB"
+      ],
+      "ContentsCode": [
+       "000007Y1"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB6568",
+     "updated": "2026-03-24T07:00:00Z"
+    },
+    {
+     "level": "regso",
+     "db": "scb",
+     "table": "TAB6568",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6568/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6568?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "year",
+     "newest_period": "2025",
+     "code_level": "regso",
+     "region_levels": [
+      "deso",
+      "kommun",
+      "lan",
+      "regso"
+     ],
+     "vars": {
+      "Hushallstyp": [
+       "ESUB"
+      ],
+      "ContentsCode": [
+       "000007Y1"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB6568",
+     "updated": "2026-03-24T07:00:00Z"
+    },
+    {
+     "level": "deso",
+     "db": "scb",
+     "table": "TAB6568",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6568/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6568?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "year",
+     "newest_period": "2025",
+     "code_level": "deso",
+     "region_levels": [
+      "deso",
+      "kommun",
+      "lan",
+      "regso"
+     ],
+     "vars": {
+      "Hushallstyp": [
+       "ESUB"
+      ],
+      "ContentsCode": [
+       "000007Y1"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB6568",
+     "updated": "2026-03-24T07:00:00Z"
+    }
+   ]
   },
   {
    "key": "foreign",
@@ -378,7 +684,110 @@
    "moe": null,
    "desc": "Persons with foreign background (born abroad, or born in Sweden to two foreign-born parents) as % of the population.",
    "source": "SCB TAB6571",
-   "group": "Demographics"
+   "group": "Demographics",
+   "direction": "neutral",
+   "direction_note": "a population descriptor, not a score",
+   "src_verify": [
+    {
+     "level": "kommun",
+     "db": "scb",
+     "table": "TAB6571",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6571/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6571?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "year",
+     "newest_period": "2025",
+     "code_level": "kommun",
+     "region_levels": [
+      "deso",
+      "kommun",
+      "lan",
+      "regso"
+     ],
+     "vars": {
+      "UtlBakgrund": [
+       "1"
+      ],
+      "Kon": [
+       "1+2"
+      ],
+      "ContentsCode": [
+       "000007Y4"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB6571",
+     "updated": "2026-03-24T07:00:00Z"
+    },
+    {
+     "level": "regso",
+     "db": "scb",
+     "table": "TAB6571",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6571/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6571?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "year",
+     "newest_period": "2025",
+     "code_level": "regso",
+     "region_levels": [
+      "deso",
+      "kommun",
+      "lan",
+      "regso"
+     ],
+     "vars": {
+      "UtlBakgrund": [
+       "1"
+      ],
+      "Kon": [
+       "1+2"
+      ],
+      "ContentsCode": [
+       "000007Y4"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB6571",
+     "updated": "2026-03-24T07:00:00Z"
+    },
+    {
+     "level": "deso",
+     "db": "scb",
+     "table": "TAB6571",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6571/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6571?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "year",
+     "newest_period": "2025",
+     "code_level": "deso",
+     "region_levels": [
+      "deso",
+      "kommun",
+      "lan",
+      "regso"
+     ],
+     "vars": {
+      "UtlBakgrund": [
+       "1"
+      ],
+      "Kon": [
+       "1+2"
+      ],
+      "ContentsCode": [
+       "000007Y4"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB6571",
+     "updated": "2026-03-24T07:00:00Z"
+    }
+   ]
   },
   {
    "key": "income",
@@ -458,7 +867,110 @@
    "desc": "Mean net income per person, SEK thousands per year, constant prices (income component 240 = net income).",
    "source": "SCB TAB6683",
    "warn": "Published with a ~13-month lag; latest year is 2024. Constant prices — not comparable with nominal series.",
-   "group": "Income & jobs"
+   "group": "Income & jobs",
+   "direction": "higher_better",
+   "direction_note": "mean net income per person",
+   "src_verify": [
+    {
+     "level": "kommun",
+     "db": "scb",
+     "table": "TAB6683",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6683/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6683?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "year",
+     "newest_period": "2024",
+     "code_level": "kommun",
+     "region_levels": [
+      "deso",
+      "kommun",
+      "lan",
+      "regso"
+     ],
+     "vars": {
+      "Inkomstkomponenter": [
+       "240"
+      ],
+      "Kon": [
+       "1+2"
+      ],
+      "ContentsCode": [
+       "000008A4"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB6683",
+     "updated": "2026-01-20T07:00:00Z"
+    },
+    {
+     "level": "regso",
+     "db": "scb",
+     "table": "TAB6683",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6683/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6683?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "year",
+     "newest_period": "2024",
+     "code_level": "regso",
+     "region_levels": [
+      "deso",
+      "kommun",
+      "lan",
+      "regso"
+     ],
+     "vars": {
+      "Inkomstkomponenter": [
+       "240"
+      ],
+      "Kon": [
+       "1+2"
+      ],
+      "ContentsCode": [
+       "000008A4"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB6683",
+     "updated": "2026-01-20T07:00:00Z"
+    },
+    {
+     "level": "deso",
+     "db": "scb",
+     "table": "TAB6683",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6683/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6683?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "year",
+     "newest_period": "2024",
+     "code_level": "deso",
+     "region_levels": [
+      "deso",
+      "kommun",
+      "lan",
+      "regso"
+     ],
+     "vars": {
+      "Inkomstkomponenter": [
+       "240"
+      ],
+      "Kon": [
+       "1+2"
+      ],
+      "ContentsCode": [
+       "000008A4"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB6683",
+     "updated": "2026-01-20T07:00:00Z"
+    }
+   ]
   },
   {
    "key": "income_med",
@@ -520,7 +1032,92 @@
    "desc": "Median equivalised disposable income, SEK thousands per year.",
    "source": "SCB TAB6684 (equivalised disposable income by region)",
    "note": "TAB5750 also carries a RegSO median, but in price base amounts, RegSO only, frozen at 2023 and on the RegSO2020 vintage — TAB6684 is preferred because it is current, on the 2025 vintage and exists at all three levels.",
-   "group": "Income & jobs"
+   "group": "Income & jobs",
+   "direction": "higher_better",
+   "direction_note": "median disposable income",
+   "src_verify": [
+    {
+     "level": "kommun",
+     "db": "scb",
+     "table": "TAB6684",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6684/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6684?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "year",
+     "newest_period": "2024",
+     "code_level": "kommun",
+     "region_levels": [
+      "deso",
+      "kommun",
+      "lan",
+      "regso"
+     ],
+     "vars": {
+      "ContentsCode": [
+       "000008AB"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB6684",
+     "updated": "2026-01-20T07:00:00Z"
+    },
+    {
+     "level": "regso",
+     "db": "scb",
+     "table": "TAB6684",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6684/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6684?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "year",
+     "newest_period": "2024",
+     "code_level": "regso",
+     "region_levels": [
+      "deso",
+      "kommun",
+      "lan",
+      "regso"
+     ],
+     "vars": {
+      "ContentsCode": [
+       "000008AB"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB6684",
+     "updated": "2026-01-20T07:00:00Z"
+    },
+    {
+     "level": "deso",
+     "db": "scb",
+     "table": "TAB6684",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6684/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6684?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "year",
+     "newest_period": "2024",
+     "code_level": "deso",
+     "region_levels": [
+      "deso",
+      "kommun",
+      "lan",
+      "regso"
+     ],
+     "vars": {
+      "ContentsCode": [
+       "000008AB"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB6684",
+     "updated": "2026-01-20T07:00:00Z"
+    }
+   ]
   },
   {
    "key": "capital_inc",
@@ -600,7 +1197,109 @@
    "desc": "Share of persons with any capital income, % — a wealth proxy, since Sweden publishes no small-area wealth statistic.",
    "source": "SCB TAB6683 (income component 230, share with income)",
    "warn": "Presence of capital income, not its size. A krona of bank interest counts the same as a large capital gain.",
-   "group": "Income & jobs"
+   "group": "Income & jobs",
+   "direction": "neutral",
+   "src_verify": [
+    {
+     "level": "kommun",
+     "db": "scb",
+     "table": "TAB6683",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6683/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6683?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "year",
+     "newest_period": "2024",
+     "code_level": "kommun",
+     "region_levels": [
+      "deso",
+      "kommun",
+      "lan",
+      "regso"
+     ],
+     "vars": {
+      "Inkomstkomponenter": [
+       "230"
+      ],
+      "Kon": [
+       "1+2"
+      ],
+      "ContentsCode": [
+       "000008A2"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB6683",
+     "updated": "2026-01-20T07:00:00Z"
+    },
+    {
+     "level": "regso",
+     "db": "scb",
+     "table": "TAB6683",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6683/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6683?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "year",
+     "newest_period": "2024",
+     "code_level": "regso",
+     "region_levels": [
+      "deso",
+      "kommun",
+      "lan",
+      "regso"
+     ],
+     "vars": {
+      "Inkomstkomponenter": [
+       "230"
+      ],
+      "Kon": [
+       "1+2"
+      ],
+      "ContentsCode": [
+       "000008A2"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB6683",
+     "updated": "2026-01-20T07:00:00Z"
+    },
+    {
+     "level": "deso",
+     "db": "scb",
+     "table": "TAB6683",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6683/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6683?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "year",
+     "newest_period": "2024",
+     "code_level": "deso",
+     "region_levels": [
+      "deso",
+      "kommun",
+      "lan",
+      "regso"
+     ],
+     "vars": {
+      "Inkomstkomponenter": [
+       "230"
+      ],
+      "Kon": [
+       "1+2"
+      ],
+      "ContentsCode": [
+       "000008A2"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB6683",
+     "updated": "2026-01-20T07:00:00Z"
+    }
+   ]
   },
   {
    "key": "low_econ",
@@ -671,7 +1370,101 @@
    "desc": "At-risk-of-poverty rate: share of persons in households below 60 % of the national median equivalised disposable income.",
    "source": "SCB TAB6685",
    "note": "Stands in for the Danish housing-benefit indicator. Försäkringskassan publishes no verified kommun breakdown of bostadsbidrag, so this is the affordability proxy.",
-   "group": "Income & jobs"
+   "group": "Income & jobs",
+   "direction": "lower_better",
+   "direction_note": "at-risk-of-poverty rate — SCB publishes it as a deprivation measure",
+   "src_verify": [
+    {
+     "level": "kommun",
+     "db": "scb",
+     "table": "TAB6685",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6685/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6685?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "year",
+     "newest_period": "2024",
+     "code_level": "kommun",
+     "region_levels": [
+      "deso",
+      "kommun",
+      "lan",
+      "regso"
+     ],
+     "vars": {
+      "Alder": [
+       "tot"
+      ],
+      "ContentsCode": [
+       "000008AC"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB6685",
+     "updated": "2026-01-20T07:00:00Z"
+    },
+    {
+     "level": "regso",
+     "db": "scb",
+     "table": "TAB6685",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6685/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6685?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "year",
+     "newest_period": "2024",
+     "code_level": "regso",
+     "region_levels": [
+      "deso",
+      "kommun",
+      "lan",
+      "regso"
+     ],
+     "vars": {
+      "Alder": [
+       "tot"
+      ],
+      "ContentsCode": [
+       "000008AC"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB6685",
+     "updated": "2026-01-20T07:00:00Z"
+    },
+    {
+     "level": "deso",
+     "db": "scb",
+     "table": "TAB6685",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6685/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6685?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "year",
+     "newest_period": "2024",
+     "code_level": "deso",
+     "region_levels": [
+      "deso",
+      "kommun",
+      "lan",
+      "regso"
+     ],
+     "vars": {
+      "Alder": [
+       "tot"
+      ],
+      "ContentsCode": [
+       "000008AC"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB6685",
+     "updated": "2026-01-20T07:00:00Z"
+    }
+   ]
   },
   {
    "key": "unemp",
@@ -765,7 +1558,107 @@
    "desc": "Unemployed as % of the labour force, ages 20–64. Kommun figure is the monthly register series; RegSO/DeSO is the annual register.",
    "source": "SCB TAB6260 (monthly, kommun, preliminary) · TAB6680 (annual register, RegSO/DeSO)",
    "warn": "Register-based (BAS), not the ILO-definition AKU survey — levels differ from the headline national unemployment rate. Kommun series is preliminary and revised.",
-   "group": "Income & jobs"
+   "group": "Income & jobs",
+   "direction": "lower_better",
+   "direction_note": "unemployment rate — adverse by definition",
+   "src_verify": [
+    {
+     "level": "kommun",
+     "db": "scb",
+     "table": "TAB6260",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6260/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6260?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "month",
+     "newest_period": "2026M06",
+     "code_level": "kommun",
+     "region_levels": [
+      "kommun",
+      "lan"
+     ],
+     "vars": {
+      "Kon": [
+       "1+2"
+      ],
+      "Alder": [
+       "20-64"
+      ],
+      "Fodelseregion": [
+       "tot"
+      ],
+      "ContentsCode": [
+       "000006II"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB6260",
+     "updated": "2026-08-28T06:00:00Z"
+    },
+    {
+     "level": "regso",
+     "db": "scb",
+     "table": "TAB6680",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6680/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6680?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "year",
+     "newest_period": "2024",
+     "code_level": "regso",
+     "region_levels": [
+      "deso",
+      "regso"
+     ],
+     "vars": {
+      "Kon": [
+       "1+2"
+      ],
+      "Alder": [
+       "20-64"
+      ],
+      "ContentsCode": [
+       "0000089W"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB6680",
+     "updated": "2025-11-28T07:00:00Z"
+    },
+    {
+     "level": "deso",
+     "db": "scb",
+     "table": "TAB6680",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6680/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6680?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "year",
+     "newest_period": "2024",
+     "code_level": "deso",
+     "region_levels": [
+      "deso",
+      "regso"
+     ],
+     "vars": {
+      "Kon": [
+       "1+2"
+      ],
+      "Alder": [
+       "20-64"
+      ],
+      "ContentsCode": [
+       "0000089W"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB6680",
+     "updated": "2025-11-28T07:00:00Z"
+    }
+   ]
   },
   {
    "key": "employment",
@@ -858,7 +1751,107 @@
    "moe": null,
    "desc": "Employed as % of the population aged 20–64.",
    "source": "SCB TAB6260 (monthly, kommun) · TAB6680 (annual register, RegSO/DeSO)",
-   "group": "Income & jobs"
+   "group": "Income & jobs",
+   "direction": "higher_better",
+   "direction_note": "employment rate 20–64 — higher is the sound end",
+   "src_verify": [
+    {
+     "level": "kommun",
+     "db": "scb",
+     "table": "TAB6260",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6260/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6260?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "month",
+     "newest_period": "2026M06",
+     "code_level": "kommun",
+     "region_levels": [
+      "kommun",
+      "lan"
+     ],
+     "vars": {
+      "Kon": [
+       "1+2"
+      ],
+      "Alder": [
+       "20-64"
+      ],
+      "Fodelseregion": [
+       "tot"
+      ],
+      "ContentsCode": [
+       "000006IK"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB6260",
+     "updated": "2026-08-28T06:00:00Z"
+    },
+    {
+     "level": "regso",
+     "db": "scb",
+     "table": "TAB6680",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6680/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6680?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "year",
+     "newest_period": "2024",
+     "code_level": "regso",
+     "region_levels": [
+      "deso",
+      "regso"
+     ],
+     "vars": {
+      "Kon": [
+       "1+2"
+      ],
+      "Alder": [
+       "20-64"
+      ],
+      "ContentsCode": [
+       "0000089X"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB6680",
+     "updated": "2025-11-28T07:00:00Z"
+    },
+    {
+     "level": "deso",
+     "db": "scb",
+     "table": "TAB6680",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6680/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6680?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "year",
+     "newest_period": "2024",
+     "code_level": "deso",
+     "region_levels": [
+      "deso",
+      "regso"
+     ],
+     "vars": {
+      "Kon": [
+       "1+2"
+      ],
+      "Alder": [
+       "20-64"
+      ],
+      "ContentsCode": [
+       "0000089X"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB6680",
+     "updated": "2025-11-28T07:00:00Z"
+    }
+   ]
   },
   {
    "key": "higher_ed",
@@ -956,7 +1949,104 @@
    "desc": "Population 25–65 with post-secondary education (levels 5 and 6) as % of those with a known level of education.",
    "source": "SCB TAB6534",
    "warn": "Denominator excludes 'US' (level of education unknown) — including it would understate every area, and the unknown share is far larger in areas with recent immigration.",
-   "group": "Income & jobs"
+   "group": "Income & jobs",
+   "direction": "neutral",
+   "direction_note": "an education descriptor; treating it as a score would rank people",
+   "src_verify": [
+    {
+     "level": "kommun",
+     "db": "scb",
+     "table": "TAB6534",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6534/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6534?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "year",
+     "newest_period": "2025",
+     "code_level": "kommun",
+     "region_levels": [
+      "deso",
+      "kommun",
+      "lan",
+      "regso"
+     ],
+     "vars": {
+      "UtbildningsNiva": [
+       "5",
+       "6"
+      ],
+      "ContentsCode": [
+       "000007Z6"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB6534",
+     "updated": "2026-04-27T06:00:00Z"
+    },
+    {
+     "level": "regso",
+     "db": "scb",
+     "table": "TAB6534",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6534/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6534?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "year",
+     "newest_period": "2025",
+     "code_level": "regso",
+     "region_levels": [
+      "deso",
+      "kommun",
+      "lan",
+      "regso"
+     ],
+     "vars": {
+      "UtbildningsNiva": [
+       "5",
+       "6"
+      ],
+      "ContentsCode": [
+       "000007Z6"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB6534",
+     "updated": "2026-04-27T06:00:00Z"
+    },
+    {
+     "level": "deso",
+     "db": "scb",
+     "table": "TAB6534",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6534/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6534?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "year",
+     "newest_period": "2025",
+     "code_level": "deso",
+     "region_levels": [
+      "deso",
+      "kommun",
+      "lan",
+      "regso"
+     ],
+     "vars": {
+      "UtbildningsNiva": [
+       "5",
+       "6"
+      ],
+      "ContentsCode": [
+       "000007Z6"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB6534",
+     "updated": "2026-04-27T06:00:00Z"
+    }
+   ]
   },
   {
    "key": "rent",
@@ -1002,7 +2092,40 @@
    "desc": "Median annual rent per square metre in rented dwellings, all owner categories, including heating and water.",
    "source": "SCB TAB4590 (BO0406 Hyror i bostadslägenheter)",
    "warn": "Sample survey of ~16 000 apartments. Every value carries a margin of error (000000J3) — render the ±, and grey kommuner whose margin exceeds 15 % of the value. Fully suppressed kommuner (e.g. Malå 2418) stay null and render as '–', never 0.",
-   "group": "Rents"
+   "group": "Rents",
+   "direction": "neutral",
+   "direction_note": "a rent is a cost to one side and income to the other",
+   "src_verify": [
+    {
+     "level": "kommun",
+     "db": "scb",
+     "table": "TAB4590",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB4590/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB4590?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "year",
+     "newest_period": "2025",
+     "code_level": "kommun",
+     "region_levels": [
+      "kommun",
+      "lan"
+     ],
+     "vars": {
+      "Hyresuppg": [
+       "Ah_kvm"
+      ],
+      "ContentsCode": [
+       "000000J4",
+       "000000J3"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB4590",
+     "updated": "2025-10-03T06:00:00Z"
+    }
+   ]
   },
   {
    "key": "rent_mean",
@@ -1048,7 +2171,40 @@
    "desc": "Mean annual rent per square metre in rented dwellings, all owner categories.",
    "source": "SCB TAB4590",
    "warn": "Same sample survey and the same suppression rules as the median. Reference: Stockholm (0180) 2025 = 1 734 ±19; median 1 710 ±28.",
-   "group": "Rents"
+   "group": "Rents",
+   "direction": "neutral",
+   "direction_note": "as rent",
+   "src_verify": [
+    {
+     "level": "kommun",
+     "db": "scb",
+     "table": "TAB4590",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB4590/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB4590?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "year",
+     "newest_period": "2025",
+     "code_level": "kommun",
+     "region_levels": [
+      "kommun",
+      "lan"
+     ],
+     "vars": {
+      "Hyresuppg": [
+       "Ah_kvm"
+      ],
+      "ContentsCode": [
+       "000000RZ",
+       "000000MQ"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB4590",
+     "updated": "2025-10-03T06:00:00Z"
+    }
+   ]
   },
   {
    "key": "rent_owner",
@@ -1100,7 +2256,47 @@
    "desc": "Median rent per m² split between allmännyttiga (municipal) and private landlords.",
    "source": "SCB TAB4618",
    "warn": "PANEL ONLY, NEVER A MAP. This split exists for six aggregate region groups — Stockholm/Göteborg/Malmö and three size classes — not per kommun. Sweden publishes no private-vs-allmännytta rent split below that.",
-   "group": "Rents"
+   "group": "Rents",
+   "direction": "neutral",
+   "direction_note": "as rent",
+   "src_verify": [
+    {
+     "level": "national",
+     "db": "scb",
+     "table": "TAB4618",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB4618/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB4618?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "year",
+     "newest_period": "2025",
+     "code_level": "lan",
+     "region_levels": [
+      "lan",
+      "riksomrade"
+     ],
+     "vars": {
+      "AntalRum": [
+       "00"
+      ],
+      "Agarkategori": [
+       "ALLMNB",
+       "PrivOovriga"
+      ],
+      "Hyresuppg": [
+       "Ah_kvm"
+      ],
+      "ContentsCode": [
+       "00000145",
+       "00000142"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB4618",
+     "updated": "2025-10-03T06:00:00Z"
+    }
+   ]
   },
   {
    "key": "newbuild_rent",
@@ -1145,7 +2341,45 @@
    "desc": "Annual rent per m² in newly built rented dwellings, split by how the rent was set: negotiated bruksvärde, presumtionshyra (with or without an investment subsidy) or individually negotiated.",
    "source": "SCB TAB6417",
    "warn": "PANEL ONLY. Six national groups, three years (2022–2024) — there is no kommun breakdown. Presumtionshyra exempts a new build from the bruksvärde cap for 15 years, which is why new-build rents sit far above the stock they are built next to.",
-   "group": "Rents"
+   "group": "Rents",
+   "direction": "neutral",
+   "direction_note": "as rent",
+   "src_verify": [
+    {
+     "level": "national",
+     "db": "scb",
+     "table": "TAB6417",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6417/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6417?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "year",
+     "newest_period": "2024",
+     "code_level": "lan",
+     "region_levels": [
+      "lan",
+      "riksomrade"
+     ],
+     "vars": {
+      "AntalRum": [
+       "00"
+      ],
+      "Hyresattningsmod": [
+       "1",
+       "2",
+       "3",
+       "4"
+      ],
+      "ContentsCode": [
+       "000007GJ"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB6417",
+     "updated": "2025-10-14T06:00:00Z"
+    }
+   ]
   },
   {
    "key": "vacancy",
@@ -1195,7 +2429,45 @@
    "desc": "Share of dwellings in multi-dwelling buildings standing vacant and available for rent on 1 March, by owner category.",
    "source": "SCB TAB5602",
    "warn": "STALE AND PANEL ONLY. Triennial, six national groups, and the series stops at 2024 (2019, 2021, 2024) — SCB has announced no next publication, so this does not track the current market. It is a sample survey and carries a margin of error.",
-   "group": "Rents"
+   "group": "Rents",
+   "direction": "neutral",
+   "direction_note": "vacancy cuts both ways — slack for a tenant, loss for an owner",
+   "src_verify": [
+    {
+     "level": "national",
+     "db": "scb",
+     "table": "TAB5602",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB5602/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB5602?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "year",
+     "newest_period": "2024",
+     "code_level": "lan",
+     "region_levels": [
+      "lan",
+      "riksomrade"
+     ],
+     "vars": {
+      "Agarkategori": [
+       "TOT",
+       "ALLMN",
+       "PRIV"
+      ],
+      "Fardigstallandear": [
+       "99"
+      ],
+      "ContentsCode": [
+       "000004A1",
+       "000004A6"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB5602",
+     "updated": "2024-12-10T07:00:00Z"
+    }
+   ]
   },
   {
    "key": "cpi_rent",
@@ -1235,7 +2507,37 @@
    "desc": "Consumer price index, COICOP 04.1 'actual rental payments made for housing', monthly, 2020=100.",
    "source": "SCB TAB6598 (CPI by COICOP)",
    "warn": "CPI was rebased to 2020=100 in January 2026 — store the base year with the value. Sweden's leases index is CPI for October, not a net price index; the Danish NPI has no counterpart (the Swedish net price index died in 2013M12).",
-   "group": "Rents"
+   "group": "Rents",
+   "direction": "neutral",
+   "direction_note": "an index level",
+   "src_verify": [
+    {
+     "level": "national",
+     "db": "scb",
+     "table": "TAB6598",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6598/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6598?lang=en",
+     "region_dim": null,
+     "time_dim": "Tid",
+     "time_kind": "month",
+     "newest_period": "2026M08",
+     "code_level": null,
+     "region_levels": [],
+     "vars": {
+      "VaruTjanstegrupp": [
+       "04.1"
+      ],
+      "ContentsCode": [
+       "0000080H",
+       "00000805"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB6598",
+     "updated": "2026-09-14T06:00:00Z"
+    }
+   ]
   },
   {
    "key": "renters",
@@ -1337,7 +2639,101 @@
    "desc": "Hyresrätt (rented) dwellings as % of all dwellings.",
    "source": "SCB TAB824 (kommun, 1990–2025) · TAB6638 (RegSO/DeSO, 2024–2025)",
    "warn": "'ÖVRIGT' (tenure unknown) stays in the denominator — dropping it would inflate every share. TAB6638 starts in 2024, so there is no sub-municipal history.",
-   "group": "Housing stock"
+   "group": "Housing stock",
+   "direction": "neutral",
+   "direction_note": "tenure mix is a descriptor",
+   "src_verify": [
+    {
+     "level": "kommun",
+     "db": "scb",
+     "table": "TAB824",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB824/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB824?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "year",
+     "newest_period": "2025",
+     "code_level": "kommun",
+     "region_levels": [
+      "kommun",
+      "lan"
+     ],
+     "vars": {
+      "Upplatelseform": [
+       "1"
+      ],
+      "Hustyp": [
+       "SMÅHUS",
+       "FLERBOST",
+       "ÖVRHUS",
+       "SPEC"
+      ],
+      "ContentsCode": [
+       "BO0104AH"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB824",
+     "updated": "2026-04-17T06:00:00Z"
+    },
+    {
+     "level": "regso",
+     "db": "scb",
+     "table": "TAB6638",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6638/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6638?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "year",
+     "newest_period": "2025",
+     "code_level": "regso",
+     "region_levels": [
+      "deso",
+      "regso"
+     ],
+     "vars": {
+      "Upplatelseform": [
+       "1"
+      ],
+      "ContentsCode": [
+       "00000864"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB6638",
+     "updated": "2026-04-17T06:00:00Z"
+    },
+    {
+     "level": "deso",
+     "db": "scb",
+     "table": "TAB6638",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6638/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6638?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "year",
+     "newest_period": "2025",
+     "code_level": "deso",
+     "region_levels": [
+      "deso",
+      "regso"
+     ],
+     "vars": {
+      "Upplatelseform": [
+       "1"
+      ],
+      "ContentsCode": [
+       "00000864"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB6638",
+     "updated": "2026-04-17T06:00:00Z"
+    }
+   ]
   },
   {
    "key": "flats",
@@ -1433,7 +2829,105 @@
    "desc": "Dwellings in multi-dwelling buildings as % of the stock (kommun); persons living in multi-dwelling buildings as % of the population (RegSO/DeSO).",
    "source": "SCB TAB824 (dwellings, kommun) · TAB6065 (persons, RegSO/DeSO)",
    "warn": "The two levels measure different things — dwellings at kommun, persons below it. Label the sub-municipal value accordingly.",
-   "group": "Housing stock"
+   "group": "Housing stock",
+   "direction": "neutral",
+   "direction_note": "building-type mix is a descriptor",
+   "src_verify": [
+    {
+     "level": "kommun",
+     "db": "scb",
+     "table": "TAB824",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB824/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB824?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "year",
+     "newest_period": "2025",
+     "code_level": "kommun",
+     "region_levels": [
+      "kommun",
+      "lan"
+     ],
+     "vars": {
+      "Hustyp": [
+       "FLERBOST"
+      ],
+      "Upplatelseform": [
+       "1",
+       "2",
+       "3",
+       "ÖVRIGT"
+      ],
+      "ContentsCode": [
+       "BO0104AH"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB824",
+     "updated": "2026-04-17T06:00:00Z"
+    },
+    {
+     "level": "regso",
+     "db": "scb",
+     "table": "TAB6065",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6065/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6065?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "year",
+     "newest_period": "2025",
+     "code_level": "regso",
+     "region_levels": [
+      "deso",
+      "kommun",
+      "lan",
+      "regso"
+     ],
+     "vars": {
+      "Hustyp": [
+       "FLERBOST"
+      ],
+      "ContentsCode": [
+       "0000077F"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB6065",
+     "updated": "2026-04-17T06:00:00Z"
+    },
+    {
+     "level": "deso",
+     "db": "scb",
+     "table": "TAB6065",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6065/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6065?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "year",
+     "newest_period": "2025",
+     "code_level": "deso",
+     "region_levels": [
+      "deso",
+      "kommun",
+      "lan",
+      "regso"
+     ],
+     "vars": {
+      "Hustyp": [
+       "FLERBOST"
+      ],
+      "ContentsCode": [
+       "0000077F"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB6065",
+     "updated": "2026-04-17T06:00:00Z"
+    }
+   ]
   },
   {
    "key": "avg_m2",
@@ -1475,7 +2969,42 @@
    "desc": "Average useful floor space per person, m², all households and all types of housing.",
    "source": "SCB TAB1541",
    "note": "Stands in for the Danish average dwelling size. TAB826 (dwellings by floor-space band, kommun) supports a band-weighted mean dwelling size if that is wanted instead; TAB5291 was checked and covers only three regions, so it cannot carry a map.",
-   "group": "Housing stock"
+   "group": "Housing stock",
+   "direction": "neutral",
+   "direction_note": "floor space per person is a descriptor",
+   "src_verify": [
+    {
+     "level": "kommun",
+     "db": "scb",
+     "table": "TAB1541",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB1541/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB1541?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "year",
+     "newest_period": "2025",
+     "code_level": "kommun",
+     "region_levels": [
+      "kommun",
+      "lan"
+     ],
+     "vars": {
+      "Hushallstyp": [
+       "SAMTLH"
+      ],
+      "Boendeform": [
+       "TOT"
+      ],
+      "ContentsCode": [
+       "HE0111DJ"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB1541",
+     "updated": "2026-04-17T06:00:00Z"
+    }
+   ]
   },
   {
    "key": "kt_tal",
@@ -1514,7 +3043,39 @@
    "desc": "Köpeskillingskoefficient: purchase price divided by assessed value for sold permanent småhus, unweighted annual mean.",
    "source": "SCB TAB1169",
    "warn": "THIS IS NOT A PRICE PER SQUARE METRE and must never be labelled as one. Sweden publishes no open realised price per m² at any geography. K/T-tal also drifts with the assessment cycle: assessed values are re-set every three years, so the ratio jumps downward in a general assessment year regardless of what prices did.",
-   "group": "Prices & market"
+   "group": "Prices & market",
+   "direction": "neutral",
+   "direction_note": "K/T-tal is a valuation ratio, not a score",
+   "src_verify": [
+    {
+     "level": "kommun",
+     "db": "scb",
+     "table": "TAB1169",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB1169/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB1169?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "year",
+     "newest_period": "2025",
+     "code_level": "kommun",
+     "region_levels": [
+      "kommun",
+      "lan"
+     ],
+     "vars": {
+      "Fastighetstyp": [
+       "220"
+      ],
+      "ContentsCode": [
+       "BO0501C4"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB1169",
+     "updated": "2026-06-05T06:00:00Z"
+    }
+   ]
   },
   {
    "key": "price_avg",
@@ -1553,7 +3114,38 @@
    "desc": "Mean purchase price of sold permanent småhus, SEK thousands, with the number of sales (BO0501C1) alongside it.",
    "source": "SCB TAB1169",
    "warn": "Not size-adjusted — a kommun of large houses reads high for that reason alone. Kommuner with very few sales in a year are noisy; show the sales count with the price.",
-   "group": "Prices & market"
+   "group": "Prices & market",
+   "direction": "neutral",
+   "src_verify": [
+    {
+     "level": "kommun",
+     "db": "scb",
+     "table": "TAB1169",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB1169/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB1169?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "year",
+     "newest_period": "2025",
+     "code_level": "kommun",
+     "region_levels": [
+      "kommun",
+      "lan"
+     ],
+     "vars": {
+      "Fastighetstyp": [
+       "220"
+      ],
+      "ContentsCode": [
+       "BO0501C2"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB1169",
+     "updated": "2026-06-05T06:00:00Z"
+    }
+   ]
   },
   {
    "key": "sales_n",
@@ -1591,7 +3183,38 @@
    "moe": null,
    "desc": "Number of sold permanent småhus in the year.",
    "source": "SCB TAB1169",
-   "group": "Prices & market"
+   "group": "Prices & market",
+   "direction": "neutral",
+   "src_verify": [
+    {
+     "level": "kommun",
+     "db": "scb",
+     "table": "TAB1169",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB1169/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB1169?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "year",
+     "newest_period": "2025",
+     "code_level": "kommun",
+     "region_levels": [
+      "kommun",
+      "lan"
+     ],
+     "vars": {
+      "Fastighetstyp": [
+       "220"
+      ],
+      "ContentsCode": [
+       "BO0501C1"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB1169",
+     "updated": "2026-06-05T06:00:00Z"
+    }
+   ]
   },
   {
    "key": "brf_price",
@@ -1628,7 +3251,35 @@
    "desc": "Mean purchase price of sold bostadsrätter, SEK thousands, by län.",
    "source": "SCB TAB1151",
    "warn": "A LÄN FIGURE, NOT A KOMMUN ONE. Sweden publishes no bostadsrätt prices below county level, so every kommun in a län shows the same figure — 21 values on a 290-kommun map. It is also a price, not a price per m²: nothing adjusts for the size of what was sold.",
-   "group": "Prices & market"
+   "group": "Prices & market",
+   "direction": "neutral",
+   "src_verify": [
+    {
+     "level": "kommun",
+     "db": "scb",
+     "table": "TAB1151",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB1151/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB1151?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "year",
+     "newest_period": "2025",
+     "code_level": "lan",
+     "region_levels": [
+      "lan",
+      "riksomrade"
+     ],
+     "vars": {
+      "ContentsCode": [
+       "BO0501R7"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB1151",
+     "updated": "2026-07-03T06:00:00Z"
+    }
+   ]
   },
   {
    "key": "forced_sales",
@@ -1663,7 +3314,18 @@
    "desc": "Properties and bostadsrätter sold by Kronofogden at executive auction, per 10 000 dwellings, both property types together.",
    "source": "Kronofogden",
    "warn": "A LÄN FIGURE, NOT A KOMMUN ONE. Kronofogden publishes no municipal breakdown, so every kommun in a län shows the same rate — the map has 21 values, not 290. Read it as a regional level, never as a difference between neighbouring kommuner. Nationally 753–920 homes a year recently, so a single län-year is a small count.",
-   "group": "Prices & market"
+   "group": "Prices & market",
+   "direction": "lower_better",
+   "direction_note": "executive auctions by Kronofogden — adverse by definition",
+   "src_verify": [
+    {
+     "level": "kommun",
+     "db": "kronofogden",
+     "publisher": "Kronofogden, försäljning av bostäder",
+     "label": "Kronofogden, försäljning av bostäder",
+     "page": "https://kronofogden.se/om-kronofogden/statistik"
+    }
+   ]
   },
   {
    "key": "taxv",
@@ -1705,7 +3367,35 @@
    "source": "SCB TAB3797 (BO0601 Fastighetstaxeringar)",
    "note": "Resolved from the old BO0601A path by scripts/discover_scb.py. Typkod 320–325 are the hyreshus classes; 220/221 are småhus, also available per-unit in TAB5149.",
    "group": "Prices & market",
-   "warn": "A kommun total would just track how much property a kommun contains; per unit is the comparable figure. Assessed values are re-set on a three-year cycle, so the level steps in a general assessment year."
+   "warn": "A kommun total would just track how much property a kommun contains; per unit is the comparable figure. Assessed values are re-set on a three-year cycle, so the level steps in a general assessment year.",
+   "direction": "neutral",
+   "src_verify": [
+    {
+     "level": "kommun",
+     "db": "scb",
+     "table": "TAB3797",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB3797/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB3797?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "year",
+     "newest_period": "2025",
+     "code_level": "kommun",
+     "region_levels": [
+      "kommun",
+      "lan"
+     ],
+     "vars": {
+      "ContentsCode": [
+       "BO0601B3"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB3797",
+     "updated": "2025-12-11T07:00:00Z"
+    }
+   ]
   },
   {
    "key": "taxv_smahus",
@@ -1743,7 +3433,38 @@
    "moe": null,
    "desc": "Average total assessed value per småhus assessment unit (typkod 220), SEK thousands.",
    "source": "SCB TAB5149",
-   "group": "Prices & market"
+   "group": "Prices & market",
+   "direction": "neutral",
+   "src_verify": [
+    {
+     "level": "kommun",
+     "db": "scb",
+     "table": "TAB5149",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB5149/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB5149?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "year",
+     "newest_period": "2025",
+     "code_level": "kommun",
+     "region_levels": [
+      "kommun",
+      "lan"
+     ],
+     "vars": {
+      "Typkod": [
+       "220"
+      ],
+      "ContentsCode": [
+       "000002X0"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB5149",
+     "updated": "2025-12-11T07:00:00Z"
+    }
+   ]
   },
   {
    "key": "completions",
@@ -1808,7 +3529,39 @@
    "desc": "Dwellings completed in newly constructed buildings over the last four quarters, per 1 000 existing dwellings.",
    "source": "SCB TAB4572 (quarterly, kommun) · denominator TAB824",
    "warn": "Not adjusted for reporting delays — the most recent quarters are revised upward.",
-   "group": "Construction"
+   "group": "Construction",
+   "direction": "neutral",
+   "src_verify": [
+    {
+     "level": "kommun",
+     "db": "scb",
+     "table": "TAB4572",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB4572/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB4572?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "quarter",
+     "newest_period": "2026K2",
+     "code_level": "kommun",
+     "region_levels": [
+      "kommun",
+      "lan"
+     ],
+     "vars": {
+      "Hustyp": [
+       "FLERBO",
+       "SMÅHUS"
+      ],
+      "ContentsCode": [
+       "BO0101A3"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB4572",
+     "updated": "2026-08-24T06:00:00Z"
+    }
+   ]
   },
   {
    "key": "starts",
@@ -1873,7 +3626,39 @@
    "desc": "Dwellings started in newly constructed buildings over the last four quarters, per 1 000 existing dwellings — the leading half of the pipeline.",
    "source": "SCB TAB4572 · denominator TAB824",
    "warn": "Starts are revised more heavily than completions. TAB6925 carries the same measure with specialbostäder split out, from 2007 only.",
-   "group": "Construction"
+   "group": "Construction",
+   "direction": "neutral",
+   "src_verify": [
+    {
+     "level": "kommun",
+     "db": "scb",
+     "table": "TAB4572",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB4572/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB4572?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "quarter",
+     "newest_period": "2026K2",
+     "code_level": "kommun",
+     "region_levels": [
+      "kommun",
+      "lan"
+     ],
+     "vars": {
+      "Hustyp": [
+       "FLERBO",
+       "SMÅHUS"
+      ],
+      "ContentsCode": [
+       "BO0101A4"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB4572",
+     "updated": "2026-08-24T06:00:00Z"
+    }
+   ]
   },
   {
    "key": "completions_n",
@@ -1912,7 +3697,39 @@
    "moe": null,
    "desc": "Dwellings completed over the last four quarters, absolute count.",
    "source": "SCB TAB4572",
-   "group": "Construction"
+   "group": "Construction",
+   "direction": "neutral",
+   "src_verify": [
+    {
+     "level": "kommun",
+     "db": "scb",
+     "table": "TAB4572",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB4572/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB4572?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "quarter",
+     "newest_period": "2026K2",
+     "code_level": "kommun",
+     "region_levels": [
+      "kommun",
+      "lan"
+     ],
+     "vars": {
+      "Hustyp": [
+       "FLERBO",
+       "SMÅHUS"
+      ],
+      "ContentsCode": [
+       "BO0101A3"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB4572",
+     "updated": "2026-08-24T06:00:00Z"
+    }
+   ]
   },
   {
    "key": "new_rental",
@@ -1962,7 +3779,42 @@
    "desc": "Share of completed new dwellings built as hyresrätt, latest full year.",
    "source": "SCB TAB4193",
    "warn": "Annual, and small kommuner complete nothing in many years — a null year is 'no completions', not 0 %.",
-   "group": "Construction"
+   "group": "Construction",
+   "direction": "neutral",
+   "src_verify": [
+    {
+     "level": "kommun",
+     "db": "scb",
+     "table": "TAB4193",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB4193/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB4193?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "year",
+     "newest_period": "2025",
+     "code_level": "kommun",
+     "region_levels": [
+      "kommun",
+      "lan"
+     ],
+     "vars": {
+      "Upplatelseform": [
+       "1"
+      ],
+      "Hustyp": [
+       "FLERBO",
+       "SMÅHUS"
+      ],
+      "ContentsCode": [
+       "0000005O"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB4193",
+     "updated": "2026-05-11T06:00:00Z"
+    }
+   ]
   },
   {
    "key": "permits",
@@ -2004,7 +3856,42 @@
    "desc": "Dwellings granted a building permit for new construction, quarterly.",
    "source": "SCB TAB2534 (BO0701 Bygglov) · gross floor area in TAB796",
    "warn": "PANEL ONLY, NEVER A MAP AT KOMMUN. Verified 2026-09-20: this table's Region dimension holds 30 codes — riket, the three metro areas, four riksområden and the 21 län. There is no kommun level for building permits. DATA_MAP_SE.md §1b previously implied one; it does not exist.",
-   "group": "Construction"
+   "group": "Construction",
+   "direction": "neutral",
+   "src_verify": [
+    {
+     "level": "national",
+     "db": "scb",
+     "table": "TAB2534",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB2534/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB2534?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "quarter",
+     "newest_period": "2026K2",
+     "code_level": "kommun",
+     "region_levels": [
+      "kommun",
+      "lan",
+      "riksomrade"
+     ],
+     "vars": {
+      "Hustyp": [
+       "1113",
+       "21",
+       "2224",
+       "19"
+      ],
+      "ContentsCode": [
+       "BO0701A1"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB2534",
+     "updated": "2026-08-24T06:00:00Z"
+    }
+   ]
   },
   {
    "key": "socio",
@@ -2040,7 +3927,35 @@
    "desc": "SCB's socio-economic index for the RegSO, with the area type classification (000008IU) alongside it.",
    "source": "SCB TAB6586",
    "warn": "RegSO only — there is no DeSO or kommun value. A composite of education, economic standard and benefit dependence; read it as a classification, not a measurement.",
-   "group": "Area quality"
+   "group": "Area quality",
+   "direction": "neutral",
+   "direction_note": "SCB's socio-economic index — which end is 'better' is not stated in the metadata on disk, so it stays neutral until it is verified",
+   "src_verify": [
+    {
+     "level": "regso",
+     "db": "scb",
+     "table": "TAB6586",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6586/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6586?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "year",
+     "newest_period": "2024",
+     "code_level": "regso",
+     "region_levels": [
+      "regso"
+     ],
+     "vars": {
+      "ContentsCode": [
+       "000008IT"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB6586",
+     "updated": "2026-06-23T06:00:00Z"
+    }
+   ]
   },
   {
    "key": "bme",
@@ -2090,7 +4005,18 @@
      "color": "#40547F"
     }
    ],
-   "note": "2020 and 2021 worded the answers differently (\"Obalans - underskott på bostäder\"); scripts/import_bme.py normalises them. The trend over 2020–2026 is real: shortage fell from 212 kommuner to 102 while surplus rose from 8 to 55."
+   "note": "2020 and 2021 worded the answers differently (\"Obalans - underskott på bostäder\"); scripts/import_bme.py normalises them. The trend over 2020–2026 is real: shortage fell from 212 kommuner to 102 while surplus rose from 8 to 55.",
+   "direction": "neutral",
+   "direction_note": "categorical — shortage/balance/surplus already carry their own colours",
+   "src_verify": [
+    {
+     "level": "kommun",
+     "db": "boverket",
+     "publisher": "Boverket, Bostadsmarknadsenkäten",
+     "label": "Boverket, Bostadsmarknadsenkäten",
+     "page": "https://www.boverket.se/sv/samhallsplanering/bostadsmarknad/bostadsmarknadsenkaten-i-korthet/"
+    }
+   ]
   },
   {
    "key": "mortgage_rate",
@@ -2142,7 +4068,49 @@
    "desc": "Lending rate to households for housing loans, by original rate fixation period, monthly.",
    "source": "SCB TAB5783 (FM5001 Finansmarknadsstatistik)",
    "note": "Resolved from the old FM5001C path by scripts/discover_scb.py. TAB5780 carries the wider lending-rate series back to 1987M03. Avtal 0100/0200 distinguish new agreements from outstanding stock — check the label before charting.",
-   "group": "Macro"
+   "group": "Macro",
+   "direction": "neutral",
+   "direction_note": "as policy_rate",
+   "src_verify": [
+    {
+     "level": "national",
+     "db": "scb",
+     "table": "TAB5783",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB5783/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB5783?lang=en",
+     "region_dim": null,
+     "time_dim": "Tid",
+     "time_kind": "month",
+     "newest_period": "2026M07",
+     "code_level": null,
+     "region_levels": [],
+     "vars": {
+      "Referenssektor": [
+       "1"
+      ],
+      "Motpartssektor": [
+       "2c"
+      ],
+      "Avtal": [
+       "0100"
+      ],
+      "Rantebindningstid": [
+       "1",
+       "1.1.1",
+       "1.1.2.1",
+       "1.1.2.2",
+       "1.1.2.3"
+      ],
+      "ContentsCode": [
+       "000004ZW"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB5783",
+     "updated": "2026-08-27T06:00:00Z"
+    }
+   ]
   },
   {
    "key": "gdp",
@@ -2182,7 +4150,37 @@
    "desc": "GDP at market prices, change in volume against the same quarter a year earlier, and the seasonally adjusted quarter-on-quarter change.",
    "source": "SCB TAB3100 (NR0103 Nationalräkenskaper)",
    "note": "Resolved from the old NR0103B path by scripts/discover_scb.py.",
-   "group": "Macro"
+   "group": "Macro",
+   "direction": "neutral",
+   "direction_note": "shown as a national card, not ranked",
+   "src_verify": [
+    {
+     "level": "national",
+     "db": "scb",
+     "table": "TAB3100",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB3100/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB3100?lang=en",
+     "region_dim": null,
+     "time_dim": "Tid",
+     "time_kind": "quarter",
+     "newest_period": "2026K2",
+     "code_level": null,
+     "region_levels": [],
+     "vars": {
+      "EkoIndikator": [
+       "BNP10"
+      ],
+      "ContentsCode": [
+       "NR0103A!",
+       "NR0103A¤"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB3100",
+     "updated": "2026-08-28T06:00:00Z"
+    }
+   ]
   },
   {
    "key": "hpi",
@@ -2218,7 +4216,36 @@
    "desc": "Fastighetsprisindex (FASTPI) for permanent småhus, Sweden, 1981 = 100, annual.",
    "source": "SCB TAB1149",
    "warn": "Index, not a level — it says how prices moved, never what a house costs. Sweden publishes no open realised price per m² at any geography.",
-   "group": "Macro"
+   "group": "Macro",
+   "direction": "neutral",
+   "direction_note": "an index level",
+   "src_verify": [
+    {
+     "level": "national",
+     "db": "scb",
+     "table": "TAB1149",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB1149/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB1149?lang=en",
+     "region_dim": "Region",
+     "time_dim": "Tid",
+     "time_kind": "year",
+     "newest_period": "2025",
+     "code_level": "lan",
+     "region_levels": [
+      "lan",
+      "riksomrade"
+     ],
+     "vars": {
+      "ContentsCode": [
+       "BO0501N9"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB1149",
+     "updated": "2026-06-05T06:00:00Z"
+    }
+   ]
   },
   {
    "key": "policy_rate",
@@ -2250,7 +4277,18 @@
    "desc": "Riksbank policy rate (styrränta), daily.",
    "source": "Riksbank SWEA API, series SECBREPOEFF",
    "warn": "NOT YET ON DISK — the Riksbank fetcher is not written. Verified live 2026-09-14: 1.75 % as of 2026-08. STIBOR series closed in 2020 and must not be used.",
-   "group": "Macro"
+   "group": "Macro",
+   "direction": "neutral",
+   "direction_note": "a macro rate has no better end",
+   "src_verify": [
+    {
+     "level": "national",
+     "db": "riksbank",
+     "publisher": "Sveriges riksbank, SWEA API",
+     "label": "Sveriges riksbank, SWEA API",
+     "page": "https://www.riksbank.se/sv/statistik/rantor-och-valutakurser/"
+    }
+   ]
   },
   {
    "key": "bond_10y",
@@ -2282,7 +4320,18 @@
    "desc": "10-year Swedish government bond yield, daily.",
    "source": "Riksbank SWEA API, series SEGVB10YC",
    "warn": "NOT YET ON DISK. Verified live 2026-09-14: 3.15 % at 2026-09-09.",
-   "group": "Macro"
+   "group": "Macro",
+   "direction": "neutral",
+   "direction_note": "as policy_rate",
+   "src_verify": [
+    {
+     "level": "national",
+     "db": "riksbank",
+     "publisher": "Sveriges riksbank, SWEA API",
+     "label": "Sveriges riksbank, SWEA API",
+     "page": "https://www.riksbank.se/sv/statistik/rantor-och-valutakurser/"
+    }
+   ]
   },
   {
    "key": "cpi",
@@ -2339,7 +4388,37 @@
    "desc": "Consumer price index, total, and KPIF (CPI with fixed interest rate), monthly.",
    "source": "SCB TAB6598 (CPI) · TAB6602 (KPIF)",
    "warn": "Rebased to 2020=100 in January 2026 — always store the base year with the value.",
-   "group": "Macro"
+   "group": "Macro",
+   "direction": "neutral",
+   "direction_note": "an index level",
+   "src_verify": [
+    {
+     "level": "national",
+     "db": "scb",
+     "table": "TAB6598",
+     "api": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6598/data",
+     "table_url": "https://api.scb.se/OV0104/v2beta/api/v2/tables/TAB6598?lang=en",
+     "region_dim": null,
+     "time_dim": "Tid",
+     "time_kind": "month",
+     "newest_period": "2026M08",
+     "code_level": null,
+     "region_levels": [],
+     "vars": {
+      "VaruTjanstegrupp": [
+       "00"
+      ],
+      "ContentsCode": [
+       "0000080H",
+       "00000805"
+      ]
+     },
+     "auto_pinned": [],
+     "publisher": "SCB",
+     "label": "SCB TAB6598",
+     "updated": "2026-09-14T06:00:00Z"
+    }
+   ]
   },
   {
    "key": "kommun_tax",
@@ -2371,7 +4450,20 @@
    "desc": "The kommun's own income-tax rate for the year, excluding the regional and burial levies.",
    "source": "Kolada (RKA), KPI N00901",
    "warn": "Comparable across kommuner, but it is a rate, not a burden: what a household pays also depends on the regional rate, which this excludes. Gotland reads 33.6 % against a national median of 21.9 % because it is both a kommun and a region and levies both rates — that is the data being right, not an outlier to clean.",
-   "group": "Municipal finances"
+   "group": "Municipal finances",
+   "direction": "neutral",
+   "direction_note": "a higher rate buys more service — not a ranking",
+   "src_verify": [
+    {
+     "level": "kommun",
+     "db": "kolada",
+     "kpi": "N00901",
+     "api": "https://api.kolada.se/v3/data/kpi/N00901/municipality",
+     "table_url": "https://api.kolada.se/v3/kpi?id=N00901",
+     "publisher": "Kolada (RKA)",
+     "label": "Kolada N00901"
+    }
+   ]
   },
   {
    "key": "kommun_netcost",
@@ -2405,7 +4497,20 @@
    "source": "Kolada (RKA), KPI N03011",
    "warn": "Driven as much by what a kommun is obliged to provide — a scattered or ageing population costs more per head — as by how it is run.",
    "group": "Municipal finances",
-   "note": "Kolada carries this with the income statement's sign, i.e. negative because it is a cost; the sign is flipped here so the indicator reads as the cost it is."
+   "note": "Kolada carries this with the income statement's sign, i.e. negative because it is a cost; the sign is flipped here so the indicator reads as the cost it is.",
+   "direction": "neutral",
+   "direction_note": "net operating cost per inhabitant is a descriptor",
+   "src_verify": [
+    {
+     "level": "kommun",
+     "db": "kolada",
+     "kpi": "N03011",
+     "api": "https://api.kolada.se/v3/data/kpi/N03011/municipality",
+     "table_url": "https://api.kolada.se/v3/kpi?id=N03011",
+     "publisher": "Kolada (RKA)",
+     "label": "Kolada N03011"
+    }
+   ]
   },
   {
    "key": "kommun_debt",
@@ -2438,7 +4543,20 @@
    "desc": "Långfristiga skulder of the kommun (not the group), per inhabitant.",
    "source": "Kolada (RKA), KPI N03046",
    "warn": "The kommun alone, not the kommunkoncern: a kommun that holds its housing company's borrowing in a subsidiary reads low here. Compare with the equity ratio before drawing conclusions.",
-   "group": "Municipal finances"
+   "group": "Municipal finances",
+   "direction": "lower_better",
+   "direction_note": "långfristiga skulder per inhabitant — lower is the sound end in municipal finance, and Kolada presents it that way",
+   "src_verify": [
+    {
+     "level": "kommun",
+     "db": "kolada",
+     "kpi": "N03046",
+     "api": "https://api.kolada.se/v3/data/kpi/N03046/municipality",
+     "table_url": "https://api.kolada.se/v3/kpi?id=N03046",
+     "publisher": "Kolada (RKA)",
+     "label": "Kolada N03046"
+    }
+   ]
   },
   {
    "key": "kommun_equity",
@@ -2470,7 +4588,1433 @@
    "desc": "Soliditet including the pension commitment — own capital as a share of total assets.",
    "source": "Kolada (RKA), KPI N03002",
    "warn": "Can be negative when the pension commitment exceeds own capital, which is normal for many kommuner and not by itself a distress signal.",
-   "group": "Municipal finances"
+   "group": "Municipal finances",
+   "direction": "higher_better",
+   "direction_note": "soliditet incl. pension commitment — higher is the sound end",
+   "src_verify": [
+    {
+     "level": "kommun",
+     "db": "kolada",
+     "kpi": "N03002",
+     "api": "https://api.kolada.se/v3/data/kpi/N03002/municipality",
+     "table_url": "https://api.kolada.se/v3/kpi?id=N03002",
+     "publisher": "Kolada (RKA)",
+     "label": "Kolada N03002"
+    }
+   ]
   }
- ]
+ ],
+ "src_periods": {
+  "TAB6260": [
+   "2020M01",
+   "2020M02",
+   "2020M03",
+   "2020M04",
+   "2020M05",
+   "2020M06",
+   "2020M07",
+   "2020M08",
+   "2020M09",
+   "2020M10",
+   "2020M11",
+   "2020M12",
+   "2021M01",
+   "2021M02",
+   "2021M03",
+   "2021M04",
+   "2021M05",
+   "2021M06",
+   "2021M07",
+   "2021M08",
+   "2021M09",
+   "2021M10",
+   "2021M11",
+   "2021M12",
+   "2022M01",
+   "2022M02",
+   "2022M03",
+   "2022M04",
+   "2022M05",
+   "2022M06",
+   "2022M07",
+   "2022M08",
+   "2022M09",
+   "2022M10",
+   "2022M11",
+   "2022M12",
+   "2023M01",
+   "2023M02",
+   "2023M03",
+   "2023M04",
+   "2023M05",
+   "2023M06",
+   "2023M07",
+   "2023M08",
+   "2023M09",
+   "2023M10",
+   "2023M11",
+   "2023M12",
+   "2024M01",
+   "2024M02",
+   "2024M03",
+   "2024M04",
+   "2024M05",
+   "2024M06",
+   "2024M07",
+   "2024M08",
+   "2024M09",
+   "2024M10",
+   "2024M11",
+   "2024M12",
+   "2025M01",
+   "2025M02",
+   "2025M03",
+   "2025M04",
+   "2025M05",
+   "2025M06",
+   "2025M07",
+   "2025M08",
+   "2025M09",
+   "2025M10",
+   "2025M11",
+   "2025M12",
+   "2026M01",
+   "2026M02",
+   "2026M03",
+   "2026M04",
+   "2026M05",
+   "2026M06"
+  ],
+  "TAB6598": [
+   "1980M01",
+   "1980M02",
+   "1980M03",
+   "1980M04",
+   "1980M05",
+   "1980M06",
+   "1980M07",
+   "1980M08",
+   "1980M09",
+   "1980M10",
+   "1980M11",
+   "1980M12",
+   "1981M01",
+   "1981M02",
+   "1981M03",
+   "1981M04",
+   "1981M05",
+   "1981M06",
+   "1981M07",
+   "1981M08",
+   "1981M09",
+   "1981M10",
+   "1981M11",
+   "1981M12",
+   "1982M01",
+   "1982M02",
+   "1982M03",
+   "1982M04",
+   "1982M05",
+   "1982M06",
+   "1982M07",
+   "1982M08",
+   "1982M09",
+   "1982M10",
+   "1982M11",
+   "1982M12",
+   "1983M01",
+   "1983M02",
+   "1983M03",
+   "1983M04",
+   "1983M05",
+   "1983M06",
+   "1983M07",
+   "1983M08",
+   "1983M09",
+   "1983M10",
+   "1983M11",
+   "1983M12",
+   "1984M01",
+   "1984M02",
+   "1984M03",
+   "1984M04",
+   "1984M05",
+   "1984M06",
+   "1984M07",
+   "1984M08",
+   "1984M09",
+   "1984M10",
+   "1984M11",
+   "1984M12",
+   "1985M01",
+   "1985M02",
+   "1985M03",
+   "1985M04",
+   "1985M05",
+   "1985M06",
+   "1985M07",
+   "1985M08",
+   "1985M09",
+   "1985M10",
+   "1985M11",
+   "1985M12",
+   "1986M01",
+   "1986M02",
+   "1986M03",
+   "1986M04",
+   "1986M05",
+   "1986M06",
+   "1986M07",
+   "1986M08",
+   "1986M09",
+   "1986M10",
+   "1986M11",
+   "1986M12",
+   "1987M01",
+   "1987M02",
+   "1987M03",
+   "1987M04",
+   "1987M05",
+   "1987M06",
+   "1987M07",
+   "1987M08",
+   "1987M09",
+   "1987M10",
+   "1987M11",
+   "1987M12",
+   "1988M01",
+   "1988M02",
+   "1988M03",
+   "1988M04",
+   "1988M05",
+   "1988M06",
+   "1988M07",
+   "1988M08",
+   "1988M09",
+   "1988M10",
+   "1988M11",
+   "1988M12",
+   "1989M01",
+   "1989M02",
+   "1989M03",
+   "1989M04",
+   "1989M05",
+   "1989M06",
+   "1989M07",
+   "1989M08",
+   "1989M09",
+   "1989M10",
+   "1989M11",
+   "1989M12",
+   "1990M01",
+   "1990M02",
+   "1990M03",
+   "1990M04",
+   "1990M05",
+   "1990M06",
+   "1990M07",
+   "1990M08",
+   "1990M09",
+   "1990M10",
+   "1990M11",
+   "1990M12",
+   "1991M01",
+   "1991M02",
+   "1991M03",
+   "1991M04",
+   "1991M05",
+   "1991M06",
+   "1991M07",
+   "1991M08",
+   "1991M09",
+   "1991M10",
+   "1991M11",
+   "1991M12",
+   "1992M01",
+   "1992M02",
+   "1992M03",
+   "1992M04",
+   "1992M05",
+   "1992M06",
+   "1992M07",
+   "1992M08",
+   "1992M09",
+   "1992M10",
+   "1992M11",
+   "1992M12",
+   "1993M01",
+   "1993M02",
+   "1993M03",
+   "1993M04",
+   "1993M05",
+   "1993M06",
+   "1993M07",
+   "1993M08",
+   "1993M09",
+   "1993M10",
+   "1993M11",
+   "1993M12",
+   "1994M01",
+   "1994M02",
+   "1994M03",
+   "1994M04",
+   "1994M05",
+   "1994M06",
+   "1994M07",
+   "1994M08",
+   "1994M09",
+   "1994M10",
+   "1994M11",
+   "1994M12",
+   "1995M01",
+   "1995M02",
+   "1995M03",
+   "1995M04",
+   "1995M05",
+   "1995M06",
+   "1995M07",
+   "1995M08",
+   "1995M09",
+   "1995M10",
+   "1995M11",
+   "1995M12",
+   "1996M01",
+   "1996M02",
+   "1996M03",
+   "1996M04",
+   "1996M05",
+   "1996M06",
+   "1996M07",
+   "1996M08",
+   "1996M09",
+   "1996M10",
+   "1996M11",
+   "1996M12",
+   "1997M01",
+   "1997M02",
+   "1997M03",
+   "1997M04",
+   "1997M05",
+   "1997M06",
+   "1997M07",
+   "1997M08",
+   "1997M09",
+   "1997M10",
+   "1997M11",
+   "1997M12",
+   "1998M01",
+   "1998M02",
+   "1998M03",
+   "1998M04",
+   "1998M05",
+   "1998M06",
+   "1998M07",
+   "1998M08",
+   "1998M09",
+   "1998M10",
+   "1998M11",
+   "1998M12",
+   "1999M01",
+   "1999M02",
+   "1999M03",
+   "1999M04",
+   "1999M05",
+   "1999M06",
+   "1999M07",
+   "1999M08",
+   "1999M09",
+   "1999M10",
+   "1999M11",
+   "1999M12",
+   "2000M01",
+   "2000M02",
+   "2000M03",
+   "2000M04",
+   "2000M05",
+   "2000M06",
+   "2000M07",
+   "2000M08",
+   "2000M09",
+   "2000M10",
+   "2000M11",
+   "2000M12",
+   "2001M01",
+   "2001M02",
+   "2001M03",
+   "2001M04",
+   "2001M05",
+   "2001M06",
+   "2001M07",
+   "2001M08",
+   "2001M09",
+   "2001M10",
+   "2001M11",
+   "2001M12",
+   "2002M01",
+   "2002M02",
+   "2002M03",
+   "2002M04",
+   "2002M05",
+   "2002M06",
+   "2002M07",
+   "2002M08",
+   "2002M09",
+   "2002M10",
+   "2002M11",
+   "2002M12",
+   "2003M01",
+   "2003M02",
+   "2003M03",
+   "2003M04",
+   "2003M05",
+   "2003M06",
+   "2003M07",
+   "2003M08",
+   "2003M09",
+   "2003M10",
+   "2003M11",
+   "2003M12",
+   "2004M01",
+   "2004M02",
+   "2004M03",
+   "2004M04",
+   "2004M05",
+   "2004M06",
+   "2004M07",
+   "2004M08",
+   "2004M09",
+   "2004M10",
+   "2004M11",
+   "2004M12",
+   "2005M01",
+   "2005M02",
+   "2005M03",
+   "2005M04",
+   "2005M05",
+   "2005M06",
+   "2005M07",
+   "2005M08",
+   "2005M09",
+   "2005M10",
+   "2005M11",
+   "2005M12",
+   "2006M01",
+   "2006M02",
+   "2006M03",
+   "2006M04",
+   "2006M05",
+   "2006M06",
+   "2006M07",
+   "2006M08",
+   "2006M09",
+   "2006M10",
+   "2006M11",
+   "2006M12",
+   "2007M01",
+   "2007M02",
+   "2007M03",
+   "2007M04",
+   "2007M05",
+   "2007M06",
+   "2007M07",
+   "2007M08",
+   "2007M09",
+   "2007M10",
+   "2007M11",
+   "2007M12",
+   "2008M01",
+   "2008M02",
+   "2008M03",
+   "2008M04",
+   "2008M05",
+   "2008M06",
+   "2008M07",
+   "2008M08",
+   "2008M09",
+   "2008M10",
+   "2008M11",
+   "2008M12",
+   "2009M01",
+   "2009M02",
+   "2009M03",
+   "2009M04",
+   "2009M05",
+   "2009M06",
+   "2009M07",
+   "2009M08",
+   "2009M09",
+   "2009M10",
+   "2009M11",
+   "2009M12",
+   "2010M01",
+   "2010M02",
+   "2010M03",
+   "2010M04",
+   "2010M05",
+   "2010M06",
+   "2010M07",
+   "2010M08",
+   "2010M09",
+   "2010M10",
+   "2010M11",
+   "2010M12",
+   "2011M01",
+   "2011M02",
+   "2011M03",
+   "2011M04",
+   "2011M05",
+   "2011M06",
+   "2011M07",
+   "2011M08",
+   "2011M09",
+   "2011M10",
+   "2011M11",
+   "2011M12",
+   "2012M01",
+   "2012M02",
+   "2012M03",
+   "2012M04",
+   "2012M05",
+   "2012M06",
+   "2012M07",
+   "2012M08",
+   "2012M09",
+   "2012M10",
+   "2012M11",
+   "2012M12",
+   "2013M01",
+   "2013M02",
+   "2013M03",
+   "2013M04",
+   "2013M05",
+   "2013M06",
+   "2013M07",
+   "2013M08",
+   "2013M09",
+   "2013M10",
+   "2013M11",
+   "2013M12",
+   "2014M01",
+   "2014M02",
+   "2014M03",
+   "2014M04",
+   "2014M05",
+   "2014M06",
+   "2014M07",
+   "2014M08",
+   "2014M09",
+   "2014M10",
+   "2014M11",
+   "2014M12",
+   "2015M01",
+   "2015M02",
+   "2015M03",
+   "2015M04",
+   "2015M05",
+   "2015M06",
+   "2015M07",
+   "2015M08",
+   "2015M09",
+   "2015M10",
+   "2015M11",
+   "2015M12",
+   "2016M01",
+   "2016M02",
+   "2016M03",
+   "2016M04",
+   "2016M05",
+   "2016M06",
+   "2016M07",
+   "2016M08",
+   "2016M09",
+   "2016M10",
+   "2016M11",
+   "2016M12",
+   "2017M01",
+   "2017M02",
+   "2017M03",
+   "2017M04",
+   "2017M05",
+   "2017M06",
+   "2017M07",
+   "2017M08",
+   "2017M09",
+   "2017M10",
+   "2017M11",
+   "2017M12",
+   "2018M01",
+   "2018M02",
+   "2018M03",
+   "2018M04",
+   "2018M05",
+   "2018M06",
+   "2018M07",
+   "2018M08",
+   "2018M09",
+   "2018M10",
+   "2018M11",
+   "2018M12",
+   "2019M01",
+   "2019M02",
+   "2019M03",
+   "2019M04",
+   "2019M05",
+   "2019M06",
+   "2019M07",
+   "2019M08",
+   "2019M09",
+   "2019M10",
+   "2019M11",
+   "2019M12",
+   "2020M01",
+   "2020M02",
+   "2020M03",
+   "2020M04",
+   "2020M05",
+   "2020M06",
+   "2020M07",
+   "2020M08",
+   "2020M09",
+   "2020M10",
+   "2020M11",
+   "2020M12",
+   "2021M01",
+   "2021M02",
+   "2021M03",
+   "2021M04",
+   "2021M05",
+   "2021M06",
+   "2021M07",
+   "2021M08",
+   "2021M09",
+   "2021M10",
+   "2021M11",
+   "2021M12",
+   "2022M01",
+   "2022M02",
+   "2022M03",
+   "2022M04",
+   "2022M05",
+   "2022M06",
+   "2022M07",
+   "2022M08",
+   "2022M09",
+   "2022M10",
+   "2022M11",
+   "2022M12",
+   "2023M01",
+   "2023M02",
+   "2023M03",
+   "2023M04",
+   "2023M05",
+   "2023M06",
+   "2023M07",
+   "2023M08",
+   "2023M09",
+   "2023M10",
+   "2023M11",
+   "2023M12",
+   "2024M01",
+   "2024M02",
+   "2024M03",
+   "2024M04",
+   "2024M05",
+   "2024M06",
+   "2024M07",
+   "2024M08",
+   "2024M09",
+   "2024M10",
+   "2024M11",
+   "2024M12",
+   "2025M01",
+   "2025M02",
+   "2025M03",
+   "2025M04",
+   "2025M05",
+   "2025M06",
+   "2025M07",
+   "2025M08",
+   "2025M09",
+   "2025M10",
+   "2025M11",
+   "2025M12",
+   "2026M01",
+   "2026M02",
+   "2026M03",
+   "2026M04",
+   "2026M05",
+   "2026M06",
+   "2026M07",
+   "2026M08"
+  ],
+  "TAB4572": [
+   "1975K1",
+   "1975K2",
+   "1975K3",
+   "1975K4",
+   "1976K1",
+   "1976K2",
+   "1976K3",
+   "1976K4",
+   "1977K1",
+   "1977K2",
+   "1977K3",
+   "1977K4",
+   "1978K1",
+   "1978K2",
+   "1978K3",
+   "1978K4",
+   "1979K1",
+   "1979K2",
+   "1979K3",
+   "1979K4",
+   "1980K1",
+   "1980K2",
+   "1980K3",
+   "1980K4",
+   "1981K1",
+   "1981K2",
+   "1981K3",
+   "1981K4",
+   "1982K1",
+   "1982K2",
+   "1982K3",
+   "1982K4",
+   "1983K1",
+   "1983K2",
+   "1983K3",
+   "1983K4",
+   "1984K1",
+   "1984K2",
+   "1984K3",
+   "1984K4",
+   "1985K1",
+   "1985K2",
+   "1985K3",
+   "1985K4",
+   "1986K1",
+   "1986K2",
+   "1986K3",
+   "1986K4",
+   "1987K1",
+   "1987K2",
+   "1987K3",
+   "1987K4",
+   "1988K1",
+   "1988K2",
+   "1988K3",
+   "1988K4",
+   "1989K1",
+   "1989K2",
+   "1989K3",
+   "1989K4",
+   "1990K1",
+   "1990K2",
+   "1990K3",
+   "1990K4",
+   "1991K1",
+   "1991K2",
+   "1991K3",
+   "1991K4",
+   "1992K1",
+   "1992K2",
+   "1992K3",
+   "1992K4",
+   "1993K1",
+   "1993K2",
+   "1993K3",
+   "1993K4",
+   "1994K1",
+   "1994K2",
+   "1994K3",
+   "1994K4",
+   "1995K1",
+   "1995K2",
+   "1995K3",
+   "1995K4",
+   "1996K1",
+   "1996K2",
+   "1996K3",
+   "1996K4",
+   "1997K1",
+   "1997K2",
+   "1997K3",
+   "1997K4",
+   "1998K1",
+   "1998K2",
+   "1998K3",
+   "1998K4",
+   "1999K1",
+   "1999K2",
+   "1999K3",
+   "1999K4",
+   "2000K1",
+   "2000K2",
+   "2000K3",
+   "2000K4",
+   "2001K1",
+   "2001K2",
+   "2001K3",
+   "2001K4",
+   "2002K1",
+   "2002K2",
+   "2002K3",
+   "2002K4",
+   "2003K1",
+   "2003K2",
+   "2003K3",
+   "2003K4",
+   "2004K1",
+   "2004K2",
+   "2004K3",
+   "2004K4",
+   "2005K1",
+   "2005K2",
+   "2005K3",
+   "2005K4",
+   "2006K1",
+   "2006K2",
+   "2006K3",
+   "2006K4",
+   "2007K1",
+   "2007K2",
+   "2007K3",
+   "2007K4",
+   "2008K1",
+   "2008K2",
+   "2008K3",
+   "2008K4",
+   "2009K1",
+   "2009K2",
+   "2009K3",
+   "2009K4",
+   "2010K1",
+   "2010K2",
+   "2010K3",
+   "2010K4",
+   "2011K1",
+   "2011K2",
+   "2011K3",
+   "2011K4",
+   "2012K1",
+   "2012K2",
+   "2012K3",
+   "2012K4",
+   "2013K1",
+   "2013K2",
+   "2013K3",
+   "2013K4",
+   "2014K1",
+   "2014K2",
+   "2014K3",
+   "2014K4",
+   "2015K1",
+   "2015K2",
+   "2015K3",
+   "2015K4",
+   "2016K1",
+   "2016K2",
+   "2016K3",
+   "2016K4",
+   "2017K1",
+   "2017K2",
+   "2017K3",
+   "2017K4",
+   "2018K1",
+   "2018K2",
+   "2018K3",
+   "2018K4",
+   "2019K1",
+   "2019K2",
+   "2019K3",
+   "2019K4",
+   "2020K1",
+   "2020K2",
+   "2020K3",
+   "2020K4",
+   "2021K1",
+   "2021K2",
+   "2021K3",
+   "2021K4",
+   "2022K1",
+   "2022K2",
+   "2022K3",
+   "2022K4",
+   "2023K1",
+   "2023K2",
+   "2023K3",
+   "2023K4",
+   "2024K1",
+   "2024K2",
+   "2024K3",
+   "2024K4",
+   "2025K1",
+   "2025K2",
+   "2025K3",
+   "2025K4",
+   "2026K1",
+   "2026K2"
+  ],
+  "TAB2534": [
+   "1996K1",
+   "1996K2",
+   "1996K3",
+   "1996K4",
+   "1997K1",
+   "1997K2",
+   "1997K3",
+   "1997K4",
+   "1998K1",
+   "1998K2",
+   "1998K3",
+   "1998K4",
+   "1999K1",
+   "1999K2",
+   "1999K3",
+   "1999K4",
+   "2000K1",
+   "2000K2",
+   "2000K3",
+   "2000K4",
+   "2001K1",
+   "2001K2",
+   "2001K3",
+   "2001K4",
+   "2002K1",
+   "2002K2",
+   "2002K3",
+   "2002K4",
+   "2003K1",
+   "2003K2",
+   "2003K3",
+   "2003K4",
+   "2004K1",
+   "2004K2",
+   "2004K3",
+   "2004K4",
+   "2005K1",
+   "2005K2",
+   "2005K3",
+   "2005K4",
+   "2006K1",
+   "2006K2",
+   "2006K3",
+   "2006K4",
+   "2007K1",
+   "2007K2",
+   "2007K3",
+   "2007K4",
+   "2008K1",
+   "2008K2",
+   "2008K3",
+   "2008K4",
+   "2009K1",
+   "2009K2",
+   "2009K3",
+   "2009K4",
+   "2010K1",
+   "2010K2",
+   "2010K3",
+   "2010K4",
+   "2011K1",
+   "2011K2",
+   "2011K3",
+   "2011K4",
+   "2012K1",
+   "2012K2",
+   "2012K3",
+   "2012K4",
+   "2013K1",
+   "2013K2",
+   "2013K3",
+   "2013K4",
+   "2014K1",
+   "2014K2",
+   "2014K3",
+   "2014K4",
+   "2015K1",
+   "2015K2",
+   "2015K3",
+   "2015K4",
+   "2016K1",
+   "2016K2",
+   "2016K3",
+   "2016K4",
+   "2017K1",
+   "2017K2",
+   "2017K3",
+   "2017K4",
+   "2018K1",
+   "2018K2",
+   "2018K3",
+   "2018K4",
+   "2019K1",
+   "2019K2",
+   "2019K3",
+   "2019K4",
+   "2020K1",
+   "2020K2",
+   "2020K3",
+   "2020K4",
+   "2021K1",
+   "2021K2",
+   "2021K3",
+   "2021K4",
+   "2022K1",
+   "2022K2",
+   "2022K3",
+   "2022K4",
+   "2023K1",
+   "2023K2",
+   "2023K3",
+   "2023K4",
+   "2024K1",
+   "2024K2",
+   "2024K3",
+   "2024K4",
+   "2025K1",
+   "2025K2",
+   "2025K3",
+   "2025K4",
+   "2026K1",
+   "2026K2"
+  ],
+  "TAB5783": [
+   "2005M09",
+   "2005M10",
+   "2005M11",
+   "2005M12",
+   "2006M01",
+   "2006M02",
+   "2006M03",
+   "2006M04",
+   "2006M05",
+   "2006M06",
+   "2006M07",
+   "2006M08",
+   "2006M09",
+   "2006M10",
+   "2006M11",
+   "2006M12",
+   "2007M01",
+   "2007M02",
+   "2007M03",
+   "2007M04",
+   "2007M05",
+   "2007M06",
+   "2007M07",
+   "2007M08",
+   "2007M09",
+   "2007M10",
+   "2007M11",
+   "2007M12",
+   "2008M01",
+   "2008M02",
+   "2008M03",
+   "2008M04",
+   "2008M05",
+   "2008M06",
+   "2008M07",
+   "2008M08",
+   "2008M09",
+   "2008M10",
+   "2008M11",
+   "2008M12",
+   "2009M01",
+   "2009M02",
+   "2009M03",
+   "2009M04",
+   "2009M05",
+   "2009M06",
+   "2009M07",
+   "2009M08",
+   "2009M09",
+   "2009M10",
+   "2009M11",
+   "2009M12",
+   "2010M01",
+   "2010M02",
+   "2010M03",
+   "2010M04",
+   "2010M05",
+   "2010M06",
+   "2010M07",
+   "2010M08",
+   "2010M09",
+   "2010M10",
+   "2010M11",
+   "2010M12",
+   "2011M01",
+   "2011M02",
+   "2011M03",
+   "2011M04",
+   "2011M05",
+   "2011M06",
+   "2011M07",
+   "2011M08",
+   "2011M09",
+   "2011M10",
+   "2011M11",
+   "2011M12",
+   "2012M01",
+   "2012M02",
+   "2012M03",
+   "2012M04",
+   "2012M05",
+   "2012M06",
+   "2012M07",
+   "2012M08",
+   "2012M09",
+   "2012M10",
+   "2012M11",
+   "2012M12",
+   "2013M01",
+   "2013M02",
+   "2013M03",
+   "2013M04",
+   "2013M05",
+   "2013M06",
+   "2013M07",
+   "2013M08",
+   "2013M09",
+   "2013M10",
+   "2013M11",
+   "2013M12",
+   "2014M01",
+   "2014M02",
+   "2014M03",
+   "2014M04",
+   "2014M05",
+   "2014M06",
+   "2014M07",
+   "2014M08",
+   "2014M09",
+   "2014M10",
+   "2014M11",
+   "2014M12",
+   "2015M01",
+   "2015M02",
+   "2015M03",
+   "2015M04",
+   "2015M05",
+   "2015M06",
+   "2015M07",
+   "2015M08",
+   "2015M09",
+   "2015M10",
+   "2015M11",
+   "2015M12",
+   "2016M01",
+   "2016M02",
+   "2016M03",
+   "2016M04",
+   "2016M05",
+   "2016M06",
+   "2016M07",
+   "2016M08",
+   "2016M09",
+   "2016M10",
+   "2016M11",
+   "2016M12",
+   "2017M01",
+   "2017M02",
+   "2017M03",
+   "2017M04",
+   "2017M05",
+   "2017M06",
+   "2017M07",
+   "2017M08",
+   "2017M09",
+   "2017M10",
+   "2017M11",
+   "2017M12",
+   "2018M01",
+   "2018M02",
+   "2018M03",
+   "2018M04",
+   "2018M05",
+   "2018M06",
+   "2018M07",
+   "2018M08",
+   "2018M09",
+   "2018M10",
+   "2018M11",
+   "2018M12",
+   "2019M01",
+   "2019M02",
+   "2019M03",
+   "2019M04",
+   "2019M05",
+   "2019M06",
+   "2019M07",
+   "2019M08",
+   "2019M09",
+   "2019M10",
+   "2019M11",
+   "2019M12",
+   "2020M01",
+   "2020M02",
+   "2020M03",
+   "2020M04",
+   "2020M05",
+   "2020M06",
+   "2020M07",
+   "2020M08",
+   "2020M09",
+   "2020M10",
+   "2020M11",
+   "2020M12",
+   "2021M01",
+   "2021M02",
+   "2021M03",
+   "2021M04",
+   "2021M05",
+   "2021M06",
+   "2021M07",
+   "2021M08",
+   "2021M09",
+   "2021M10",
+   "2021M11",
+   "2021M12",
+   "2022M01",
+   "2022M02",
+   "2022M03",
+   "2022M04",
+   "2022M05",
+   "2022M06",
+   "2022M07",
+   "2022M08",
+   "2022M09",
+   "2022M10",
+   "2022M11",
+   "2022M12",
+   "2023M01",
+   "2023M02",
+   "2023M03",
+   "2023M04",
+   "2023M05",
+   "2023M06",
+   "2023M07",
+   "2023M08",
+   "2023M09",
+   "2023M10",
+   "2023M11",
+   "2023M12",
+   "2024M01",
+   "2024M02",
+   "2024M03",
+   "2024M04",
+   "2024M05",
+   "2024M06",
+   "2024M07",
+   "2024M08",
+   "2024M09",
+   "2024M10",
+   "2024M11",
+   "2024M12",
+   "2025M01",
+   "2025M02",
+   "2025M03",
+   "2025M04",
+   "2025M05",
+   "2025M06",
+   "2025M07",
+   "2025M08",
+   "2025M09",
+   "2025M10",
+   "2025M11",
+   "2025M12",
+   "2026M01",
+   "2026M02",
+   "2026M03",
+   "2026M04",
+   "2026M05",
+   "2026M06",
+   "2026M07"
+  ],
+  "TAB3100": [
+   "1981K1",
+   "1981K2",
+   "1981K3",
+   "1981K4",
+   "1982K1",
+   "1982K2",
+   "1982K3",
+   "1982K4",
+   "1983K1",
+   "1983K2",
+   "1983K3",
+   "1983K4",
+   "1984K1",
+   "1984K2",
+   "1984K3",
+   "1984K4",
+   "1985K1",
+   "1985K2",
+   "1985K3",
+   "1985K4",
+   "1986K1",
+   "1986K2",
+   "1986K3",
+   "1986K4",
+   "1987K1",
+   "1987K2",
+   "1987K3",
+   "1987K4",
+   "1988K1",
+   "1988K2",
+   "1988K3",
+   "1988K4",
+   "1989K1",
+   "1989K2",
+   "1989K3",
+   "1989K4",
+   "1990K1",
+   "1990K2",
+   "1990K3",
+   "1990K4",
+   "1991K1",
+   "1991K2",
+   "1991K3",
+   "1991K4",
+   "1992K1",
+   "1992K2",
+   "1992K3",
+   "1992K4",
+   "1993K1",
+   "1993K2",
+   "1993K3",
+   "1993K4",
+   "1994K1",
+   "1994K2",
+   "1994K3",
+   "1994K4",
+   "1995K1",
+   "1995K2",
+   "1995K3",
+   "1995K4",
+   "1996K1",
+   "1996K2",
+   "1996K3",
+   "1996K4",
+   "1997K1",
+   "1997K2",
+   "1997K3",
+   "1997K4",
+   "1998K1",
+   "1998K2",
+   "1998K3",
+   "1998K4",
+   "1999K1",
+   "1999K2",
+   "1999K3",
+   "1999K4",
+   "2000K1",
+   "2000K2",
+   "2000K3",
+   "2000K4",
+   "2001K1",
+   "2001K2",
+   "2001K3",
+   "2001K4",
+   "2002K1",
+   "2002K2",
+   "2002K3",
+   "2002K4",
+   "2003K1",
+   "2003K2",
+   "2003K3",
+   "2003K4",
+   "2004K1",
+   "2004K2",
+   "2004K3",
+   "2004K4",
+   "2005K1",
+   "2005K2",
+   "2005K3",
+   "2005K4",
+   "2006K1",
+   "2006K2",
+   "2006K3",
+   "2006K4",
+   "2007K1",
+   "2007K2",
+   "2007K3",
+   "2007K4",
+   "2008K1",
+   "2008K2",
+   "2008K3",
+   "2008K4",
+   "2009K1",
+   "2009K2",
+   "2009K3",
+   "2009K4",
+   "2010K1",
+   "2010K2",
+   "2010K3",
+   "2010K4",
+   "2011K1",
+   "2011K2",
+   "2011K3",
+   "2011K4",
+   "2012K1",
+   "2012K2",
+   "2012K3",
+   "2012K4",
+   "2013K1",
+   "2013K2",
+   "2013K3",
+   "2013K4",
+   "2014K1",
+   "2014K2",
+   "2014K3",
+   "2014K4",
+   "2015K1",
+   "2015K2",
+   "2015K3",
+   "2015K4",
+   "2016K1",
+   "2016K2",
+   "2016K3",
+   "2016K4",
+   "2017K1",
+   "2017K2",
+   "2017K3",
+   "2017K4",
+   "2018K1",
+   "2018K2",
+   "2018K3",
+   "2018K4",
+   "2019K1",
+   "2019K2",
+   "2019K3",
+   "2019K4",
+   "2020K1",
+   "2020K2",
+   "2020K3",
+   "2020K4",
+   "2021K1",
+   "2021K2",
+   "2021K3",
+   "2021K4",
+   "2022K1",
+   "2022K2",
+   "2022K3",
+   "2022K4",
+   "2023K1",
+   "2023K2",
+   "2023K3",
+   "2023K4",
+   "2024K1",
+   "2024K2",
+   "2024K3",
+   "2024K4",
+   "2025K1",
+   "2025K2",
+   "2025K3",
+   "2025K4",
+   "2026K1",
+   "2026K2"
+  ]
+ }
 }
