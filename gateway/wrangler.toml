@@ -1,0 +1,17 @@
+# Cloudflare Worker: the listings gateway for the AM Dashboard (Sweden).
+#
+# It is a read-through proxy and nothing else: no KV, no D1, no R2, no queues.
+# Adding a storage binding here would break the promise in docs/LISTINGS.md
+# that the gateway stores nothing.
+
+name = "am-se-listings"
+main = "src/index.js"
+compatibility_date = "2025-09-01"
+
+# Edge caching is done explicitly with caches.default in src/index.js, so the
+# Worker must run on the cache-enabled path. No routes are declared: the
+# workers.dev subdomain is the deployment target for phase 1.
+workers_dev = true
+
+[observability]
+enabled = true

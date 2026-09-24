@@ -24,3 +24,8 @@ tests/fixture_*.json
 
 # Never public
 data/processed/portfolio.json
+
+# Listings gateway (gateway/) — local wrangler state and deps
+gateway/node_modules/
+gateway/.wrangler/
+gateway/.dev.vars
