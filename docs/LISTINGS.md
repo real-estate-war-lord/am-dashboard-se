@@ -113,7 +113,7 @@ curl -H "Authorization: Bearer $REFRESH_SECRET" \
   {"src":"victoriahem","ok":true,"count":1110,"dropped":2,"fetchedAt":"…"}, …]}
 ```
 
-All 19 portals refresh in about 4 seconds. They are fetched **four at a time**,
+All 21 sources refresh in about 5 seconds. They are fetched **four at a time**,
 not all at once: Victoriahem's list alone is 8.6 MB and parsing it costs
 several times that in live objects, so nineteen in flight together would run at
 the Worker's 128 MB ceiling.
@@ -150,8 +150,13 @@ without knowing which source it came from.
 | `discount` | object\|null | source-shaped campaign object, passed through |
 | `is_new_production` | bool\|null | |
 | `dist_m` | number | metres from the query point, whole metres |
+| `allocation` | `"direct"` \| `"queue"` | how the flat is let — see *Queue sources* |
+| `audience` | string\|null | `student`, `youth`, `senior`, `short_term` when reserved for a group |
 | `also_on` | string[] | present only on a deduplicated record: other sources carrying the same flat |
 | `also_on_urls` | object | `{src: url}` for those other sources |
+
+Queue sources add three more: `queue_name`, `queue_years_q1` / `queue_years_q3`
+(the feed's own queue-time quartiles, in years) and `apply_by`.
 
 Fields a source does not carry stay `null` rather than being guessed — the same
 rule the dashboard applies to suppressed SCB values. A rent is what the landlord
@@ -315,6 +320,43 @@ Eskilstuna (226 listings) with Göteborg (7) is seeing a difference in *where
 landlords advertise*, not in how much is for rent. The UI must not present a
 listing count as a vacancy rate.
 
+### Willhem (`willhem`)
+
+[willhem.se](https://www.willhem.se) — a large private residential owner, ~645
+flats across 13 cities. It runs Optimizely/Episerver and its Content Delivery
+API is open:
+
+```
+GET /mvcapi/search-landing                       the 13 region pages
+GET /api/episerver/v2.0/content/<regionId>/children   every VacantObjectPage
+```
+
+14 requests per refresh, done serially. The region ids are read from
+`search-landing` rather than hard-coded, so a new Willhem city appears without
+a code change.
+
+**Correction to phase 4.** The discovery run classified Willhem as "own JSON
+API, not Arena" because `/rentalobject/Listapartment/published` answered
+HTTP 200 with JSON. That JSON is a *rendered 404 page*. Willhem has no Arena
+portal and never did; the finding was a false positive, and the probe now has
+a test for exactly this shape.
+
+Traps:
+
+- **`area` uses a Swedish decimal comma** — `"34,7"`. `Number("34,7")` is
+  `NaN`, which silently nulled the size of 155 of 645 flats before it was
+  handled. A comma here is never a thousands separator.
+- **`noOfRooms` is prose**, `"2 rum & kök"`, so the room count has to be
+  parsed out. Fractional counts (`"1.5 rum & kök"`) exist.
+- **Properties are inconsistently wrapped.** `latitude` is
+  `{value, propertyDataType}` while `rent` in the same object is a bare
+  string.
+- **Every image property is empty** on every record, so `image` is always
+  `null`. There is no picture to link, and inventing a URL would be worse.
+- `city`, `district` and `zipCode` are present in the schema and empty on
+  every record; `area_name` therefore comes from the region page the flat was
+  found under.
+
 ### Adding a source
 
 One file in `gateway/src/sources/` exporting `SRC`, `SRC_LABEL`,
@@ -322,6 +364,63 @@ One file in `gateway/src/sources/` exporting `SRC`, `SRC_LABEL`,
 line in `SOURCES` in `src/index.js`. The envelope, timeout, error reporting and
 CORS are handled for it. A source that cannot be queried by location belongs in
 the Arena pattern instead: a snapshot plus an entry in `PORTALS`.
+
+## Queue sources
+
+### Bostadsförmedlingen i Stockholm (`bostadsformedlingen`)
+
+```
+GET https://bostad.stockholm.se/AllaAnnonser/
+```
+
+One request, every current advert in the Stockholm region with coordinates —
+the feed the site's own map view reads. ~534 adverts across 26 kommuner
+(Stockholm 155, Södertälje 59, Nacka 57, Botkyrka 45, …).
+
+**These flats are real supply, but they are not open to whoever applies
+first.** They are allocated by queue time: you register, accrue days, and the
+flat goes to the applicant with the longest queue who applied before the
+advert closed. Everything from this source therefore carries
+`allocation: "queue"`, and everything from every other source carries
+`allocation: "direct"`. A consumer that adds the two into one number is
+counting two different things.
+
+How different: the feed publishes, per advert, the first and third quartile of
+queue time among recently let comparable flats. Across the whole feed the
+median advert wants **3 years (Q1) to 8 years (Q3)**. Those quartiles are
+passed through as `queue_years_q1` / `queue_years_q3` exactly as published —
+no averaging into a single "expected queue time", because the spread is the
+information.
+
+Roughly a third of adverts are reserved for a group, which is `audience`:
+student (87), youth (35), senior (7), short-term (8) at the time of writing.
+They are kept rather than filtered, so the UI can choose.
+
+Fields available and used: address, coordinates, rent, rooms, m², floor,
+neighbourhood + kommun, new production, queue name, publish date and
+`apply_by`. **Not available: the landlord.** The feed names no owner, so a
+queue listing cannot be attributed to a specific company.
+
+### Boplats Väst and Boplats Syd — not built, and why
+
+Both were probed. Neither produced an adapter.
+
+**Boplats Syd** (Malmö/Skåne, `boplatssyd.se`) redirects its "lediga bostäder"
+page to `/mypages/app` — the listings sit behind a **login**. Per the standing
+instruction this was stopped there rather than worked around, and no
+credentialed access was attempted.
+
+**Boplats Väst** (Göteborg, `boplats.se`) serves its listings as
+server-rendered HTML with address, rent and size, but **no coordinates
+anywhere in the payload** — the map is drawn from a source not exposed to the
+page. Placing ~100 adverts would mean adding a geocoder, which is a new
+external dependency and a new class of silent error (a mis-geocoded flat looks
+exactly like a correct one). That is a decision worth taking deliberately
+rather than as a side effect, so it is left open.
+
+Consequence: **Göteborg and Malmö are still thin**, and for the same
+structural reason as before — their municipal stock is let through queues this
+gateway does not read.
 
 ## Campaign text and the `offer` field
 
@@ -393,15 +492,27 @@ untidy; a false merge hides a real flat and misstates the rent of the one it
 kept. So a null on either side never matches, and HomeQ's fractional room counts
 (1.5 rum) never match a portal's whole ones.
 
-**In practice it currently fires almost never, and that is the honest finding.**
-Measured across the whole country — 6 448 HomeQ listings against 1 600 portal
-listings — only 15 pairs share a street and number, and **none** of those is the
-same flat: they are different flats in the same building (2 rum / 61 m² against
-1 rum / 40 m², and so on). Heimstaden and Victoriahem do not cross-post to
-HomeQ. The dedupe is insurance for a source that does, not something carrying
-weight today. About 1.5 % of HomeQ addresses (97 of 6 448) are property names
-like "Kv. Vulkanen" rather than street addresses and can never be matched at
-all.
+**How much it fires depends entirely on the landlord.**
+
+| pair | same street+number | confirmed same flat |
+|---|---:|---:|
+| HomeQ × Willhem | 651 | **646** |
+| HomeQ × the 19 Arena portals | 15 | **0** |
+
+Willhem advertises *every* one of its flats on HomeQ — `isHomeQApartment` is
+true on all 645 — so almost every Willhem listing has a HomeQ twin, and the
+matcher finds 646 of the 651 candidate pairs. The five it rejects are visibly
+different flats at the same address (1 rum / 18 m² against 2 rum / 70 m², and
+so on), which is the rule working, not failing. Rent and size agree *exactly*
+in the matched pairs, so the tolerances are not carrying the match.
+
+Heimstaden and Victoriahem, by contrast, do not cross-post at all: 15 shared
+street numbers, none the same flat. Without Willhem the dedupe looked like
+dead weight; with it, it removes 30 duplicates in Borås and 77 in Eskilstuna
+on a single 1 km query.
+
+About 1.5 % of HomeQ addresses (97 of 6 448) are property names like
+"Kv. Vulkanen" rather than street addresses and can never be matched.
 
 ## Geometry
 
@@ -419,8 +530,9 @@ different costume.
 
 ## Rules
 
-1. **The only stored thing is the portal snapshot.** One KV namespace, one key
-   per portal (`arena:<src>`, 19 of them), each the latest vacancy list,
+1. **The only stored thing is the source snapshot.** One KV namespace, one key
+   per snapshot source (`arena:<src>` for the 19 portals, `snapshot:<src>` for
+   Willhem and Bostadsförmedlingen — 21 in all), each the latest vacancy list,
    overwritten hourly. **Latest only: no history, no time series,
    no per-user data, nothing else.** Keeping a history would turn the gateway
    into a database of someone else's listings, which is the thing rule 4 exists
@@ -457,6 +569,12 @@ different costume.
 7. **A snapshot older than 3 h is not served.** It is reported `ok:false`
    with a `stale` error instead. Showing a stale vacancy as current is the one
    failure mode a user would actually act on.
+8. **Queue supply is labelled, never merged into direct supply.** Every
+   listing carries `allocation`, and `/nearby` returns the split. A queue flat
+   is real, but it is not available to a reader who has not been queuing for
+   years, and presenting the two as one number would misrepresent both.
+9. **No source is accessed behind a login.** Boplats Syd was dropped for this
+   reason rather than worked around.
 
 Licensing is the reason for 1–4. The SCB data behind the rest of the dashboard is
 CC0; these listings are not ours, and the gateway's job is to point at them, not
@@ -465,7 +583,7 @@ to accumulate them.
 ## Development
 
 ```sh
-npm --prefix gateway test     # 114 unit tests, no network (one takes 8 s: the timeout budget)
+npm --prefix gateway test     # 135 unit tests, no network (one takes 8 s: the timeout budget)
 cd gateway && npx wrangler dev
 ```
 
@@ -509,8 +627,8 @@ npx wrangler secret put REFRESH_SECRET         # any long random string
 
 ## Known limits
 
-- **`/nearby` reads every portal snapshot on every request** — 19 KV reads and
-  about 1.4 MB of JSON parsed per call. It answers in 0.3–0.9 s today, but this
+- **`/nearby` reads every snapshot on every request** — 21 KV reads and about
+  2.2 MB of JSON parsed per call. It answers in 0.3–0.9 s today, but this
   grows linearly with the portal count. A combined, spatially bucketed index
   would be the fix if the register keeps growing.
 - **A listing count is not a vacancy rate.** Coverage depends on where a
@@ -519,6 +637,9 @@ npx wrangler secret put REFRESH_SECRET         # any long random string
   SCB rent statistics on the same area page.
 - Tyresö Bostäder and Signalisten are registered on an unverified coordinate
   share (both were empty at discovery).
+- **Göteborg and Malmö remain thin.** Boplats Väst has no coordinates and
+  Boplats Syd is behind a login, so their municipal supply is not represented.
+- Queue listings have no landlord attribution — the feed does not name one.
 
 ## Deploying
 

@@ -68,6 +68,11 @@ export function normaliseListing(raw, center) {
      * records and those are not offers. */
     offer: offerFromDiscount(raw.discount),
     is_new_production: null,
+    allocation: "direct",
+    /* HomeQ's search payload has an `audience` field, but it says who may
+     * apply on the platform ("everyone"), not that the flat is reserved for
+     * students or seniors, so it is not the same question. */
+    audience: null,
     dist_m: Math.round(haversine(center.lat, center.lon, lat, lon)),
   };
 }

@@ -10,12 +10,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { PAYLOAD } from "./fixtures/arena.js";
+import { upstreamFor } from "./fixtures/sources.js";
 
 globalThis.caches = { default: { match: async () => undefined, put: async () => {} } };
 const ctx = { waitUntil: () => {} };
 
 const { default: worker } = await import("../src/index.js");
 const { buildSnapshot, PORTALS } = await import("../src/sources/arena.js");
+const { SNAPSHOT_SOURCES } = await import("../src/snapshots.js");
 
 const DASHBOARD = "https://real-estate-war-lord.github.io";
 const CENTER = "lat=59.3165&lon=18.0335";
@@ -36,8 +38,14 @@ function kvStub(initial = {}) {
 
 /* Snapshots for both real portals, built from the fixture. */
 function freshSnapshots(when = new Date()) {
+  /* Every snapshot source is stubbed with the Arena fixture — the envelope
+   * does not care which adapter produced a snapshot, only that it has
+   * fetchedAt and listings. */
   const out = {};
-  for (const p of PORTALS) out[`arena:${p.src}`] = buildSnapshot(PAYLOAD, p, when);
+  for (const s of SNAPSHOT_SOURCES) {
+    const portal = { src: s.src, label: s.label, host: "https://stub.invalid" };
+    out[s.kvKey] = buildSnapshot(PAYLOAD, portal, when);
+  }
   return out;
 }
 
@@ -79,9 +87,9 @@ test("the response lists every source: HomeQ plus every portal", async () => {
   const env = { LISTINGS_KV: kvStub(freshSnapshots()) };
   const r = await call(`/nearby?${CENTER}&r=3000`, { upstream: okHomeq([HOMEQ_HIT]), env });
   assert.equal(r.status, 200);
-  assert.deepEqual(r.body.sources.map((s) => s.src), ["homeq", ...PORTALS.map((p) => p.src)]);
-  assert.equal(r.body.sources.length, 1 + PORTALS.length);
-  assert.deepEqual(Object.keys(r.body), ["fetchedAt", "radius", "sources", "deduped", "listings"]);
+  assert.deepEqual(r.body.sources.map((s) => s.src), ["homeq", ...SNAPSHOT_SOURCES.map((p) => p.src)]);
+  assert.equal(r.body.sources.length, 1 + SNAPSHOT_SOURCES.length);
+  assert.deepEqual(Object.keys(r.body), ["fetchedAt", "radius", "sources", "deduped", "allocation", "listings"]);
 });
 
 test("a portal source reports its snapshot's fetchedAt", async () => {
@@ -98,7 +106,7 @@ test("a missing snapshot is ok:false, not an empty success", async () => {
   const env = { LISTINGS_KV: kvStub({}) };
   const r = await call(`/nearby?${CENTER}&r=3000`, { upstream: okHomeq([HOMEQ_HIT]), env });
   assert.equal(r.status, 200, "HomeQ still worked, so the call succeeds");
-  for (const src of PORTALS.map((p) => p.src)) {
+  for (const src of SNAPSHOT_SOURCES.map((p) => p.src)) {
     const s = srcOf(r.body, src);
     assert.equal(s.ok, false, src);
     assert.equal(s.count, 0, src);
@@ -135,7 +143,7 @@ test("every source failing gives 502 with the envelope intact", async () => {
   assert.equal(r.status, 502);
   assert.ok(r.body.sources.every((s) => s.ok === false));
   assert.deepEqual(r.body.listings, []);
-  assert.deepEqual(Object.keys(r.body), ["fetchedAt", "radius", "sources", "deduped", "listings"]);
+  assert.deepEqual(Object.keys(r.body), ["fetchedAt", "radius", "sources", "deduped", "allocation", "listings"]);
 });
 
 test("HomeQ failing does not take the portals down with it", async () => {
@@ -175,7 +183,7 @@ test("the radius still trims the portal listings", async () => {
   /* Of the fixture's three placeable records, two are within 100 m (62 m and
    * 12 m) and Provvagen 5 at 187 m is not — and every portal is stubbed with
    * the same fixture, so it is two per portal. */
-  assert.equal(r.body.listings.length, 2 * PORTALS.length);
+  assert.equal(r.body.listings.length, 2 * SNAPSHOT_SOURCES.length);
   assert.ok(r.body.listings.every((l) => !l.address.startsWith("Provv")));
 });
 
@@ -287,14 +295,18 @@ test("/admin/refresh with the right token rebuilds every snapshot", async () => 
   const r = await call("/admin/refresh", {
     env,
     headers: { Authorization: "Bearer s3cret" },
-    upstream: async () => new Response(JSON.stringify(PAYLOAD), { status: 200 }),
+    upstream: upstreamFor(PAYLOAD),
   });
   assert.equal(r.status, 200);
   /* Order is preserved even though the refresh runs a bounded worker pool. */
-  assert.deepEqual(r.body.portals.map((p) => p.src), PORTALS.map((p) => p.src));
-  assert.ok(r.body.portals.every((p) => p.ok && p.count === 3 && p.dropped === 2));
-  assert.equal(kv.store.size, PORTALS.length);
+  assert.deepEqual(r.body.portals.map((p) => p.src), SNAPSHOT_SOURCES.map((p) => p.src));
+  assert.ok(r.body.portals.every((p) => p.ok), JSON.stringify(r.body.portals.filter((p) => !p.ok)));
+  /* Each source drops the fixture records that have no usable coordinates. */
+  assert.ok(r.body.portals.every((p) => p.count > 0 && p.dropped >= 1));
+  assert.equal(kv.store.size, SNAPSHOT_SOURCES.length);
   assert.ok(kv.store.has("arena:heimstaden"));
+  assert.ok(kv.store.has("snapshot:willhem"));
+  assert.ok(kv.store.has("snapshot:bostadsformedlingen"));
 });
 
 test("a portal failing the refresh leaves the others' snapshots alone", async () => {
@@ -305,12 +317,12 @@ test("a portal failing the refresh leaves the others' snapshots alone", async ()
     headers: { Authorization: "Bearer s3cret" },
     upstream: async (url) => String(url).includes("heimstaden")
       ? new Response("down", { status: 500 })
-      : new Response(JSON.stringify(PAYLOAD), { status: 200 }),
+      : upstreamFor(PAYLOAD)(url),
   });
   assert.equal(r.status, 200, "the others succeeded");
   assert.equal(r.body.portals.find((p) => p.src === "heimstaden").ok, false);
   assert.equal(r.body.portals.find((p) => p.src === "victoriahem").ok, true);
-  assert.equal(kv.store.size, PORTALS.length - 1, "the failed portal writes nothing");
+  assert.equal(kv.store.size, SNAPSHOT_SOURCES.length - 1, "the failed portal writes nothing");
 });
 
 test("both portals failing the refresh is a 502", async () => {
@@ -363,7 +375,7 @@ test("CORS is granted to the two known origins and nobody else", async () => {
 
 test("/health names every source", async () => {
   const r = await call("/health");
-  assert.deepEqual(r.body.sources, ["homeq", ...PORTALS.map((p) => p.src)]);
+  assert.deepEqual(r.body.sources, ["homeq", ...SNAPSHOT_SOURCES.map((p) => p.src)]);
 });
 
 test("a preflight is answered 204, only GET is served, unknown paths 404", async () => {
@@ -382,12 +394,12 @@ test("the scheduled handler writes every snapshot", async () => {
   const kv = kvStub();
   const pending = [];
   const real = globalThis.fetch;
-  globalThis.fetch = async () => new Response(JSON.stringify(PAYLOAD), { status: 200 });
+  globalThis.fetch = upstreamFor(PAYLOAD);
   try {
     await worker.scheduled({}, { LISTINGS_KV: kv }, { waitUntil: (p) => pending.push(p) });
     await Promise.all(pending);
   } finally { globalThis.fetch = real; }
-  assert.equal(kv.store.size, PORTALS.length);
+  assert.equal(kv.store.size, SNAPSHOT_SOURCES.length);
   const snap = JSON.parse(kv.store.get("arena:victoriahem"));
   assert.equal(snap.count, 3);
   assert.equal(snap.dropped, 2);

@@ -24,7 +24,7 @@
 "use strict";
 
 import * as homeq from "./sources/homeq.js";
-import * as arena from "./sources/arena.js";
+import { SNAPSHOT_SOURCES, bySrc, isStale } from "./snapshots.js";
 import { dedupe } from "./dedupe.js";
 
 const ALLOWED_ORIGINS = new Set([
@@ -101,11 +101,11 @@ function parseNearbyParams(params) {
 
 /* --- the snapshots --- */
 
-async function readSnapshot(env, portal) {
+async function readSnapshot(env, source) {
   if (!env?.LISTINGS_KV) throw new Error("LISTINGS_KV is not bound");
-  const snap = await env.LISTINGS_KV.get(arena.kvKey(portal.src), { type: "json" });
+  const snap = await env.LISTINGS_KV.get(source.kvKey, { type: "json" });
   if (!snap) throw new Error("no snapshot yet — the hourly refresh has not run");
-  if (arena.isStale(snap)) {
+  if (isStale(snap)) {
     throw new Error(`stale — snapshot is from ${snap.fetchedAt}, older than 3 h`);
   }
   return snap;
@@ -117,10 +117,10 @@ async function readSnapshot(env, portal) {
  * peak well under it while still finishing the whole refresh in seconds. */
 const REFRESH_CONCURRENCY = 4;
 
-/* Rebuild every portal snapshot. Each portal is independent: one failing
- * leaves the others' snapshots alone rather than blanking them. */
+/* Rebuild every snapshot. Each source is independent: one failing leaves the
+ * others' snapshots alone rather than blanking them. */
 export async function refreshAll(env) {
-  const portals = arena.PORTALS;
+  const portals = SNAPSHOT_SOURCES;
   const results = new Array(portals.length);
   let next = 0;
 
@@ -130,10 +130,8 @@ export async function refreshAll(env) {
       if (i >= portals.length) return;
       const portal = portals[i];
       try {
-        const snap = await arena.fetchPortal(portal, {
-          signal: AbortSignal.timeout(REFRESH_TIMEOUT_MS),
-        });
-        await env.LISTINGS_KV.put(arena.kvKey(portal.src), JSON.stringify(snap));
+        const snap = await portal.fetch({ signal: AbortSignal.timeout(REFRESH_TIMEOUT_MS) });
+        await env.LISTINGS_KV.put(portal.kvKey, JSON.stringify(snap));
         results[i] = { src: portal.src, ok: true, count: snap.count, dropped: snap.dropped, fetchedAt: snap.fetchedAt };
       } catch (err) {
         results[i] = { src: portal.src, ok: false, error: describeError(portal.label, err) };
@@ -167,10 +165,10 @@ async function handleNearby(request, url, env) {
     }
   })();
 
-  const portalAttempts = arena.PORTALS.map(async (portal) => {
+  const portalAttempts = SNAPSHOT_SOURCES.map(async (portal) => {
     try {
       const snap = await readSnapshot(env, portal);
-      const listings = arena.selectNearby(snap, q.lat, q.lon, q.r);
+      const listings = portal.selectNearby(snap, q.lat, q.lon, q.r);
       return {
         status: { src: portal.src, ok: true, count: listings.length, fetchedAt: snap.fetchedAt },
         listings,
@@ -188,11 +186,20 @@ async function handleNearby(request, url, env) {
   const portalListings = portalResults.flatMap((p) => p.listings);
   const { listings, merged } = dedupe(portalListings, homeqResult.listings);
 
+  /* How the surviving listings are allocated. A queue flat is real supply but
+   * is not open to whoever applies first, so a consumer that shows one total
+   * would be mixing two different things. */
+  const allocation = { direct: 0, queue: 0 };
+  for (const l of listings) {
+    if (l.allocation === "queue") allocation.queue++; else allocation.direct++;
+  }
+
   const body = {
     fetchedAt: new Date().toISOString(),
     radius: q.r,
     sources: [homeqResult.status, ...portalResults.map((p) => p.status)],
     deduped: merged,
+    allocation,
     listings,
   };
 
@@ -219,14 +226,14 @@ async function handleText(request, url, env) {
     }
   }
 
-  const portal = arena.PORTALS.find((p) => p.src === src);
+  const portal = bySrc(src);
   if (!portal) {
-    const known = [homeq.SRC, ...arena.PORTALS.map((p) => p.src)].join(", ");
+    const known = [homeq.SRC, ...SNAPSHOT_SOURCES.map((p) => p.src)].join(", ");
     return fail(400, `unknown src '${src}' — known: ${known}`, request);
   }
 
-  /* Portal excerpts are already in the snapshot — the list endpoint carries
-   * the full description, so there is no per-listing call to make. */
+  /* Snapshot excerpts are already stored — the list endpoints carry the full
+   * description, so there is no per-listing call to make. */
   try {
     const snap = await readSnapshot(env, portal);
     const hit = snap.listings.find((l) => String(l.id) === id);
@@ -290,7 +297,7 @@ export default {
     if (url.pathname === "/health") {
       return json({
         ok: true,
-        sources: [homeq.SRC, ...arena.PORTALS.map((p) => p.src)],
+        sources: [homeq.SRC, ...SNAPSHOT_SOURCES.map((p) => p.src)],
       }, { request });
     }
 

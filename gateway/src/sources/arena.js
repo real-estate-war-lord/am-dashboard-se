@@ -182,6 +182,11 @@ export function normaliseRecord(raw, portal) {
     discount: null,
     offer,
     is_new_production: null,
+    /* These landlords let directly: first suitable applicant, no queue time.
+     * The list endpoint carries no youth/student/senior flag, so audience is
+     * unknown rather than "everyone". */
+    allocation: "direct",
+    audience: null,
   };
 }
 

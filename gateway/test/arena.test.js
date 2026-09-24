@@ -85,6 +85,8 @@ test("a record maps onto the same schema HomeQ uses", () => {
     discount: null,
     offer: null,
     is_new_production: null,
+    allocation: "direct",
+    audience: null,
   });
 });
 
