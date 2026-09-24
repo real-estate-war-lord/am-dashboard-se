@@ -24,3 +24,17 @@ tests/fixture_*.json
 
 # Never public
 data/processed/portfolio.json
+# v1.2 raw pulls — all regenerable, none small
+data/raw/bra/
+data/raw/polisen/
+data/raw/skolverket/
+data/raw/skolenkaten/
+data/raw/climate/
+data/raw/osm/
+data/raw/osm_pbf/
+data/interim/
+
+# Listings gateway (gateway/) — local wrangler state and deps
+gateway/node_modules/
+gateway/.wrangler/
+gateway/.dev.vars

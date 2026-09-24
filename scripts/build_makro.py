@@ -177,6 +177,38 @@ def latest_in(periods: list, year: str | None) -> str | None:
     return same[-1] if same else None
 
 
+# ---------------------------------------------------------------- outlook
+
+FC_CALCS = ("fc_level", "fc_change_pct")
+
+
+def outlook_values(ind: dict, num: dict) -> tuple[dict, dict, str]:
+    """A projection is one statement, not a time series of observations.
+
+    SCB published this trend projection once, on 2024-06-11, and it says what
+    2040 looks like. So an Outlook indicator does NOT write into `hist`: doing
+    so would put 2027-2040 into the dashboard's year selector, and every other
+    indicator would then offer years for which no observation exists.
+
+    Returns (headline value per kommun, projected level per kommun per year,
+    the label to show where the year selector normally goes).
+    """
+    base, target = ind.get("base", "2026"), ind.get("target", "2040")
+    lv = {t: dict(v) for t, v in num.items()}
+    if target not in lv:
+        return {}, {}, ""
+    series = {a: {t: round(lv[t][a], 1) for t in sorted(lv) if a in lv[t]} for a in lv[target]}
+
+    if ind["calc"] == "fc_level":
+        head = {a: v for a, v in lv[target].items()}
+    else:                                            # fc_change_pct
+        b = lv.get(base) or {}
+        head = {a: (v / b[a] - 1.0) * 100.0
+                for a, v in lv[target].items() if b.get(a)}
+    label = f"Projection {base}\u2192{target}"
+    return head, series, label
+
+
 def values_for(ind: dict, source: dict, num: dict, den: dict, year: str | None):
     """{region: value} plus the period it came from, for one reference year."""
     calc = ind["calc"]
@@ -282,6 +314,75 @@ def dwellings_by_lan() -> dict:
 
 
 _LAN_OF: dict = {}
+
+
+def dwellings_by_kommun() -> tuple[dict, str]:
+    """Dwelling stock per kommun (TAB824, newest live year) and that year.
+
+    The denominator for burglaries per 1 000 dwellings. Unlike the Kronofogden
+    rate this one can be per kommun, because both numerator and denominator are
+    published per kommun.
+    """
+    best, vals = None, collections.defaultdict(lambda: collections.defaultdict(float))
+    try:
+        rows = stream("scb_TAB824_kommun")
+    except FileNotFoundError:
+        return {}, ""
+    for r in rows:
+        if r.get("ContentsCode") != "BO0104AH" or not r.get("value"):
+            continue
+        t = r["Tid"]
+        if best is None or period_key(t) > period_key(best):
+            best = t
+        vals[t][r["Region"]] += r["value"]
+    return (dict(vals[best]), best) if best else ({}, "")
+
+
+def polisen_uso() -> dict:
+    """data/external/polisen_uso.csv -> {level: {code: (share_pct, class)}}.
+
+    One snapshot, not a series: the designation is current from 2025-12-01 and
+    Polisen republishes it roughly every two years. An area that touches no
+    designated area is simply absent — it is NOT 0 %, because 'not designated'
+    and 'designated but tiny' are different statements.
+    """
+    p = EXT / "polisen_uso.csv"
+    out: dict = collections.defaultdict(dict)
+    if not p.exists():
+        return {}
+    with p.open(encoding="utf-8") as fh:
+        rows = csv.reader(fh, delimiter=";")
+        next(rows, None)
+        for r in rows:
+            if len(r) < 4:
+                continue
+            code, level, cls, share = r[0], r[1], r[2], r[3]
+            try:
+                out[level][code] = (float(share), cls)
+            except ValueError:
+                continue
+    return dict(out)
+
+
+def bra_csv(name: str) -> dict:
+    """data/external/<name>.csv -> {key: {period: {kommun: (count, per100k)}}}."""
+    p = EXT / f"{name}.csv"
+    out: dict = collections.defaultdict(lambda: collections.defaultdict(dict))
+    if not p.exists():
+        return {}
+    with p.open(encoding="utf-8") as fh:
+        rows = csv.reader(fh, delimiter=";")
+        next(rows, None)
+        for r in rows:
+            if len(r) < 5:
+                continue
+            code, period, key, cnt, rate = (x.strip() for x in r[:5])
+            try:
+                c = float(cnt)
+            except ValueError:
+                continue
+            out[key][period][code] = (c, float(rate) if rate else None)
+    return {k: dict(v) for k, v in out.items()}
 
 
 # ---------------------------------------------------------------- geometry
@@ -495,6 +596,7 @@ def main() -> int:
         print(f"  population {level}: {best} · {len(vals.get(best) or {})} areas")
 
     # ---- indicators
+    src_periods = c.get("src_periods") or {}
     n_hist = int(c.get("history_years", 11))
     all_years: set = set()
     indicators_out = []
@@ -549,9 +651,251 @@ def main() -> int:
                                           {y: {"kommun": y} for y in years}))
             print(f"  {key:14s} kommun:{len(byyear[last])} · {years[0]}–{last}")
             continue
-        if any(s.get("db") != "scb" for s in srcs):
+        if any(s.get("db") not in ("scb", "bra", "polisen", "skolverket", "climate",
+                                   "infra") for s in srcs):
             indicators_out.append(meta_of(ind, {}, {}))
             warn(f"{key}: no SCB source on disk — renders as 'no data'")
+            continue
+
+        inf = next((x for x in srcs if x.get("db") == "infra"), None)
+        if inf:
+            ip = PROC / "infra_index.json"
+            if not ip.exists():
+                indicators_out.append(meta_of(ind, {}, {}))
+                warn(f"{key}: data/processed/infra_index.json missing — run 'make infra'")
+                continue
+            projects = json.loads(ip.read_text(encoding="utf-8")).get("projects") or []
+            this_year = dt.date.today().year
+            col = inf["col"]
+            vals: dict = collections.defaultdict(float)
+            for pr in projects:
+                if col == "projects_upcoming":
+                    # decided or under construction, not yet open
+                    if pr.get("status") not in ("decided", "construction"):
+                        continue
+                    yr = pr.get("open_year")
+                    if yr is not None and yr < this_year:
+                        continue
+                    for code in pr.get("kommuner") or []:
+                        vals[code] += 1
+                elif col == "stations_planned":
+                    if pr.get("status") not in ("decided", "construction"):
+                        continue
+                    n = len(pr.get("stations") or [])
+                    for code in pr.get("kommuner") or []:
+                        vals[code] += n
+            n_set = 0
+            for code, v in vals.items():
+                e = kommuner.get(code)
+                if e is not None:
+                    e[key] = int(v)
+                    n_set += 1
+            # a kommun with no project is a real zero here: the list is a
+            # complete census of what we curated, not a sample
+            for code, e in kommuner.items():
+                e.setdefault(key, 0)
+            indicators_out.append(meta_of(ind, {"kommun": ind.get("asof", "2026")}, {}))
+            print(f"  {key:16s} {n_set} kommuner with at least one")
+            continue
+
+        cl = next((x for x in srcs if x.get("db") == "climate"), None)
+        if cl:
+            cp = PROC / "climate.json"
+            if not cp.exists():
+                indicators_out.append(meta_of(ind, {}, {}))
+                warn(f"{key}: data/processed/climate.json missing — run 'make climate'")
+                continue
+            cj = json.loads(cp.read_text(encoding="utf-8"))
+            col = cl["col"]
+            n = 0
+            asof_c = {}
+            for level, tgt in ENT.items():
+                for code, row in ((cj.get("areas") or {}).get(level) or {}).items():
+                    v = row.get(col)
+                    if v is None:
+                        continue          # not mapped: no value, never 0
+                    e = tgt.get(code)
+                    if e is None:
+                        continue
+                    e[key] = v
+                    n += 1
+                if n:
+                    asof_c[level] = ind.get("asof", "2026")
+            m = meta_of(ind, asof_c, {})
+            m["climate"] = True
+            indicators_out.append(m)
+            print(f"  {key:16s} {n} areas")
+            continue
+
+        sk = next((x for x in srcs if x.get("db") == "skolverket"), None)
+        if sk:
+            sp = PROC / "schools.json"
+            if not sp.exists():
+                indicators_out.append(meta_of(ind, {}, {}))
+                warn(f"{key}: data/processed/schools.json missing — run 'make schools'")
+                continue
+            sj = json.loads(sp.read_text(encoding="utf-8"))
+            col = sk["col"]
+            n = 0
+            asof_s = {}
+            for level, tgt in ENT.items():
+                for code, row in ((sj.get("areas") or {}).get(level) or {}).items():
+                    v = row.get(col)
+                    if v is None:
+                        continue
+                    e = tgt.get(code)
+                    if e is None:
+                        continue
+                    e[key] = v
+                    if row.get(col + "_n") is not None:
+                        e[key + "_n"] = row[col + "_n"]
+                    n += 1
+                per = ((sj.get("meta") or {}).get("periods") or {}).get(col) or []
+                # a count has no publication period; its "as of" is the day the
+                # register was pulled
+                if per:
+                    asof_s[level] = per[0]
+                elif col in ("trygghet", "studiero"):
+                    ys = ((sj.get("meta") or {}).get("enkat") or {}).get("years") or []
+                    asof_s[level] = "+".join(ys) if ys else ""
+                else:
+                    asof_s[level] = (sj.get("meta") or {}).get("fetched") or ""
+            m = meta_of(ind, asof_s, {})
+            m["schools"] = True
+            indicators_out.append(m)
+            print(f"  {key:14s} {n} areas · {asof_s.get('kommun', '')}")
+            continue
+
+        pol = next((x for x in srcs if x.get("db") == "polisen"), None)
+        if pol:
+            uso = polisen_uso()
+            if not uso:
+                indicators_out.append(meta_of(ind, {}, {}))
+                warn(f"{key}: data/external/polisen_uso.csv not on disk — run 'make polisen'")
+                continue
+            n = 0
+            for level, tgt in ENT.items():
+                for code, (share, cls) in (uso.get(level) or {}).items():
+                    e = tgt.get(code)
+                    if e is None:
+                        continue
+                    e[key] = round(share, 3)
+                    e[key + "_class"] = cls
+                    n += 1
+            m = meta_of(ind, {g: ind.get("asof", "2025-12-01") for g in ENT}, {})
+            m["snapshot"] = ind.get("asof", "2025-12-01")
+            indicators_out.append(m)
+            print(f"  {key:14s} {n} areas across {len(ENT)} levels · "
+                  f"{ind.get('asof', '2025-12-01')}")
+            continue
+
+        bra = next((x for x in srcs if x.get("db") == "bra"), None)
+        if bra:
+            allb = bra_csv("bra_crime")
+            block = allb.get(bra["key"]) or {}
+            if not block:
+                indicators_out.append(meta_of(ind, {}, {}))
+                warn(f"{key}: no Brå rows for '{bra['key']}' — run make bra")
+                continue
+            calc = ind["calc"]
+            dw, dw_year = ({}, "")
+            if calc == "bra_per_1000_dwellings":
+                dw, dw_year = dwellings_by_kommun()
+                if not dw:
+                    indicators_out.append(meta_of(ind, {}, {}))
+                    warn(f"{key}: no dwelling stock on disk for the denominator")
+                    continue
+            years = sorted(block, key=int)[-n_hist:]
+            all_years.update(years)
+
+            ordered = sorted(block, key=int)
+
+            def bra_value(period: str) -> dict:
+                vals = {}
+                if calc == "bra_trend":
+                    # change in the rate against the year before, in per cent.
+                    # Both years come from Brå; nothing is interpolated, and a
+                    # kommun missing either year simply has no value.
+                    i = ordered.index(period) if period in ordered else -1
+                    if i < 1:
+                        return {}
+                    prev = block.get(ordered[i - 1]) or {}
+                    for code, (cnt, rate) in (block.get(period) or {}).items():
+                        pr = (prev.get(code) or (None, None))[1]
+                        if rate is not None and pr:
+                            vals[code] = (rate / pr - 1.0) * 100.0
+                    return vals
+                for code, (cnt, rate) in (block.get(period) or {}).items():
+                    if calc == "bra_per_1000":
+                        # Brå's own published rate per 100 000, divided by 100.
+                        # Using Brå's denominator rather than ours keeps the
+                        # number identical to the one on Brå's own page.
+                        if rate is not None:
+                            vals[code] = rate / 100.0
+                    elif calc == "bra_per_1000_dwellings":
+                        d = dw.get(code)
+                        if d:
+                            vals[code] = cnt / d * 1000.0
+                    elif calc == "bra_count":
+                        vals[code] = cnt
+                return vals
+
+            for y in years:
+                for a, v in bra_value(y).items():
+                    e = kommuner.get(a)
+                    if e is not None:
+                        e["hist"].setdefault(key, {})[y] = round(v, 3)
+            last = years[-1]
+            for a, v in bra_value(last).items():
+                if a in kommuner:
+                    kommuner[a][key] = round(v, 3)
+
+            q = bra_csv("bra_crime_quarterly").get(bra["key"]) if ind.get("quarters") else None
+            qper = []
+            if q:
+                qper = sorted(q, key=lambda t: (t[:4], t[-1]))
+                for t in qper:
+                    for a, (cnt, rate) in q[t].items():
+                        e = kommuner.get(a)
+                        if e is not None and rate is not None:
+                            e.setdefault("q", {}).setdefault(key, {})[t] = round(rate / 100.0, 3)
+
+            m = meta_of(ind, {"kommun": last}, {y: {"kommun": y} for y in years})
+            if qper:
+                m["q_periods"] = qper
+            if calc == "bra_per_1000_dwellings":
+                m["denominator"] = f"SCB TAB824 dwelling stock, {dw_year}"
+            indicators_out.append(m)
+            print(f"  {key:14s} kommun:{len(bra_value(last))} · {years[0]}–{last}"
+                  + (f" · {len(qper)} quarters" if qper else ""))
+            continue
+
+        if ind["calc"] in FC_CALCS:
+            s0 = srcs[0]
+            try:
+                num, _den, _moe = aggregate(s0, ind)
+            except FileNotFoundError as exc:
+                indicators_out.append(meta_of(ind, {}, {}))
+                warn(f"{key}: {exc}")
+                continue
+            head, series, label = outlook_values(ind, num)
+            if not head:
+                indicators_out.append(meta_of(ind, {}, {}))
+                warn(f"{key}: projection target {ind.get('target')} not in the pull")
+                continue
+            for a, v in head.items():
+                e = kommuner.get(a)
+                if e is None:
+                    continue
+                e[key] = round(v, 3)
+                # the projected series lives beside the observed history, never in it
+                if ind.get("series", True):
+                    e.setdefault("fc", {})[key] = series.get(a) or {}
+            m = meta_of(ind, {"kommun": label}, {})
+            m["outlook"] = {"base": ind.get("base", "2026"), "target": ind.get("target", "2040"),
+                            "published": ind.get("published", ""), "label": label}
+            indicators_out.append(m)
+            print(f"  {key:14s} kommun:{len(head)} · {label}")
             continue
 
         asof: dict = {}
@@ -744,6 +1088,23 @@ def main() -> int:
             "warnings": warnings,
         },
         "indicators": indicators_out,
+        # Pipeline and the Infrastructure overlay read this list directly
+        "infra": (json.loads((PROC / "infra_index.json").read_text(encoding="utf-8"))
+                  if (PROC / "infra_index.json").exists() else {"projects": []}),
+        # the Services / Public buildings overlays
+        "services_meta": (json.loads((PROC / "services.json").read_text(encoding="utf-8"))
+                          if (PROC / "services.json").exists() else {}),
+        # the Climate risk overlay's zone manifest
+        "climate_meta": (json.loads((PROC / "climate.json").read_text(encoding="utf-8")).get("meta", {})
+                         if (PROC / "climate.json").exists() else {}),
+        # the Schools overlay: manifest inline, points fetched per kommun
+        "schools_index": (json.loads((PROC / "schools.json").read_text(encoding="utf-8"))
+                          if (PROC / "schools.json").exists() else {}).get("index", {}),
+        "schools_meta": (json.loads((PROC / "schools.json").read_text(encoding="utf-8"))
+                         if (PROC / "schools.json").exists() else {}).get("meta", {}),
+        # shared by every verify-at-source link on a monthly or quarterly table:
+        # a year is not a Tid code there, so the page needs the real period codes
+        "src_periods": src_periods,
         "kommuner": sorted(kommuner.values(), key=lambda m: -(m.get("pop") or 0)),
         "regso": sorted(regso.values(), key=lambda a: a["code"]),
         "deso_index": index,
@@ -758,10 +1119,18 @@ def main() -> int:
 
 
 def meta_of(ind: dict, asof: dict, hist_asof: dict) -> dict:
-    out = {k: ind[k] for k in ("key", "label", "short", "unit", "level", "levels", "hue", "group")
+    # `direction` and the diverging-scale fields must travel with the indicator:
+    # the page reads them straight off window.DATA, and an indicator that lost
+    # its direction on the way out would rank the worst kommun #1 in silence.
+    out = {k: ind[k] for k in ("key", "label", "short", "unit", "level", "levels", "hue", "group",
+                               "direction", "direction_note", "scale", "center", "hue_neg", "hue_pos",
+                               "no_inherit")
            if k in ind}
     if ind.get("cats"):
         out["cats"] = ind["cats"]
+    # the verify-at-source queries, built by scripts/build_src_links.py
+    if ind.get("src_verify"):
+        out["src_verify"] = ind["src_verify"]
     out.update({"fmt": ind.get("fmt", "pct1"), "desc": ind.get("desc", ""),
                 "source": ind.get("source", ""), "warn": ind.get("warn", ""),
                 "note": ind.get("note", ""), "moe": bool(ind.get("moe")),

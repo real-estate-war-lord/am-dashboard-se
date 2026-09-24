@@ -50,6 +50,12 @@ def main() -> int:
         "kommuner": makro.get("kommuner", []),
         "regso": makro.get("regso", []),
         "deso_index": makro.get("deso_index", {}),
+        "src_periods": makro.get("src_periods", {}),
+        "infra": makro.get("infra", {"projects": []}),
+        "services_meta": makro.get("services_meta", {}),
+        "climate_meta": makro.get("climate_meta", {}),
+        "schools_index": makro.get("schools_index", {}),
+        "schools_meta": makro.get("schools_meta", {}),
         "macro": market,
     }
     payload = json.dumps(data, ensure_ascii=False, separators=(",", ":")).replace("</script", "<\\/script")
@@ -57,12 +63,52 @@ def main() -> int:
     html = (html.replace("{{LEAFLET_CSS}}", (SRC / "vendor" / "leaflet.css").read_text(encoding="utf-8"))
                 .replace("{{APP_CSS}}", (SRC / "style.css").read_text(encoding="utf-8"))
                 .replace("{{LEAFLET_JS}}", (SRC / "vendor" / "leaflet.js").read_text(encoding="utf-8"))
+                # testprop.js goes in FIRST: app.js calls parseLocation, and the
+                # module is kept separate so `node --test` can load it without a DOM
+                .replace("{{TESTPROP_JS}}", (SRC / "testprop.js").read_text(encoding="utf-8"))
                 .replace("{{APP_JS}}", (SRC / "app.js").read_text(encoding="utf-8"))
                 .replace("{{DATA}}", payload)
                 .replace("{{BUILT}}", built))
     out = pathlib.Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(html, encoding="utf-8")
+
+    # the on-demand boundary rings for the dropped pin
+    n_look = 0
+    src_look = PROC / "lookup"
+    if src_look.exists():
+        dl = out.parent / "lookup"
+        if dl.exists():
+            shutil.rmtree(dl)
+        shutil.copytree(src_look, dl)
+        n_look = len(list(dl.glob("*.json")))
+    for name in ("lookup_kommuner.json",):
+        sp = PROC / name
+        if sp.exists():
+            shutil.copyfile(sp, out.parent / name)
+
+    # the on-demand service points and climate zones
+    for name in ("services", "climate"):
+        src_d = PROC / name
+        if src_d.exists():
+            dd = out.parent / name
+            if dd.exists():
+                shutil.rmtree(dd)
+            shutil.copytree(src_d, dd)
+    for name in ("infra_projects.geojson",):
+        sp = PROC.parent / "geo" / name
+        if sp.exists():
+            shutil.copyfile(sp, out.parent / name)
+
+    # the on-demand school point files travel next to the page
+    src_sch = PROC / "schools"
+    n_sch = 0
+    if src_sch.exists():
+        dsch = out.parent / "schools"
+        if dsch.exists():
+            shutil.rmtree(dsch)
+        shutil.copytree(src_sch, dsch)
+        n_sch = len(list(dsch.glob("*.json")))
 
     # the on-demand DeSO files travel next to the page
     src_deso = PROC / "deso"
@@ -74,11 +120,25 @@ def main() -> int:
         shutil.copytree(src_deso, dst)
         n_deso = len(list(dst.glob("*.json")))
 
+    # overlay geometry that is small enough to ship whole and fetched on demand
+    n_ov = 0
+    for name in ("polisen_uso.geojson",):
+        src = PROC.parent / "geo" / name
+        if src.exists():
+            shutil.copyfile(src, out.parent / name)
+            n_ov += 1
+
     print(f"wrote {out} ({out.stat().st_size / 1e6:.1f} MB) · "
           f"{len(data['kommuner'])} kommuner · {len(data['regso'])} RegSO · "
           f"{len(data['indicators'])} indicators · {len(market.get('series') or {})} macro series")
     if n_deso:
         print(f"copied {n_deso} DeSO files → {out.parent / 'deso'}")
+    if n_sch:
+        print(f"copied {n_sch} school files → {out.parent / 'schools'}")
+    if n_look:
+        print(f"copied {n_look} lookup ring files → {out.parent / 'lookup'}")
+    if n_ov:
+        print(f"copied {n_ov} overlay layer(s) → {out.parent}")
     miss = market.get("missing") or []
     if miss:
         print(f"macro series without data (shown as 'no data'): {', '.join(miss)}")

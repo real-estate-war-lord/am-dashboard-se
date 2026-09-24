@@ -1,5 +1,85 @@
 # Changelog
 
+## v1.2 — "Sweden parity" (drafted, not tagged)
+
+Six new indicator groups, four overlays, a droppable pin and a project pipeline.
+Every phase is logged in `docs/PARITY_BUILD_LOG.md` with its check table, its
+gates and the ⚠ it raised; every source is in `docs/PARITY.md`.
+
+**Direction awareness.** Every indicator now declares `higher_better`,
+`lower_better` or `neutral`. Before this, `rankOf` was `1 + vals.filter(x => x > v).length`
+and `cls` was `d > 0 ? "up" : "dn"`, so the kommun with the *worst* unemployment
+ranked #1 and a rise in it was painted green. 36 of the original 44 indicators are
+`neutral`: a share of flerbostadshus has no better end, and colouring one green
+would be editorialising rather than reporting.
+
+**Outlook** — SCB TAB698, kommun level, seven indicators. A projection is one
+published statement, so it never enters `hist` and never reaches the year selector;
+Charts draws it dashed and says "projected, not observed". TAB6008 is pulled purely
+as an independent recomputation and agrees on all 4 350 cells. `verify_outlook.py`
+asks SCB a third time: **35 of 35 match**.
+
+**Safety** — Brå SOL, 1996–2025 plus 48 quarters, six offence categories, and
+Polisen's designated areas intersected into RegSO and DeSO. `verify_bra.py` opens a
+fresh SOL session: **30 of 30 match**. Clearance rate is *not* shipped — Brå
+publishes it nationally only, and a test asserts it cannot reappear.
+
+**Schools** — 1 791 units with year 9, a lazily loaded point overlay with a
+5-step merit ramp, and a page per school. `verify_schools.py`: **55 of 55 match**,
+including five distinct suppression reasons surviving as reasons rather than zeros.
+SALSA has no machine-readable export anywhere, so the merit value is the raw one and
+every label says so.
+
+**Test property** — `src/testprop.js` with 24 unit tests behind `make test-js`,
+exact point-in-polygon on our own rings with holes kept, and a two-pin comparison
+that is new work: the Danish repo has none. It deliberately has no overall winner.
+
+**Climate risk** — MCF river flood and coastal levels, SMHI mean sea level 2100,
+SGU landslide caution zones, and MCF's cloudburst flag. All computed as land-area
+shares in SWEREF99 TM metres.
+
+### Traps found and fixed
+
+- **`&nbsp;` ends in a semicolon**, which is also Brå's field separator: the measure
+  row split into 122 fields where the data rows had 62.
+- **SGU pages with `startIndex` — capital I.** `startindex` and `offset` are both
+  accepted and both silently ignored; the first fetcher "downloaded" 201 000 features
+  that were 201 copies of the same thousand.
+- **A shapefile record's parts are not one polygon with many holes.** Treating them
+  that way built a polygon with 721 551 holes and ran for an hour without finishing.
+- **MCF's three flood products cover different watercourses** — 76, 71 and 78. A
+  shared coverage test gave Östersund 7.4 % for the 100-year flood and 0.0 % for the
+  200-year one. Coverage is now per layer, and the answer is "Not mapped".
+- **The police designation was inheriting down the hierarchy**, so every RegSO in
+  Stockholm read "4,4 % °" and the map claimed the whole city was designated.
+- **`100+` must be percent-encoded**; `0010` is a riksområde, not a kommun; a
+  display level is not a publication level; the dashboard's latest year runs ahead
+  of individual tables.
+
+### Known limitations
+
+Three things ship incomplete in v1.2 and are the whole content of **v1.2.1**. None of
+them is a wrong number — each is a smaller number of areas than intended, and in every
+case the page says so itself rather than letting a gap pass for a value.
+
+1. **Services and public buildings cover 16 of 290 kommuner.** The public Overpass
+   instance rate-limited this client and the fetch was stopped rather than kept
+   hammering a donated service. The overlay works on what is there and **its legend
+   states its own coverage**, so a sparse map cannot be mistaken for a sparse city.
+   `make services` is resumable. v1.2.1 rebuilds this from the Geofabrik extract
+   instead, which needs no third-party service at all.
+2. **42 of 49 infrastructure projects are not drawn on the map.** Their stations could
+   not be located, because station matching reads the same 16 kommuner of OSM data.
+   They are fully present in **Pipeline** and on their own project pages, with budgets,
+   opening years and sources. Nothing is sketched between points — a line on a map is
+   read as a fact. v1.2.1 takes the alignments from the extract.
+3. **Climate zone outlines ship for three of seven layers** — flood 100-year, coastal
+   +2.0 m and mean sea level 2100. All seven came to 170 MB, over budget, and
+   landslide's largest per-kommun file was 4.47 MB, over the 3 MB cap: 242 000 tiny
+   caution polygons do not simplify because there is nothing to merge. **The other four
+   layers are fully available as numbers** in the choropleth, at all three levels.
+   v1.2.1 raises the set to six, everything except landslide.
+
 ## v1.1.1 — 2026-09-21
 - **Fixed: RegSO and DeSO polygons were drawn in the wrong place.** v1.0's size-reduction pass fed already-swapped coordinates to a function that swaps them itself, so the two files were stored [lat,lon] and `build_makro` swapped them once more. Every sub-municipal polygon has been rendering off the Somali coast since v1.0 — the map looked empty below kommun level. Found by taking a screenshot; the smoke test only checked generated HTML. It now asserts that every ring is inside Sweden and that a kommun's sub-areas are inside that kommun.
 - **Fixed: zooming threw on every step.** A variable removed in v1.0's level rewrite was still referenced in the `zoomend` handler, so labels stopped being rebuilt as you zoomed.

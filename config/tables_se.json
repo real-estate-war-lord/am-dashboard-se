@@ -632,6 +632,32 @@
    ],
    "time": "all",
    "note": "GDP (NR0103): quarterly volume change, y/y and seasonally adjusted q/q"
+  },
+  {
+   "table": "TAB698",
+   "levels": [
+    "kommun"
+   ],
+   "time": "years(2026..2040)",
+   "pin": {
+    "ContentsCode": [
+     "000004LG"
+    ]
+   },
+   "note": "SCB trend projection 2024-2070 — population size by kommun, age and sex. ContentsCode is pinned to population size: the table's other six contents are births, deaths and the four migration flows, which are separate measures no Outlook indicator uses. Age and sex are pulled in full."
+  },
+  {
+   "table": "TAB6008",
+   "levels": [
+    "kommun"
+   ],
+   "time": "years(2026..2040)",
+   "pin": {
+    "InrikesUtrikes": [
+     "83"
+    ]
+   },
+   "note": "the same projection cut by born in Sweden / foreign-born; pinned to the total (83) so it is an independent recomputation of TAB698 rather than a third of it. Verified 2026-09-24 to agree with TAB698 cell for cell."
   }
  ]
 }

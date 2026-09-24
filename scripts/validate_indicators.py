@@ -36,6 +36,10 @@ LEVEL_RE = {
 errors: list[str] = []
 warnings: list[str] = []
 
+# what scripts/fetch_bra.py has actually put on disk; a Brå source must name one
+BRA_DIR = RAW / "bra"
+BRA_KEYS = {p.stem for p in BRA_DIR.glob("*.csv")} if BRA_DIR.exists() else set()
+
 
 def load_meta(table: str) -> dict | None:
     path = RAW / f"scb_{table}.meta.json"
@@ -54,6 +58,48 @@ def check_source(key: str, source: dict) -> None:
         p = RAW / f"riksbank_{source.get('series')}.json"
         if not p.exists():
             warnings.append(f"{key}: {p.name} not on disk — run scripts/fetch_riksbank.py")
+        return
+    if db == "bra":
+        # A Brå source names a key into data/raw/bra/, not an SCB table, so the
+        # table and dimension checks do not apply. An invented key must fail
+        # here rather than quietly render as "no data".
+        k = source.get("key")
+        if not k:
+            errors.append(f"{key}: Brå source with no key")
+        elif BRA_KEYS and k not in BRA_KEYS:
+            errors.append(f"{key}: Brå key '{k}' has no data/raw/bra/{k}.csv "
+                          f"(have: {', '.join(sorted(BRA_KEYS))})")
+        elif not BRA_KEYS:
+            warnings.append(f"{key}: data/raw/bra/ is empty — run 'make bra'")
+        out = ROOT / "data" / "external" / f"{source.get('file', 'bra_crime')}.csv"
+        if not out.exists():
+            warnings.append(f"{key}: {out.name} not built — run 'make bra'")
+        return
+    if db == "infra":
+        if not source.get("col"):
+            errors.append(f"{key}: infra source with no column")
+        p = ROOT / "data" / "external" / "infra_se.csv"
+        if not p.exists():
+            errors.append(f"{key}: data/external/infra_se.csv missing")
+        return
+    if db == "climate":
+        if not source.get("col"):
+            errors.append(f"{key}: climate source with no column")
+        p = ROOT / "data" / "processed" / "climate.json"
+        if not p.exists():
+            warnings.append(f"{key}: data/processed/climate.json not built — run 'make climate'")
+        return
+    if db == "skolverket":
+        if not source.get("col"):
+            errors.append(f"{key}: Skolverket source with no column")
+        p = ROOT / "data" / "processed" / "schools.json"
+        if not p.exists():
+            warnings.append(f"{key}: data/processed/schools.json not built — run 'make schools'")
+        return
+    if db == "polisen":
+        p = ROOT / "data" / "external" / f"{source.get('file')}.csv"
+        if not p.exists():
+            warnings.append(f"{key}: data/external/{p.name} not on disk — run 'make polisen'")
         return
     if db in ("boverket", "kronofogden", "kolada"):
         p = ROOT / "data" / "external" / f"{source.get('file')}.csv"
@@ -140,9 +186,22 @@ def main() -> int:
         seen.add(key)
 
         for field in ("label", "short", "unit", "level", "levels", "sources",
-                      "calc", "fmt", "desc", "source", "group"):
+                      "calc", "fmt", "desc", "source", "group", "direction"):
             if field not in ind:
                 errors.append(f"{key}: missing required field '{field}'")
+
+        # `direction` decides which end a rank counts from and whether a delta is
+        # drawn green or red. A missing or misspelt value would silently invert a
+        # rank, so it is checked here rather than defaulted in the page.
+        if ind.get("direction") not in ("higher_better", "lower_better", "neutral"):
+            errors.append(f"{key}: direction '{ind.get('direction')}' is not "
+                          "higher_better|lower_better|neutral")
+        # A diverging scale needs a centre and both hues, or mkShade falls back to
+        # colours the legend does not describe.
+        if ind.get("scale") == "diverging":
+            for f2 in ("center", "hue_neg", "hue_pos"):
+                if ind.get(f2) is None:
+                    errors.append(f"{key}: scale 'diverging' needs '{f2}'")
 
         if ind.get("level") not in ("kommun", "regso", "deso", "none"):
             errors.append(f"{key}: level '{ind.get('level')}' is not kommun|regso|deso|none")
