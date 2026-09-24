@@ -78,10 +78,19 @@ jobs:
         run: python scripts/selftest.py && python scripts/validate_indicators.py
 
       - name: Assemble dist/
-        run: python scripts/build_dashboard.py
+        # BOTH pages. `make build` runs these two plus the processed-layer
+        # rebuild; CI has the processed layer committed already, so it calls the
+        # two assemblers directly — but it must call BOTH. Building only the
+        # dashboard is what shipped a live site with a 404 on listings.html.
+        run: |
+          python scripts/build_dashboard.py
+          python scripts/build_listings.py
 
       - name: Offline unit tests
         run: node --test tests/*.test.js
+
+      - name: Listings gateway tests
+        run: cd gateway && node --test test/*.test.js
 
       - name: Smoke-test the built page
         run: node tests/smoke.js
