@@ -68,6 +68,7 @@ test("a record maps onto the shared schema", () => {
     is_new_production: null,
     allocation: "direct",
     audience: null,
+    geo_source: "source",
   });
 });
 

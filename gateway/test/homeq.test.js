@@ -67,6 +67,7 @@ test("a full hit maps onto the gateway schema", () => {
     discount: { months: 2 },
     offer: out.offer,
     is_new_production: null,
+    geo_source: "source",
     allocation: "direct",
     audience: null,
     dist_m: out.dist_m,
@@ -80,7 +81,7 @@ test("the schema keys are fixed, in order, and nothing leaks through", () => {
     "src", "src_label", "id", "url", "address", "area_name", "lat", "lon",
     "rent_sek_mo", "size_m2", "rooms", "floor", "year_built", "available_from",
     "published", "image", "text_start", "discount", "offer", "is_new_production",
-    "allocation", "audience", "dist_m",
+    "geo_source", "allocation", "audience", "dist_m",
   ]);
 });
 

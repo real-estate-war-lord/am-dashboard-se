@@ -98,6 +98,36 @@ export const QUEUE_RECORDS = [
   },
 ];
 
+/* Boplats Väst is HTML, not JSON: a listing page of cards plus one advert
+ * page per card carrying the map element. */
+export const BOPLATS_LIST_HTML = `
+<div class="search-result-item item imageitem">
+  <a href="https://boplats.se/objekt/1hand/AAAA1111" class="search-result-link">
+    <div class="pure-u-2-3 search-result-area-name">Testomr&aring;det</div>
+    <div class="pure-u-1-3 right-align search-result-price">6 437 kr</div>
+    <div class="pure-u-3-5 search-result-address">Exempelgatan 14C</div>
+    <div class="pure-u-2-5 right-align">37.5 m&sup2;</div>
+    <div class="pure-u-1-4 right-align">1 rum</div>
+  </a>
+</div>
+<div class="search-result-item item imageitem">
+  <a href="https://boplats.se/objekt/1hand/BBBB2222" class="search-result-link">
+    <div class="pure-u-2-3 search-result-area-name">Annat</div>
+    <div class="pure-u-1-3 right-align search-result-price">11 280 kr</div>
+    <div class="pure-u-3-5 search-result-address">Provv&auml;gen 3</div>
+    <div class="pure-u-2-5 right-align">78 m&sup2;</div>
+    <div class="pure-u-1-4 right-align">3 rum</div>
+  </a>
+</div>`;
+
+export const BOPLATS_DETAIL_HTML = `
+<div>Se karta Testomr&aring;det, Testby Centrum, Teststad Ans&ouml;k</div>
+<div>Sista dagen att s&ouml;ka denna l&auml;genhet &auml;r 8 oktober.</div>
+<div id="karta" class="karta" data-latitude="57.6801051" data-longitude="11.9737198"></div>
+<h3 class="object-attribute-heading">Hyresv&auml;rd</h3>
+<div class="object-attribute-value">Testbost&auml;der AB 031-1234567 info@example.invalid</div>
+<h3 class="object-attribute-heading">Slut</h3>`;
+
 /* A fetch stub that answers each snapshot source with its own shape. */
 export function upstreamFor(arenaPayload) {
   return async (url) => {
@@ -105,6 +135,8 @@ export function upstreamFor(arenaPayload) {
     if (u.includes("/mvcapi/search-landing")) return new Response(JSON.stringify(WILLHEM_LANDING), { status: 200 });
     if (u.includes("/api/episerver/")) return new Response(JSON.stringify(WILLHEM_CHILDREN), { status: 200 });
     if (u.includes("/AllaAnnonser")) return new Response(JSON.stringify(QUEUE_RECORDS), { status: 200 });
+    if (u.includes("boplats.se/objekt/")) return new Response(BOPLATS_DETAIL_HTML, { status: 200 });
+    if (u.includes("boplats.se/sok")) return new Response(BOPLATS_LIST_HTML, { status: 200 });
     return new Response(JSON.stringify(arenaPayload), { status: 200 });
   };
 }

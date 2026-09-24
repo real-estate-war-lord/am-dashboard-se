@@ -130,7 +130,10 @@ export async function refreshAll(env) {
       if (i >= portals.length) return;
       const portal = portals[i];
       try {
-        const snap = await portal.fetch({ signal: AbortSignal.timeout(REFRESH_TIMEOUT_MS) });
+        const snap = await portal.fetch({
+          signal: AbortSignal.timeout(portal.timeoutMs ?? REFRESH_TIMEOUT_MS),
+          ...(portal.needsEnv ? { env } : {}),
+        });
         await env.LISTINGS_KV.put(portal.kvKey, JSON.stringify(snap));
         results[i] = { src: portal.src, ok: true, count: snap.count, dropped: snap.dropped, fetchedAt: snap.fetchedAt };
       } catch (err) {

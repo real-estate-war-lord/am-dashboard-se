@@ -14,6 +14,7 @@
 import * as arena from "./sources/arena.js";
 import * as willhem from "./sources/willhem.js";
 import * as bostadsformedlingen from "./sources/bostadsformedlingen.js";
+import * as boplatsvast from "./sources/boplatsvast.js";
 
 export const SNAPSHOT_SOURCES = [
   ...arena.PORTALS.map((portal) => ({
@@ -39,6 +40,18 @@ export const SNAPSHOT_SOURCES = [
     kvKey: `snapshot:${bostadsformedlingen.SRC}`,
     fetch: (opts) => bostadsformedlingen.fetchSnapshot(opts),
     selectNearby: bostadsformedlingen.selectNearby,
+  },
+  {
+    src: boplatsvast.SRC,
+    label: boplatsvast.SRC_LABEL,
+    allocation: boplatsvast.ALLOCATION,
+    kvKey: `snapshot:${boplatsvast.SRC}`,
+    /* Needs KV for its detail cache, and a budget of its own: it resolves up
+     * to MAX_NEW_DETAILS advert pages at one per second. */
+    needsEnv: true,
+    timeoutMs: 90_000,
+    fetch: (opts) => boplatsvast.fetchSnapshot(opts),
+    selectNearby: boplatsvast.selectNearby,
   },
 ];
 

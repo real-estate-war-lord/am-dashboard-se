@@ -113,7 +113,9 @@ curl -H "Authorization: Bearer $REFRESH_SECRET" \
   {"src":"victoriahem","ok":true,"count":1110,"dropped":2,"fetchedAt":"…"}, …]}
 ```
 
-All 21 sources refresh in about 5 seconds. They are fetched **four at a time**,
+All 22 sources refresh in about 5 seconds once Boplats Väst's advert
+positions are cached; a refresh that still has positions to resolve takes
+longer, up to a minute. They are fetched **four at a time**,
 not all at once: Victoriahem's list alone is 8.6 MB and parsing it costs
 several times that in live objects, so nineteen in flight together would run at
 the Worker's 128 MB ceiling.
@@ -151,6 +153,7 @@ without knowing which source it came from.
 | `is_new_production` | bool\|null | |
 | `dist_m` | number | metres from the query point, whole metres |
 | `allocation` | `"direct"` \| `"queue"` | how the flat is let — see *Queue sources* |
+| `geo_source` | `"source"` | where the coordinate came from. It is `"source"` everywhere: **nothing in this gateway is geocoded** |
 | `audience` | string\|null | `student`, `youth`, `senior`, `short_term` when reserved for a group |
 | `also_on` | string[] | present only on a deduplicated record: other sources carrying the same flat |
 | `also_on_urls` | object | `{src: url}` for those other sources |
@@ -401,26 +404,77 @@ neighbourhood + kommun, new production, queue name, publish date and
 `apply_by`. **Not available: the landlord.** The feed names no owner, so a
 queue listing cannot be attributed to a specific company.
 
-### Boplats Väst and Boplats Syd — not built, and why
+### Boplats Väst (`boplatsvast`)
 
-Both were probed. Neither produced an adapter.
+[boplats.se](https://boplats.se) — the Göteborg-region queue, ~100 first-hand
+adverts covering Göteborg, Stenungsund, Gårdsten and the surrounding kommuner.
+Landlords include Familjebostäder i Göteborg, Poseidon and Bostadsbolaget.
+
+**There is no geocoder, and there was no need for one.** Phase 5 reported that
+Boplats Väst exposes no coordinates. That was true of the *listing* page and
+wrong about the site: every advert's own page carries
+
+```html
+<div id="karta" data-latitude="57.6801051" data-longitude="11.9737198">
+```
+
+which is the landlord's own position for the property. Geocoding the address
+through Nominatim would have replaced an authoritative coordinate with a
+guessed one, so this adapter reads the source and `geo_source` is `"source"`
+like everywhere else.
+
+**How accurate the position is.** Spot-checked by *reverse* geocoding five
+source coordinates through Nominatim: all five land on the correct street in
+the correct kommun. It is a **property-level** position, not a per-entrance
+one — Doktor Heymans Gata 1 and 5 share a single point, and three of the 30
+adverts around Göteborg centrum sit on a point shared with another advert. Fit
+for a map dot and a neighbourhood aggregate; the UI should not imply
+entrance-level precision.
+
+**The detail cache.** The position is only on the advert page, so placing an
+advert costs one extra request. Results are cached in KV under
+`cache:boplatsvast:detail` by object id — a position never changes — so after
+the first crawl only genuinely new adverts are fetched. Entries are dropped 30
+days after the advert disappears. Fetches are serial, one per second, with an
+identifying User-Agent.
+
+**The refresh is subrequest-bound, not time-bound.** A Worker invocation may
+make a limited number of subrequests, and the other 22 sources already use
+most of the budget, so roughly **13 new adverts are resolved per refresh**.
+The first crawl therefore took eight runs to reach a steady state; thereafter
+the hourly cron comfortably keeps up, since ~100 adverts turning over in one
+to two weeks is far fewer than 13 an hour. Adverts not yet resolved are
+**unplaced**: counted in `dropped` / `unplaced`, with examples in
+`unplaced_examples`, and never drawn.
+
+Current state: **100 adverts, 94 placed, 6 unplaced** — and those six are
+unplaced because their own advert pages carry no map element, not because the
+crawl has not reached them.
+
+Deliberately not carried:
+
+- **Queue time.** The advert page has a "Kötider i detta område" block, but to
+  a logged-out visitor it renders an unpopulated template: every advert reads
+  "genomsnittlig kötid på 15 år och 100 månader", and 100 months is not a
+  valid remainder. Publishing it would be publishing a fabricated statistic,
+  so `queue_years_q1` / `queue_years_q3` are null here.
+- **Audience.** The public listing exposes no youth/student/senior
+  segmentation — the `types=student` filters return zero adverts, and the
+  "Ung och student" strings on the page are navigation, not advert data.
+
+Carried and worth having: **`landlord`** (26 of 30 adverts around Göteborg
+centrum name one), which the Stockholm queue does not provide at all.
+
+Only 100 adverts are ever returned, and no pagination parameter changes that,
+so it may be a cap rather than the true total. Treated as the whole list
+because the page's own counter says "100 annonser".
+
+### Boplats Syd — not built
 
 **Boplats Syd** (Malmö/Skåne, `boplatssyd.se`) redirects its "lediga bostäder"
-page to `/mypages/app` — the listings sit behind a **login**. Per the standing
-instruction this was stopped there rather than worked around, and no
-credentialed access was attempted.
-
-**Boplats Väst** (Göteborg, `boplats.se`) serves its listings as
-server-rendered HTML with address, rent and size, but **no coordinates
-anywhere in the payload** — the map is drawn from a source not exposed to the
-page. Placing ~100 adverts would mean adding a geocoder, which is a new
-external dependency and a new class of silent error (a mis-geocoded flat looks
-exactly like a correct one). That is a decision worth taking deliberately
-rather than as a side effect, so it is left open.
-
-Consequence: **Göteborg and Malmö are still thin**, and for the same
-structural reason as before — their municipal stock is let through queues this
-gateway does not read.
+page to `/mypages/app` — the listings sit behind a **login**. Stopped there
+rather than worked around; no credentialed access was attempted. **Malmö
+therefore remains thin.**
 
 ## Campaign text and the `offer` field
 
@@ -532,8 +586,10 @@ different costume.
 
 1. **The only stored thing is the source snapshot.** One KV namespace, one key
    per snapshot source (`arena:<src>` for the 19 portals, `snapshot:<src>` for
-   Willhem and Bostadsförmedlingen — 21 in all), each the latest vacancy list,
-   overwritten hourly. **Latest only: no history, no time series,
+   Willhem, Bostadsförmedlingen and Boplats Väst — 22 in all), each the latest
+   vacancy list, overwritten hourly, plus one cache key
+   (`cache:boplatsvast:detail`) holding advert positions so they are read once
+   rather than every hour. **Latest only: no history, no time series,
    no per-user data, nothing else.** Keeping a history would turn the gateway
    into a database of someone else's listings, which is the thing rule 4 exists
    to prevent; and a vacancy series is not a market statistic — flats leave the
@@ -575,6 +631,15 @@ different costume.
    years, and presenting the two as one number would misrepresent both.
 9. **No source is accessed behind a login.** Boplats Syd was dropped for this
    reason rather than worked around.
+10. **Nothing is geocoded.** Every coordinate in the gateway comes from the
+    source that published the listing, and `geo_source` says so on every
+    record. A geocoded coordinate is a guess that looks exactly like a fact,
+    and a mis-placed flat is indistinguishable from a correct one. If a source
+    ever has to be geocoded, it gets `geo_source: "geocoded"` and the UI must
+    be able to tell the two apart.
+11. **A statistic is only passed through if the source actually published
+    it.** Boplats Väst renders a queue-time template to logged-out visitors;
+    it reads like data and is not, so it is dropped rather than relayed.
 
 Licensing is the reason for 1–4. The SCB data behind the rest of the dashboard is
 CC0; these listings are not ours, and the gateway's job is to point at them, not
@@ -583,7 +648,7 @@ to accumulate them.
 ## Development
 
 ```sh
-npm --prefix gateway test     # 135 unit tests, no network (one takes 8 s: the timeout budget)
+npm --prefix gateway test     # 153 unit tests, no network (one takes 8 s: the timeout budget)
 cd gateway && npx wrangler dev
 ```
 
@@ -627,8 +692,8 @@ npx wrangler secret put REFRESH_SECRET         # any long random string
 
 ## Known limits
 
-- **`/nearby` reads every snapshot on every request** — 21 KV reads and about
-  2.2 MB of JSON parsed per call. It answers in 0.3–0.9 s today, but this
+- **`/nearby` reads every snapshot on every request** — 22 KV reads and about
+  2.3 MB of JSON parsed per call. It answers in 0.3–0.9 s today, but this
   grows linearly with the portal count. A combined, spatially bucketed index
   would be the fix if the register keeps growing.
 - **A listing count is not a vacancy rate.** Coverage depends on where a
@@ -637,9 +702,26 @@ npx wrangler secret put REFRESH_SECRET         # any long random string
   SCB rent statistics on the same area page.
 - Tyresö Bostäder and Signalisten are registered on an unverified coordinate
   share (both were empty at discovery).
-- **Göteborg and Malmö remain thin.** Boplats Väst has no coordinates and
-  Boplats Syd is behind a login, so their municipal supply is not represented.
+- **Malmö remains thin**: Boplats Syd is behind a login, so Skåne's municipal
+  queue supply is not represented. Göteborg is now covered by Boplats Väst.
+- **Boplats Väst positions are property-level, not entrance-level**, and
+  several adverts can share one point.
+- **Boplats Väst backfills ~13 adverts per refresh** because a Worker
+  invocation is subrequest-limited. New adverts are unplaced for an hour or
+  two after appearing.
 - Queue listings have no landlord attribution — the feed does not name one.
+
+## Attribution
+
+- Listing data belongs to the sources named above and is linked back to, never
+  re-published as a dataset.
+- The coordinate spot-check in *Boplats Väst* used Nominatim reverse
+  geocoding: **© OpenStreetMap contributors, ODbL**
+  (<https://www.openstreetmap.org/copyright>). It is a one-off verification
+  tool — no OpenStreetMap data is stored, served or relied on by the gateway
+  at runtime, and Nominatim is not called in production.
+- The dashboard's own statistics come from SCB (CC0, "Källa: SCB") and are
+  entirely separate from anything here.
 
 ## Deploying
 

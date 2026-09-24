@@ -185,6 +185,8 @@ export function normaliseRecord(raw, portal) {
     /* These landlords let directly: first suitable applicant, no queue time.
      * The list endpoint carries no youth/student/senior flag, so audience is
      * unknown rather than "everyone". */
+    /* Coordinates come from the source, not from geocoding an address. */
+    geo_source: "source",
     allocation: "direct",
     audience: null,
   };

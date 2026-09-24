@@ -81,6 +81,7 @@ export function normaliseRecord(raw, center) {
     is_new_production: raw.Nyproduktion === true ? true : null,
     allocation: ALLOCATION,
     audience: audienceOf(raw),
+    geo_source: "source",
     /* Queue-specific, and the reason a reader should not treat this like a
      * listing they can simply take. */
     queue_name: raw.KoNamn || raw.Ko || null,

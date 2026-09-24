@@ -102,6 +102,7 @@ export function normaliseRecord(raw, regionName) {
     is_new_production: prop(raw.isNewProduction) === true ? true : null,
     allocation: ALLOCATION,
     audience: student ? "student" : null,
+    geo_source: "source",
   };
 }
 

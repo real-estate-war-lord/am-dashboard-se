@@ -49,6 +49,10 @@ function freshSnapshots(when = new Date()) {
   return out;
 }
 
+/* Snapshot keys only — Boplats Väst also keeps a detail cache in KV, which
+ * is not a snapshot. */
+const snapshotKeys = (kv) => [...kv.store.keys()].filter((k) => SNAPSHOT_SOURCES.some((s) => s.kvKey === k));
+
 async function call(path, { origin = DASHBOARD, method = "GET", upstream, env = {}, headers = {} } = {}) {
   const real = globalThis.fetch;
   if (upstream) globalThis.fetch = upstream;
@@ -301,12 +305,17 @@ test("/admin/refresh with the right token rebuilds every snapshot", async () => 
   /* Order is preserved even though the refresh runs a bounded worker pool. */
   assert.deepEqual(r.body.portals.map((p) => p.src), SNAPSHOT_SOURCES.map((p) => p.src));
   assert.ok(r.body.portals.every((p) => p.ok), JSON.stringify(r.body.portals.filter((p) => !p.ok)));
-  /* Each source drops the fixture records that have no usable coordinates. */
-  assert.ok(r.body.portals.every((p) => p.count > 0 && p.dropped >= 1));
-  assert.equal(kv.store.size, SNAPSHOT_SOURCES.length);
+  assert.ok(r.body.portals.every((p) => p.count > 0), "every source must produce listings");
+  /* The Arena fixture carries two unplaceable records, so dropping is
+   * exercised; Boplats' stub places both of its cards and drops none. */
+  assert.ok(r.body.portals.some((p) => p.dropped >= 1));
+  assert.equal(snapshotKeys(kv).length, SNAPSHOT_SOURCES.length);
   assert.ok(kv.store.has("arena:heimstaden"));
   assert.ok(kv.store.has("snapshot:willhem"));
   assert.ok(kv.store.has("snapshot:bostadsformedlingen"));
+  assert.ok(kv.store.has("snapshot:boplatsvast"));
+  /* and its detail cache, which is not a snapshot */
+  assert.ok(kv.store.has("cache:boplatsvast:detail"));
 });
 
 test("a portal failing the refresh leaves the others' snapshots alone", async () => {
@@ -322,7 +331,7 @@ test("a portal failing the refresh leaves the others' snapshots alone", async ()
   assert.equal(r.status, 200, "the others succeeded");
   assert.equal(r.body.portals.find((p) => p.src === "heimstaden").ok, false);
   assert.equal(r.body.portals.find((p) => p.src === "victoriahem").ok, true);
-  assert.equal(kv.store.size, SNAPSHOT_SOURCES.length - 1, "the failed portal writes nothing");
+  assert.equal(snapshotKeys(kv).length, SNAPSHOT_SOURCES.length - 1, "the failed portal writes nothing");
 });
 
 test("both portals failing the refresh is a 502", async () => {
@@ -399,7 +408,7 @@ test("the scheduled handler writes every snapshot", async () => {
     await worker.scheduled({}, { LISTINGS_KV: kv }, { waitUntil: (p) => pending.push(p) });
     await Promise.all(pending);
   } finally { globalThis.fetch = real; }
-  assert.equal(kv.store.size, SNAPSHOT_SOURCES.length);
+  assert.equal(snapshotKeys(kv).length, SNAPSHOT_SOURCES.length);
   const snap = JSON.parse(kv.store.get("arena:victoriahem"));
   assert.equal(snap.count, 3);
   assert.equal(snap.dropped, 2);
