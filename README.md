@@ -40,6 +40,17 @@ Direction awareness runs through all of it: every indicator declares whether hig
 lower is better, or neither. 36 of the original 44 declare **neither**, because a share
 of flerbostadshus has no better end and colouring one green would be editorialising.
 
+### Screenshots
+
+| | |
+|---|---|
+| ![Outlook](docs/screenshots/v12_outlook_map.png) | ![Safety](docs/screenshots/v12_safety_map.png) |
+| Projected population change to 2040, diverging about flat | Reported offences per 1 000, lower-is-better |
+| ![Schools](docs/screenshots/v12_schools.png) | ![Climate](docs/screenshots/v12_climate.png) |
+| 1 791 schools coloured by merit value | River flood zones along Göta älv |
+| ![Test property](docs/screenshots/v12_analysis.png) | ![Pipeline](docs/screenshots/v12_pipeline.png) |
+| Two pins compared, with no overall winner | 49 projects, each linked to its source |
+
 ### Three things this release is careful about
 
 - **Suppressed is not zero.** A withheld value renders as `–`.

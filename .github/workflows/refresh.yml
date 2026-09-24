@@ -35,6 +35,20 @@ jobs:
       - name: Pull Riksbank
         run: python scripts/fetch_riksbank.py || echo "Riksbank unavailable — policy_rate/bond_10y will show no data"
 
+      # The cheap v1.2 sources: minutes, not hours, and each is allowed to fail
+      # without failing the refresh — a source that is down for a day should not
+      # take the whole dashboard's monthly update with it. The expensive ones
+      # (the ~3 GB climate pull, the 3 600-call school fetch and the Overpass
+      # crawl) are NOT here: they are irregular publications, and they are run by
+      # hand with `make climate`, `make schools` and `make services`.
+      - name: Pull Brå (reported offences)
+        run: python -u scripts/fetch_bra.py --quarters && python -u scripts/import_bra.py
+        continue-on-error: true
+
+      - name: Pull Polisen (vulnerable areas)
+        run: pip install "shapely>=2.0" && python -u scripts/fetch_polisen.py
+        continue-on-error: true
+
       - name: Rebuild the processed layer
         run: python scripts/build_makro.py && python scripts/build_market.py
 
@@ -43,6 +57,7 @@ jobs:
           git config user.name "github-actions"
           git config user.email "actions@github.com"
           git add data/processed data/raw/*.meta.json data/raw/*.state.json data/raw/riksbank_*.json
+          git add data/external data/geo/polisen_uso.geojson data/raw/bra/*.meta.json || true
           git commit -m "data: monthly refresh $(date +%F)" || echo "nothing to commit"
           git push
 
@@ -64,6 +79,9 @@ jobs:
 
       - name: Assemble dist/
         run: python scripts/build_dashboard.py
+
+      - name: Offline unit tests
+        run: node --test tests/*.test.js
 
       - name: Smoke-test the built page
         run: node tests/smoke.js

@@ -190,3 +190,95 @@ Reproduce with `make verify` (`scripts/verify_scb.py`).
 **15 of 15 match**, rents to the krona and their margins, growth and education to
 two decimals. Tolerances allowed 0.5 SEK, 0.006 pp and 0.06 pp respectively; every
 difference was below the printing precision.
+
+---
+
+# v1.2 — what "Sweden parity" added
+
+Full source table with licences and caveats: [`PARITY.md`](PARITY.md).
+Phase-by-phase build record: [`PARITY_BUILD_LOG.md`](PARITY_BUILD_LOG.md).
+
+## §5 Outlook — SCB's trend projection
+
+`TAB698` (cross-checked against `TAB6008`), kommun level, published **2024-06-11**,
+window 2026–2040. Seven indicators: total change to 2040 and to 2031, the projected
+2040 population, and the change in four age bands summed over single years of age.
+
+A projection is one published statement, not a series of observations, so it lives
+in `fc` on each kommun and never in `hist` — writing it to `hist` would put
+2027–2040 into the dashboard's year selector and offer every other indicator years
+in which nothing was measured. RegSO and DeSO inherit the kommun figure marked `°`;
+SCB does not publish below kommun.
+
+## §6 Safety — Brå and Polisen
+
+Brå has **no open-data API** — its own site says so — so kommun-level crime comes
+from the SOL web application, driven as a browser would drive it. Six offence
+categories at kommun level, 1996–2025, plus 48 quarters for the headline total.
+Only `drugs_weapons_1000` is a composite, and it is the sum of two rows Brå
+publishes separately.
+
+**Clearance rate does not exist per kommun.** Brå publishes
+personuppklaringsprocent for the whole country only. It is omitted, and a test
+asserts it cannot reappear.
+
+Polisen publishes the designated areas as **geometry**, not only as a PDF list:
+65 polygons in EPSG:3006, **two** classes since 2025 (`riskområde` is gone).
+Intersected into kommun, RegSO and DeSO in metres. An intersection below one
+hectare is not a designation — it is two boundaries grazing each other.
+
+## §7 Schools — Skolverket and Skolinspektionen
+
+1 791 school units teaching year 9, 99.6 % with coordinates. **Skolenhetsregistret
+carries no coordinates** — it is code, kommun, org nr, name and status — so they
+come from the planned-educations v4 detail endpoint.
+
+`valueType` is the whole story and it survives into the page: `EXISTS`,
+`OMITTED_DUE_TO_BASED_ON_FEW_PUPILS`, `ROUNDED_OFF_DUE_TO_FEW_PUPILS_NOT_ELIGIBLE`,
+`MISSING`, `TEACHERS_EXCLUDED_DUE_TO_NO_REQUIRED_LEGITIMATION`. A suppressed
+school is left out of an average, never counted as zero.
+
+**`totalNumberOfPupils` is always a rounded band** ("cirka 590"), for the whole
+unit rather than the year-9 cohort. It is the only size measure published, so it is
+what the pupil-weighting weights by, and every Schools indicator says so.
+
+**SALSA is not available.** The SIRIS export is gone and SALSA now exists only
+inside a stateful Oracle APEX app with no export of any kind. The merit value here
+is the **raw** one — exactly the socioeconomically-confounded number SALSA exists
+to correct — and the indicator note, the popup, the legend and the datasheet all
+say so.
+
+Skolinspektionen's Skolenkäten runs on a **roughly two-year rotation**, so the
+build unions the 2025 and 2026 rounds and each school carries its own year.
+
+## §8 Climate — MCF, SMHI, SGU
+
+Land-area shares at all three levels, computed in SWEREF99 TM metres.
+
+**The three river-flood products cover different watercourses** — 76, 71 and 78 —
+and the difference appears inside a single kommun. Coverage is therefore tested per
+layer, an area no record of that layer reaches reads **"Not mapped"**, and the three
+shares are **not comparable with each other**. Each is comparable across areas
+within its own layer.
+
+SGU's survey covers part of the territory; an area outside it is Not mapped, not
+0 %. MCF's cloudburst layer records which kommuner have made their **own** mapping
+(267 of 290) — it says the work was done, not what it found.
+
+## §9 Infrastructure
+
+49 hand-curated projects in `data/external/infra_se.csv`, each with a source URL
+that was fetched and confirmed. Budgets from bilaga 1 of the **adopted** Nationell
+plan 2026–2037 at price base **2025-02**, and never shown without their base.
+
+Station points are matched by name in OSM inside the kommuner a project runs
+through. A project whose stations cannot be located is listed but **not drawn** —
+no alignment is sketched between points.
+
+## §10 Services and public buildings — OpenStreetMap (ODbL)
+
+Points only, never a rate: a count per inhabitant would measure how thoroughly
+volunteers have mapped a place as much as how much of something is there.
+Each point carries the OSM tag that put it in its category.
+
+**Coverage is currently partial** — see `PARITY_BUILD_LOG.md`, Phase 7.
