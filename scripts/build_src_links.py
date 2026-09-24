@@ -53,6 +53,9 @@ PAGE_ONLY = {
     # Brå's own page states it has no public open-data API.
     # The climate layers are published as whole national GIS services; the
     # verifiable thing is the service the shares were computed from.
+    "infra": ("Trafikverket m.fl. — each project links to its own source",
+              "https://bransch.trafikverket.se/for-dig-i-branschen/Planera-och-utreda/"
+              "langsiktig-planering-av-infrastruktur/nationell-plan/nationell-plan-2026-2037/"),
     "climate": ("MCF, SMHI och SGU",
                 "https://gis-tjanster.mcf.se/arcgis/rest/services/Oversvamningskarteringar"),
     # Skolverket's API answers per school, not per area, so the verifiable route

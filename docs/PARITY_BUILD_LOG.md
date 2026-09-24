@@ -559,3 +559,129 @@ resolving it would mean calling Google on the reader's behalf.
 | no overall winner in Compare | deliberate; stated in the UI |
 | Phases 6–7 sections of the Analysis sheet | to be added as those phases land |
 
+## Phase 6 — Climate risk
+
+### Check table
+
+| Indicator | Source | Level | Coverage | Zones? |
+|---|---|---|---|---|
+| `flood100` | MCF INSPIRE WFS, 76 watercourses | all three | 199 kommun / 2 994 areas | ✅ |
+| `flood200` | MCF, 71 watercourses | all three | 181 kommun / 2 712 areas | choropleth only |
+| `floodBHF` | MCF, 78 watercourses | all three | 200 kommun / 3 130 areas | choropleth only |
+| `coast20` | MCF ArcGIS layer 19 (2,0 m RH2000) | all three | 9 813 areas | ✅ |
+| `coast30` | MCF ArcGIS layer 29 (3,0 m RH2000) | all three | 9 813 areas | choropleth only |
+| `sea2100_85` | SMHI, RCP8.5, 2100, average | all three | 9 813 areas | ✅ |
+| `sea2100_45` | SMHI, RCP4.5, 2100, average | all three | 9 813 areas | choropleth only |
+| `landslide` | SGU aktsamhetsområden (CC0) | all three | 9 631 areas | choropleth only |
+| `cloudburst_mapped` | MCF Skyfallskartering översikt | kommun | 290, **267 mapped** | flag |
+
+All eight area shares are `no_inherit` and `lower_better`; the cloudburst flag is
+categorical and `neutral` — having done the work is preparedness, not a hazard level.
+
+### The three bugs that cost the most
+
+1. **A shapefile record's parts are not one polygon with many holes.** The Esri
+   spec makes an outer ring clockwise and a hole counter-clockwise, and one record
+   can hold many islands. `flood100` is 76 records containing **753 370 parts** —
+   31 819 shells and 721 551 holes. Treating every part as a hole of the first
+   built a polygon with 721 551 holes, and *that* is why the first climate build
+   ran 1 h 04 m without finishing. `scripts/shapefile.py` now splits by
+   orientation, and the share is computed as (area in shells − area in holes),
+   which needs no containment test at all.
+2. **SGU pages with `startIndex` — capital I.** `startindex` and `offset` are both
+   accepted and both silently ignored, so the first fetcher refetched page 1 for
+   ever: 201 000 "features" that were 201 copies of the same thousand, 3.2 GB on
+   disk. Following the server's own `next` link cannot make that mistake.
+   `scripts/dedup_sgu.py` then drops 265 000 duplicate copies from the per-kommun
+   bbox fetch — 2.6 GB → 1.1 GB — and the unique counts land on **242 296** and
+   **49 645**, matching the API's own `numberMatched` exactly.
+3. **MCF's three flood products cover different watercourses.** 76, 71 and 78 of
+   them, and the difference appears *inside a single kommun*: Umeå is covered by
+   three mapped watercourses in the 100-year map and two in the 200-year one,
+   Lycksele by three and one. A shared coverage test gave Östersund 7.4 % for the
+   100-year flood and **0.0 %** for the 200-year — which reads as "no risk" and
+   means "not in this product". Coverage is now tested **per layer**, an area no
+   record of that layer reaches is blank, and all three indicators carry a caveat
+   that their shares are not comparable *with each other*.
+
+### Zone overlay and the budget
+
+Zones are clipped per kommun and simplified in metres. Built at 10 m all seven
+layers came to **170 MB**, over the 150 MB budget, and landslide's largest file was
+**4.47 MB**, over the 3 MB per-file cap — 242 000 tiny caution polygons do not
+simplify because there is nothing to merge. The agreed fallback ran automatically:
+**flood100, coast20 and sea2100_85 ship zones (41 MB, largest file 1.01 MB)**; the
+other four are choropleth-only and fully available as numbers.
+
+### Gates
+
+| Gate | Result |
+|---|---|
+| `make validate` | clean — 78 indicators |
+| `make links` | **83 of 83** |
+| `make test` | clean — 10 new Climate assertions |
+| `make build` | clean, 16.9 MB + 41 MB zones |
+| screenshots | `v12_climate.png` |
+
+### ⚠ raised
+
+| ⚠ | Decision |
+|---|---|
+| the three flood products are not mutually comparable | caveat on all three; asserted in the tests |
+| "not mapped" vs "mapped and dry" cannot be told apart | treated as not mapped — the conservative reading — and said so |
+| four of seven layers have no zone outline | choropleth carries them; stated in the legend and the meta |
+| no building-level exposure | needs Geotorget; area shares only, logged as an upgrade |
+
+## Phase 7 — Overlays: Services, Public buildings, Infra
+
+### Check table
+
+| Piece | Source | Coverage | Note |
+|---|---|---|---|
+| Services overlay | OSM (grocery, food, pharmacy, transport) | **16 of 290 kommuner** | see below |
+| Public buildings overlay | OSM (education, daycare, health, culture, sports) | same 16 | category filter is the legend |
+| Infrastructure overlay | curated `infra_se.csv` | 49 projects, 7 drawn | never a sketched alignment |
+| Pipeline view + CSV | same | 49 rows | budget always with its price base |
+| `projects_upcoming` | derived | 55 kommuner with ≥1 | |
+| `stations_planned` | derived | 55 kommuner with ≥1 | |
+
+### ⚠ OSM coverage is partial, and that is the honest outcome
+
+The public Overpass instance rate-limited this client. The query was tuned first —
+node and way statements must be **two separate queries**, because together they
+return 504 every time while each alone answers in 2.5 s, and that alone cut a
+kommun from 75 s to 8 s — but after a few dozen kommuner Overpass began refusing
+everything and eventually stopped answering its own status endpoint. Three workers
+is inside its published 4-slot limit and still triggered it.
+
+**The fetch was stopped rather than continued.** A donated public service sheds
+load however it likes, and the right answer is to ask more slowly or not at all,
+not to argue with it. 16 kommuner are on disk, `make services` is resumable, and
+**the overlay's legend states its own coverage** so no reader can mistake a sparse
+map for a sparse city. The Geofabrik extract remains the alternative if full
+coverage matters more than a stdlib-only pipeline.
+
+### Infrastructure
+
+49 projects, every one with a source URL that was fetched and confirmed. Budgets
+come from bilaga 1 of the **adopted** Nationell plan 2026–2037 at price base
+**2025-02**, and a budget is never shown without its base. Eight projects have no
+budget — the Stockholm metro lines are funded as one programme — and those read
+"not published" rather than 0.
+
+Geometry is station points matched by name in OSM **within the kommuner the project
+actually runs through**, so a "Centralen" in the wrong city cannot be picked up.
+7 of 49 are drawn; the rest are listed in Pipeline and on their own page but not on
+the map, because sketching an alignment between two points would be inventing
+geography and a line on a map is read as a fact. With only 16 kommuner of OSM data
+this will improve on its own when `make services` completes.
+
+### Gates
+
+| Gate | Result |
+|---|---|
+| `make validate` | clean |
+| `make test` | clean — 7 new Infrastructure assertions |
+| `make build` | clean |
+| screenshots | `v12_pipeline.png` |
+

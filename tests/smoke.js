@@ -508,6 +508,84 @@ let anHtml = vm.runInContext("vAnalysis()", sandbox);
 assert("the Analysis view renders empty", /Paste a Google Maps link/.test(anHtml), "prompt shown");
 assert("and states the privacy position", /never sent to a server/.test(anHtml), "privacy line");
 
+/* ---- v1.2 Climate ----
+   The one thing that must never break here: "not mapped" and 0 % are different
+   answers. MCF has mapped about 80 watercourses and SGU's survey covers part of
+   the country, so an absence of data is not an absence of risk. */
+console.log("\nclimate:");
+const CLI = D.indicators.filter(i => i.group === "Climate");
+assert("nine Climate indicators", CLI.length === 9, CLI.map(i => i.key).join(", "));
+assert("none of them inherits down the hierarchy",
+  CLI.filter(i => i.key !== "cloudburst_mapped").every(i => i.no_inherit === true),
+  "no_inherit on every area share");
+assert("every label carries its horizon or scenario",
+  ["coast20", "coast30", "sea2100_85", "sea2100_45", "flood100", "flood200"]
+    .every(k => /\d/.test((D.indicators.find(i => i.key === k) || {}).label || "")),
+  "levels and years in the labels");
+
+const floodK = D.kommuner.filter(k => k.flood100 != null).length;
+assert("river flood is scored only where a watercourse is mapped",
+  floodK > 150 && floodK < 290, `${floodK} of 290 kommuner scored`);
+assert("and the rest are blank, not zero",
+  D.kommuner.some(k => k.flood100 == null), "unmapped kommuner carry no value");
+
+const cb = D.kommuner.filter(k => k.cloudburst_mapped != null).length;
+const cbYes = D.kommuner.filter(k => k.cloudburst_mapped === 1).length;
+assert("the cloudburst flag covers all 290 kommuner", cb === 290, `${cb}`);
+assert("and 267 of them have their own mapping", cbYes === 267, `${cbYes}`);
+
+/* a share is a share: nothing may exceed 100 % or go below 0 */
+const shares = [];
+for (const k of D.kommuner)
+  for (const key of ["flood100", "flood200", "floodBHF", "coast20", "coast30",
+                     "sea2100_85", "sea2100_45", "landslide"])
+    if (k[key] != null) shares.push([key, k[key]]);
+assert("every climate share is between 0 and 100 %",
+  shares.every(([, v]) => v >= 0 && v <= 100),
+  `${shares.length} values, max ${Math.max(...shares.map(x => x[1])).toFixed(2)} %`);
+/* A 200-year flood share CAN be smaller than the 100-year one, and that is the
+   source's doing rather than a bug: the products cover 76, 71 and 78 different
+   watercourses, and the difference shows up inside one kommun — Umeå is covered
+   by three mapped watercourses in the 100-year map and two in the 200-year one.
+   The first version of this test asserted monotonicity and was testing
+   hydrology that these PRODUCTS do not satisfy. What must hold instead is that
+   the indicators warn about it, because a reader comparing the two columns would
+   otherwise draw a wrong conclusion. */
+const nonMono = D.kommuner.filter(k => k.flood100 != null && k.flood200 != null &&
+  k.flood200 < k.flood100 - 0.01);
+assert("the flood layers' differing coverage is visible in the data",
+  nonMono.length > 0, `${nonMono.length} kommuner where 200-yr < 100-yr`);
+assert("and every flood indicator warns that they are not comparable with each other",
+  ["flood100", "flood200", "floodBHF"].every(k =>
+    /do not cover the same watercourses/.test((D.indicators.find(i => i.key === k) || {}).warn || "")),
+  "caveat present on all three");
+const bad30 = D.kommuner.filter(k => k.coast20 != null && k.coast30 != null &&
+  k.coast30 < k.coast20 - 0.01);
+assert("nor is +3.0 m smaller than +2.0 m", bad30.length === 0,
+  bad30.length ? bad30.slice(0, 3).map(k => k.name).join(", ") : "monotonic");
+
+/* ---- v1.2 Infrastructure ---- */
+console.log("\ninfrastructure:");
+const PR = (D.infra || {}).projects || [];
+assert("the curated project list ships", PR.length >= 30, `${PR.length} projects`);
+assert("every project has a source URL", PR.every(p => /^https?:\/\//.test(p.source_url || "")),
+  PR.filter(p => !/^https?:/.test(p.source_url || "")).map(p => p.id).join(", ") || "all sourced");
+assert("no budget without a price base",
+  PR.every(p => p.budget_msek == null || !!p.price_base),
+  PR.filter(p => p.budget_msek != null && !p.price_base).map(p => p.id).join(", ") || "all based");
+assert("statuses are from the fixed set",
+  PR.every(p => ["study", "decided", "construction", "opened"].includes(p.status)),
+  [...new Set(PR.map(p => p.status))].join(", "));
+assert("every project maps to real kommun codes",
+  PR.every(p => (p.kommuner || []).every(c => !!byCode[c])),
+  "all kommun codes resolve");
+const vPipe = vm.runInContext("vPipeline", sandbox);
+S.view = "pipeline";
+const pipeHtml = vPipe();
+assert("the Pipeline view renders every project", (pipeHtml.match(/data-go="project\//g) || []).length === PR.length,
+  `${(pipeHtml.match(/data-go="project\//g) || []).length} rows`);
+assert("and says a budget needs its price base", /price base/i.test(pipeHtml), "stated");
+
 /* ---- v1.2 verify-at-source ----
    The link must reproduce the publisher's query for the cells on screen. Two
    ways it silently goes wrong: sending a kommun code to a län table (400), and

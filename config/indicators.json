@@ -6747,7 +6747,7 @@
    "direction": "lower_better",
    "direction_note": "less land inside a published hazard polygon is the sound end",
    "no_inherit": true,
-   "warn": "Screening indicator for comparing areas, not a property-level risk assessment. It is the share of an area's land inside a published hazard polygon — it says nothing about a particular building, its floor level or its protection. An area the survey never covered has no value here and reads 'Not mapped'. That is not the same as 0 %, which means surveyed and found clear. MCF has mapped about 80 watercourses, not every stream: a kommun none of them runs through is Not mapped.",
+   "warn": "Screening indicator for comparing areas, not a property-level risk assessment. It is the share of an area's land inside a published hazard polygon — it says nothing about a particular building, its floor level or its protection. An area the survey never covered has no value here and reads 'Not mapped'. That is not the same as 0 %, which means surveyed and found clear. MCF has mapped about 80 watercourses, not every stream: a kommun none of them runs through is Not mapped. **The three river-flood products do not cover the same watercourses** — 76, 71 and 78 of them for the 100-year, 200-year and BHF maps, and the difference shows up inside a single kommun: Umeå is covered by three mapped watercourses in the 100-year map and two in the 200-year one, Lycksele by three and one. So a 200-year share can be SMALLER than the 100-year share for the same area, and the three are not directly comparable with each other. Each is comparable ACROSS areas within its own layer.",
    "src_verify": [
     {
      "level": "kommun",
@@ -6805,7 +6805,7 @@
    "direction": "lower_better",
    "direction_note": "less land inside a published hazard polygon is the sound end",
    "no_inherit": true,
-   "warn": "Screening indicator for comparing areas, not a property-level risk assessment. It is the share of an area's land inside a published hazard polygon — it says nothing about a particular building, its floor level or its protection. An area the survey never covered has no value here and reads 'Not mapped'. That is not the same as 0 %, which means surveyed and found clear. MCF has mapped about 80 watercourses, not every stream.",
+   "warn": "Screening indicator for comparing areas, not a property-level risk assessment. It is the share of an area's land inside a published hazard polygon — it says nothing about a particular building, its floor level or its protection. An area the survey never covered has no value here and reads 'Not mapped'. That is not the same as 0 %, which means surveyed and found clear. MCF has mapped about 80 watercourses, not every stream. **The three river-flood products do not cover the same watercourses** — 76, 71 and 78 of them for the 100-year, 200-year and BHF maps, and the difference shows up inside a single kommun: Umeå is covered by three mapped watercourses in the 100-year map and two in the 200-year one, Lycksele by three and one. So a 200-year share can be SMALLER than the 100-year share for the same area, and the three are not directly comparable with each other. Each is comparable ACROSS areas within its own layer.",
    "src_verify": [
     {
      "level": "kommun",
@@ -6863,7 +6863,7 @@
    "direction": "lower_better",
    "direction_note": "less land inside a published hazard polygon is the sound end",
    "no_inherit": true,
-   "warn": "Screening indicator for comparing areas, not a property-level risk assessment. It is the share of an area's land inside a published hazard polygon — it says nothing about a particular building, its floor level or its protection. An area the survey never covered has no value here and reads 'Not mapped'. That is not the same as 0 %, which means surveyed and found clear. MCF has mapped about 80 watercourses, not every stream.",
+   "warn": "Screening indicator for comparing areas, not a property-level risk assessment. It is the share of an area's land inside a published hazard polygon — it says nothing about a particular building, its floor level or its protection. An area the survey never covered has no value here and reads 'Not mapped'. That is not the same as 0 %, which means surveyed and found clear. MCF has mapped about 80 watercourses, not every stream. **The three river-flood products do not cover the same watercourses** — 76, 71 and 78 of them for the 100-year, 200-year and BHF maps, and the difference shows up inside a single kommun: Umeå is covered by three mapped watercourses in the 100-year map and two in the 200-year one, Lycksele by three and one. So a 200-year share can be SMALLER than the 100-year share for the same area, and the three are not directly comparable with each other. Each is comparable ACROSS areas within its own layer.",
    "src_verify": [
     {
      "level": "kommun",
@@ -7228,6 +7228,88 @@
      "publisher": "MCF, SMHI och SGU",
      "label": "MCF, SMHI och SGU",
      "page": "https://gis-tjanster.mcf.se/arcgis/rest/services/Oversvamningskarteringar"
+    }
+   ]
+  },
+  {
+   "key": "projects_upcoming",
+   "label": "Major projects under way or decided",
+   "short": "Projects",
+   "unit": "projects",
+   "level": "kommun",
+   "levels": [
+    "kommun"
+   ],
+   "hue": [
+    176,
+    90,
+    60
+   ],
+   "sources": [
+    {
+     "db": "infra",
+     "col": "projects_upcoming",
+     "geo": "kommun",
+     "table": "infra_se.csv"
+    }
+   ],
+   "calc": "infra_count",
+   "fmt": "int",
+   "moe": null,
+   "desc": "Major transport projects running through the kommun that are decided or under construction and not yet open.",
+   "source": "Trafikverket, Region Stockholm and the project bodies — see each project's page",
+   "group": "Growth signals",
+   "direction": "neutral",
+   "direction_note": "construction is disruption as well as investment; which one dominates is not something a count can say",
+   "warn": "Counted from data/external/infra_se.csv, a hand-curated list of major projects with a source link on every row. It is not a complete census of Swedish infrastructure — a kommun with 0 has no project on OUR list, which is not the same as no project at all.",
+   "src_verify": [
+    {
+     "level": "kommun",
+     "db": "infra",
+     "publisher": "Trafikverket m.fl. — each project links to its own source",
+     "label": "Trafikverket m.fl. — each project links to its own source",
+     "page": "https://bransch.trafikverket.se/for-dig-i-branschen/Planera-och-utreda/langsiktig-planering-av-infrastruktur/nationell-plan/nationell-plan-2026-2037/"
+    }
+   ]
+  },
+  {
+   "key": "stations_planned",
+   "label": "Stations in decided or ongoing projects",
+   "short": "Stations",
+   "unit": "stations",
+   "level": "kommun",
+   "levels": [
+    "kommun"
+   ],
+   "hue": [
+    150,
+    90,
+    70
+   ],
+   "sources": [
+    {
+     "db": "infra",
+     "col": "stations_planned",
+     "geo": "kommun",
+     "table": "infra_se.csv"
+    }
+   ],
+   "calc": "infra_count",
+   "fmt": "int",
+   "moe": null,
+   "desc": "Named stations in projects running through the kommun that are decided or under construction.",
+   "source": "Trafikverket, Region Stockholm and the project bodies",
+   "group": "Growth signals",
+   "direction": "neutral",
+   "direction_note": "a count, not a score",
+   "warn": "Counted from data/external/infra_se.csv, a hand-curated list of major projects with a source link on every row. It is not a complete census of Swedish infrastructure — a kommun with 0 has no project on OUR list, which is not the same as no project at all.",
+   "src_verify": [
+    {
+     "level": "kommun",
+     "db": "infra",
+     "publisher": "Trafikverket m.fl. — each project links to its own source",
+     "label": "Trafikverket m.fl. — each project links to its own source",
+     "page": "https://bransch.trafikverket.se/for-dig-i-branschen/Planera-och-utreda/langsiktig-planering-av-infrastruktur/nationell-plan/nationell-plan-2026-2037/"
     }
    ]
   }

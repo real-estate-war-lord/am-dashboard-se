@@ -29,6 +29,7 @@ import argparse
 import json
 import pathlib
 import sys
+import threading
 import time
 import urllib.parse
 
@@ -37,9 +38,12 @@ from http_util import get                                                # noqa:
 from se_common import GEO, ROOT                                          # noqa: E402
 
 RAW = ROOT / "data" / "raw" / "osm"
-ENDPOINTS = ["https://overpass-api.de/api/interpreter",
-             "https://overpass.kumi.systems/api/interpreter"]
-PAUSE = 3.0                       # seconds between queries — Overpass is donated
+# overpass-api.de answers these queries in about 2.5 s each. The kumi mirror
+# was in this list and timed out on most of them, and because a failure moved to
+# the next endpoint it dragged every kommun to 89 s. It stays out until it is
+# needed: one endpoint, retried, is faster than two when one of them is down.
+ENDPOINTS = ["https://overpass-api.de/api/interpreter"]
+PAUSE = 6.0                       # seconds between kommuner — Overpass is donated
 
 # category -> list of Overpass tag filters. Kept explicit: a reader can map any
 # point on the map back to the tag that put it there.
@@ -74,13 +78,37 @@ def bboxes() -> list[tuple]:
     return sorted(out)
 
 
-def query_for(s, w, n, e) -> str:
-    parts = []
-    for cat, filters in FILTERS.items():
+# Tags that are genuinely mapped as areas as well as points — a school or a
+# hospital is usually a building polygon. Everything else (a bus stop, a café)
+# is a node, and asking Overpass for ways with those tags is cost with no return.
+AREA_TAGS = {'["amenity"="school"]', '["amenity"="kindergarten"]',
+             '["amenity"="hospital"]', '["amenity"="clinic"]',
+             '["amenity"="library"]', '["amenity"="theatre"]',
+             '["tourism"="museum"]', '["leisure"="sports_centre"]',
+             '["leisure"="sports_hall"]', '["shop"="supermarket"]'}
+
+
+def queries_for(s, w, n, e) -> list[str]:
+    """TWO queries per kommun, not one.
+
+    Overpass limits a query's complexity, not just its area: the node
+    statements alone answer in 2.5 s and the way statements alone in 2.4 s, but
+    both together return 504 Gateway Timeout every time. The first version of
+    this fetcher sent them together, got a 504 for every kommun, and spent 75
+    seconds per kommun retrying across both endpoints — six hours for the
+    country. Split, it is about eight seconds each.
+    """
+    bb = f"({s:.4f},{w:.4f},{n:.4f},{e:.4f})"
+    nodes, ways = [], []
+    for _cat, filters in FILTERS.items():
         for f in filters:
-            parts.append(f'node{f}({s:.4f},{w:.4f},{n:.4f},{e:.4f});')
-            parts.append(f'way{f}({s:.4f},{w:.4f},{n:.4f},{e:.4f});')
-    return "[out:json][timeout:180];(" + "".join(parts) + ");out center tags;"
+            nodes.append(f"node{f}{bb};")
+            if f in AREA_TAGS:
+                ways.append(f"way{f}{bb};")
+    out = ["[out:json][timeout:120];(" + "".join(nodes) + ");out center tags;"]
+    if ways:
+        out.append("[out:json][timeout:120];(" + "".join(ways) + ");out center tags;")
+    return out
 
 
 def cat_of(tags: dict) -> tuple[str, str] | None:
@@ -97,6 +125,15 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--only", action="append", default=[])
     ap.add_argument("--refresh", action="store_true")
+    # Overpass publishes a rate limit of 4 concurrent slots per client; using 3
+    # is inside it and is how the service is meant to be used. One at a time
+    # took about a minute per kommun, which is five hours for the country.
+    # ONE worker by default. Three was inside Overpass's published 4-slot limit
+    # but it still started refusing every request after a few dozen kommuner —
+    # a donated public service sheds load however it likes, and the right answer
+    # is to ask more slowly rather than to argue with it. The fetch is resumable,
+    # so a partial run costs nothing but time.
+    ap.add_argument("--workers", type=int, default=1)
     a = ap.parse_args()
     RAW.mkdir(parents=True, exist_ok=True)
 
@@ -109,23 +146,40 @@ def main() -> int:
           f"{len(wanted)} already on disk)")
     ep = 0
     total = 0
-    for i, (code, name, s, w, n, e) in enumerate(todo, 1):
-        q = query_for(s, w, n, e)
-        body = None
-        for attempt in range(len(ENDPOINTS) * 2):
-            url = ENDPOINTS[ep % len(ENDPOINTS)]
-            st, resp, _ = get(url, data=urllib.parse.urlencode({"data": q}).encode(),
-                              headers={"Content-Type": "application/x-www-form-urlencoded"},
-                              timeout=240, tries=1)
-            if st == 200 and resp[:1] == b"{":
-                body = resp
+    lock = threading.Lock()
+    done = [0]
+
+    def work(item):
+        nonlocal total
+        i_unused, (code, name, s, w, n, e) = item
+        els = []
+        failed = False
+        for q in queries_for(s, w, n, e):
+            body = None
+            for _attempt in range(6):
+                url = ENDPOINTS[_attempt % len(ENDPOINTS)]
+                try:
+                    st, resp, _ = get(url, data=urllib.parse.urlencode({"data": q}).encode(),
+                                      headers={"Content-Type": "application/x-www-form-urlencoded"},
+                                      timeout=200, tries=1)
+                except Exception:                                        # noqa: BLE001
+                    # a read timeout is a normal answer from a busy public
+                    # instance, not a reason to end the run — move to the other
+                    # endpoint and try again
+                    st, resp = 0, b""
+                if st == 200 and resp[:1] == b"{":
+                    body = resp
+                    break
+                # Overpass sheds load by refusing; back off rather than hammer
+                time.sleep(PAUSE * (2 ** min(_attempt, 4)))
+            if body is None:
+                failed = True
                 break
-            ep += 1
-            time.sleep(PAUSE * 2)
-        if body is None:
-            print(f"  {code} {name}: all endpoints refused — skipped", file=sys.stderr)
-            continue
-        els = json.loads(body).get("elements") or []
+            els += json.loads(body).get("elements") or []
+            time.sleep(0.5)
+        if failed:
+            print(f"  {code} {name}: Overpass refused — skipped", file=sys.stderr)
+            return
         pts = []
         for el in els:
             tags = el.get("tags") or {}
@@ -141,10 +195,36 @@ def main() -> int:
                         "n": (tags.get("name") or "")[:60]})
         (RAW / f"{code}.json").write_text(
             json.dumps(pts, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
-        total += len(pts)
-        if i % 20 == 0 or i == len(todo):
-            print(f"  {i}/{len(todo)} · {total:,} points", flush=True)
+        with lock:
+            total += len(pts)
+            done[0] += 1
+            if done[0] % 10 == 0 or done[0] == len(todo):
+                print(f"  {done[0]}/{len(todo)} · {total:,} points", flush=True)
         time.sleep(PAUSE)
+
+    items = list(enumerate(todo, 1))
+    threads = []
+    idx = [0]
+
+    def runner():
+        while True:
+            with lock:
+                if idx[0] >= len(items):
+                    return
+                item = items[idx[0]]
+                idx[0] += 1
+            try:
+                work(item)
+            except Exception as exc:                                     # noqa: BLE001
+                print(f"  {item[1][0]}: {type(exc).__name__}: {exc}", file=sys.stderr)
+
+    for _ in range(max(1, a.workers)):
+        t = threading.Thread(target=runner, daemon=True)
+        t.start()
+        threads.append(t)
+    for t in threads:
+        t.join()
+
     print(f"\n{total:,} points written under {RAW.relative_to(ROOT)} "
           f"— © OpenStreetMap contributors (ODbL)")
     return 0

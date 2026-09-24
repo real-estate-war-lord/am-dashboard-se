@@ -15,6 +15,40 @@ self-contained HTML page.
 Sibling project: [am-dashboard-dk](https://github.com/real-estate-war-lord/am-dashboard-dk)
 — the Danish edition, whose design this one inherits.
 
+## What's new in v1.2 — "Sweden parity"
+
+Six new indicator groups, four map overlays, a pin you can drop from a Google Maps
+link, and a project pipeline. Full source table in [`docs/PARITY.md`](docs/PARITY.md).
+
+- **Outlook** — SCB's trend projection to 2040: population change, and four age bands.
+  Shown on a diverging scale about flat, dashed in Charts, and never mixed with
+  observed history. 35 of 35 values recomputed straight from the API.
+- **Safety** — reported offences per kommun from Brå, 1996–2025 plus 48 quarters, and
+  the police-designated vulnerable areas intersected into RegSO and DeSO. 30 of 30
+  values recomputed from a fresh Brå session.
+- **Schools** — every one of 1 791 school units teaching year 9, with results, staffing
+  and coordinates, as a point overlay coloured by merit value and a page per school.
+  55 of 55 values recomputed from the API.
+- **Climate risk** — river flood (100-yr, 200-yr, BHF), coastal levels, projected mean
+  sea level 2100 and landslide caution zones, as land-area shares at all three levels.
+- **Test property** — paste a Google Maps link, get the exact kommun, RegSO and DeSO by
+  point-in-polygon on our own boundaries, every indicator for that spot, and a second
+  pin beside it. Nothing leaves the browser.
+- **Pipeline** — 49 major transport projects, each with the page it came from.
+
+Direction awareness runs through all of it: every indicator declares whether higher or
+lower is better, or neither. 36 of the original 44 declare **neither**, because a share
+of flerbostadshus has no better end and colouring one green would be editorialising.
+
+### Three things this release is careful about
+
+- **Suppressed is not zero.** A withheld value renders as `–`.
+- **Not mapped is not zero.** MCF's 100-year, 200-year and BHF flood products cover 76,
+  71 and 78 different watercourses, so coverage is tested per layer: an area no record of
+  *that* layer reaches reads "Not mapped", not 0 %.
+- **No scores.** The two-pin comparison aligns rows and colours each difference by that
+  indicator's own direction. There is no total and no winner.
+
 ## What's new in v1.1
 
 - **Boverket's Bostadsmarknadsenkät** 2020–2026 — each kommun's own shortage / balance / surplus

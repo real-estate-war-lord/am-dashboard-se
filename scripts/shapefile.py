@@ -108,6 +108,29 @@ def read_shapefile(shp: bytes, dbf: bytes | None = None, bbox=None):
             yield rings, (attrs[idx] if idx < len(attrs) else {})
 
 
+def signed_area(ring) -> float:
+    a = 0.0
+    for i in range(len(ring) - 1):
+        a += ring[i][0] * ring[i + 1][1] - ring[i + 1][0] * ring[i][1]
+    return a / 2.0
+
+
+def split_rings(rings):
+    """(shells, holes) for one shapefile polygon record.
+
+    A record's parts are NOT one polygon with many holes: the Esri spec makes an
+    outer ring clockwise and a hole counter-clockwise, and a single record can
+    hold many separate islands. Treating every part as a hole of the first one
+    is both wrong and pathological — building a polygon with a hundred thousand
+    holes is what made the first climate build run for an hour without
+    finishing.
+    """
+    shells, holes = [], []
+    for r in rings:
+        (holes if signed_area(r) > 0 else shells).append(r)
+    return shells, holes
+
+
 def from_zip(zbytes: bytes, bbox=None):
     """Read the first .shp/.dbf pair inside a zip."""
     import zipfile

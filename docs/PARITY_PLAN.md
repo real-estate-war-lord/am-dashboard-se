@@ -16,8 +16,8 @@ the phase checklist below, pick the first unticked phase, and read
 - [x] **Phase 3** — Safety (crime)
 - [x] **Phase 4** — Schools
 - [x] **Phase 5** — Test property + Analysis + Compare
-- [~] **Phase 6** — Climate risk — **IN PROGRESS, resume here**
-- [ ] **Phase 7** — Overlays: Services, Public buildings, Infra
+- [x] **Phase 6** — Climate risk
+- [x] **Phase 7** — Overlays: Services, Public buildings, Infra
 - [ ] **Phase 8** — Docs, verification, wrap-up
 
 ### Status log
@@ -58,47 +58,16 @@ landmark pins land in the right kommun. Analysis sheet plus a two-pin Compare th
 is NEW work — the Danish repo has none — deliberately with no overall winner.
 Screenshots caught a doubled sign and a card that never resolved.
 
-### ⏸ PAUSED MID-PHASE 6 — resume point
+**Phase 6** — nine Climate indicators from MCF, SMHI and SGU as land-area shares in
+SWEREF99 TM metres. Three real bugs: a shapefile record's 753 370 parts treated as one
+polygon's holes (the hour-long hang), SGU's `startIndex` capitalisation (3.2 GB of the
+same page), and MCF's three flood products covering different watercourses inside one
+kommun. Zones over budget → flood100, coast20, sea2100_85 ship outlines; rest choropleth.
 
-**Done and committed in Phase 6:**
-- `scripts/fetch_climate.py` — all sources fetched to `data/raw/climate/` (~3 GB, gitignored):
-  flood100/200/BHF SHAPE-ZIPs (83/59/98 MB), coast20/coast30 (5 MB each, layers 19 and 29),
-  SMHI RCP8.5 + RCP4.5 2100 (14/14 areas each), SGU caution zones per kommun (580 files),
-  SGU coverage (`sgu_tackning.geojson`), MCF cloudburst flag (290 kommuner, 267 mapped),
-  MCF flood coverage (80 mapped watercourses).
-- `scripts/shapefile.py` — stdlib Esri shapefile + dbf reader, verified against a real SMHI file.
-- `scripts/build_climate.py` — written; intersects everything in SWEREF99 TM metres.
-- 9 indicators registered in `config/indicators.json` (group "Climate"), all `no_inherit`,
-  all `lower_better` except `cloudburst_mapped` (categorical, neutral).
-- Build branch, validator support, `make climate`, GROUP_ORDER entry, and the
-  Climate card on the Analysis sheet (`anClimate`) — all wired.
-
-**NOT done — the next step:**
-1. **`make climate`'s build step has never completed.** It ran for 1 h 04 m without
-   finishing and was left running at the pause. The bottleneck is the landslide step:
-   it re-parses ~2.6 GB of SGU JSON, 290 kommuner, building shapely geometries.
-   **Before re-running, do two things:** add `flush=True` (or run `python3 -u`) so
-   progress is visible at all — stdout is block-buffered when piped, which is why there
-   was no output for an hour — and cache the parsed SGU geometry per kommun, or drop
-   the per-kommun bbox duplication (neighbouring bboxes overlap heavily, which is how
-   103 k + 242 k features became 2.6 GB on disk).
-2. Then: `make build`, confirm the 9 climate indicators get data, add Phase 6 smoke
-   tests, screenshots, build-log entry, commit.
-3. Decide the **"Climate risk" overlay**: the flood extents are 83–98 MB, far past the
-   3 MB budget, so either ship a hard-simplified national outline or omit the zone
-   overlay and log that the choropleth carries the information. Not yet decided.
-
-**Phase 7 groundwork already on disk:**
-- `scripts/fetch_osm.py` written and smoke-tested (2 kommuner, 10 330 points). The full
-  290-kommun run has NOT been started.
-- Infra research completed by a subagent: **48 verified projects** with source URLs,
-  saved at `~/.claude/projects/-Users-santerisalmela-Desktop-Sweden-dashboard-am-dashboard-se/33e50944-3b35-4b85-b90f-8c7213628e6d/tool-results/toolu_01XpssrwHb7Tg5JXxjAXiAmC.txt`
-  (53 KB). Budgets are from the adopted Nationell plan bilaga 1 at price base **2025-02**.
-  This file is the input for `data/external/infra_se.csv` — read it before redoing any research.
-
-**Known failing check at the pause (expected):** `make test` reports
-"every registered indicator either has data or says why" for the 9 climate indicators.
-They are registered but `data/processed/climate.json` does not exist yet. 172 checks pass.
+**Phase 7** — Infrastructure from 49 verified projects with a Pipeline view and CSV;
+Services and Public buildings overlays built and working but on **16 of 290 kommuner**,
+because Overpass rate-limited this client and the fetch was stopped rather than continued.
+`make services` is resumable and the legend states its own coverage.
 
 _(each phase appends a 5-line status here when it is ticked)_
 

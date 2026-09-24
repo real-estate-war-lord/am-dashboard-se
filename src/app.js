@@ -148,6 +148,8 @@ function hashFor() {
   if (S.view === "area") { p = `area/${AR.type}/${AR.code}`; if (AR.group) q.push(`g=${encodeURIComponent(AR.group)}`); if (AR.sub !== "regso") q.push(`sub=${AR.sub}`); if (AR.tab !== "ind") q.push(`t=${AR.tab}`); }
   else if (S.view === "table") p = `table/${T.level}`;
   else if (S.view === "charts") { p = "charts"; q.length = 0; q.push(`ind=${encodeURIComponent(CH.ind)}`, `a=${CH.areas.join(",")}`, `y0=${CH.y0}`, `y1=${CH.y1}`, `med=${CH.median ? 1 : 0}`); if (CH.mode !== "auto") q.push(`mode=${CH.mode}`); if (CH.mode === "dist") q.push(`dist=${CH.dist}`); if (CH.fq !== "year") q.push(`fq=${CH.fq}`); }
+  else if (S.view === "pipeline") { p = "pipeline"; q.length = 0;
+    if (PIPE.type) q.push(`t=${PIPE.type}`); if (PIPE.status) q.push(`s=${PIPE.status}`); }
   else if (S.view === "analysis") { p = "analysis"; q.length = 0;
     if (AN.a) q.push(`a=${AN.a.lat},${AN.a.lon}`);
     if (AN.la) q.push(`la=${encodeURIComponent(AN.la)}`);
@@ -172,6 +174,8 @@ function parseHash() {
   else if (v === "table") { S.view = "table"; if (["kommun", "regso", "deso"].includes(parts[1])) T.level = parts[1]; }
   else if (v === "sources") { S.view = "market"; MKT.src = true; }
   else if (v === "market") { S.view = "market"; MKT.src = q.src === "1"; }
+  else if (v === "pipeline") { S.view = "pipeline";
+    PIPE.type = q.t || ""; PIPE.status = q.s || ""; }
   else if (v === "analysis") { S.view = "analysis";
     const one = (q.a || "").split(",").map(Number);
     AN.a = one.length === 2 && !isNaN(one[0]) ? { lat: one[0], lon: one[1] } : null;
@@ -209,8 +213,9 @@ const VIEWS = [
   ["table",   "Table",         "Every kommun, RegSO and DeSO side by side — filter, sort, export", "table"],
   ["charts",  "Charts",        "Pick an indicator, areas and years — export the chart as PNG or the data as CSV", "charts"],
   ["market",  "Market",        "Prices, rents, supply, construction, macro indicators — and the data sources", "market"],
+  ["pipeline","Pipeline",     "Every major transport project, its status, opening year and budget", "pipeline"],
   ["analysis","Test property",  "Drop a pin from a Google Maps link and see everything this dashboard knows about that spot", "analysis"]];
-const NAV_GROUPS = [["Market intelligence", ["makro", "table", "charts", "market"]],
+const NAV_GROUPS = [["Market intelligence", ["makro", "table", "charts", "market", "pipeline"]],
                     ["Analysis", ["analysis"]]];
 const viewOf = id => VIEWS.find(v => v[0] === id) || VIEWS[0];
 
@@ -228,6 +233,7 @@ function crumbs() {
   else if (S.view === "makro") { const m = MK.kommun ? byCode[MK.kommun] : null;
     if (m) { tail = m.name; kind = desoMode() ? "DeSO areas" : "RegSO areas"; }
     else { tail = "Map"; kind = "kommuner and RegSO"; } }
+  else if (S.view === "pipeline") { tail = "Pipeline"; kind = `${(INFRA.projects || []).length} projects`; }
   else if (S.view === "analysis") { tail = "Test property";
     kind = AN.b ? "two pins compared" : AN.a ? (anName("a") || "a pin") : "drop a pin"; }
   else if (S.view === "sheet") { const def = SHEETS[SH.kind];
@@ -239,7 +245,7 @@ function renderTop() {
   const { c, tail, kind } = crumbs();
   document.getElementById("hd").innerHTML = `<nav class="crumbs">${c.map(([l, h]) => `<button data-go="${esc(h)}">${esc(l)}</button><i>›</i>`).join("")}<b>${esc(tail)}</b>${kind ? `<span class="dim">${esc(kind)}</span>` : ""}</nav>`;
 }
-const RENDER = { makro: vMakro, table: vTable, area: vArea, charts: vCharts, market: vMarket, sheet: vSheet, analysis: vAnalysis };
+const RENDER = { makro: vMakro, table: vTable, area: vArea, charts: vCharts, market: vMarket, sheet: vSheet, analysis: vAnalysis, pipeline: vPipeline };
 function render() {
   renderNav(); renderTop();
   const body = document.getElementById("body");
@@ -264,6 +270,15 @@ document.addEventListener("click", e => {
   if ((el = g("[data-ov]"))) { const o = OV.find(x => x.id === el.dataset.ov);
     if (o) { MK[o.flag] = !MK[o.flag]; LF[o.id + "Drawn"] = false; syncHash(); renderKeep(); } return; }
   /* a jump moves the camera and returns — no selection change, so no re-render */
+  if ((el = g("[data-pipetype]"))) { PIPE.type = el.dataset.pipetype; syncHash(); renderKeep(); return; }
+  if ((el = g("[data-pipestatus]"))) { PIPE.status = el.dataset.pipestatus; syncHash(); renderKeep(); return; }
+  if (g("[data-csv-pipe]")) { exportPipelineCsv(); return; }
+  if ((el = g("[data-srvcat]"))) { const [w, c] = el.dataset.srvcat.split(":");
+    const set = w === "srv" ? SF.srv : SF.pub;
+    if (set.has(c)) set.delete(c); else set.add(c);
+    LF[w + "Drawn"] = false; lfOverlays(); ovLegends(); return; }
+  if ((el = g("[data-climlayer]"))) { CL.layer = el.dataset.climlayer;
+    LF.climDrawn = false; lfOverlays(); ovLegends(); return; }
   if ((el = g("[data-mapjump]"))) { mapJump(el.dataset.mapjump); return; }
   if ((el = g("[data-chmode]"))) { CH.mode = el.dataset.chmode; syncHash(); renderKeep(); return; }
   if ((el = g("[data-chfq]"))) { CH.fq = el.dataset.chfq; syncHash(); renderKeep(); return; }
@@ -454,7 +469,7 @@ function ovLegends() {
     if (e2) e2.innerHTML = (ovOn(o) && o.legend) ? o.legend() : "";
   }
 }
-const GROUP_ORDER = ["Demographics", "Outlook", "Safety", "Schools", "Climate", "Income & jobs", "Housing stock", "Rents", "Prices & market", "Construction", "Municipal finances", "Area quality"];
+const GROUP_ORDER = ["Demographics", "Outlook", "Safety", "Schools", "Climate", "Growth signals", "Income & jobs", "Housing stock", "Rents", "Prices & market", "Construction", "Municipal finances", "Area quality"];
 function indSelect() {
   const L = curInds();
   const groups = GROUP_ORDER.filter(gname => L.some(i => (i.group || "Other") === gname)).concat(L.some(i => !GROUP_ORDER.includes(i.group || "Other")) ? ["Other"] : []);
@@ -1044,7 +1059,7 @@ function anEntity(k) {
   const m = r.kommun && byCode[r.kommun.code];
   return { deso: d || null, regso: q || null, kommun: m || null };
 }
-const AN_GROUPS = ["Demographics", "Outlook", "Safety", "Schools", "Climate", "Income & jobs",
+const AN_GROUPS = ["Demographics", "Outlook", "Safety", "Schools", "Climate", "Growth signals", "Income & jobs",
                    "Housing stock", "Rents", "Prices & market", "Area quality"];
 /* one indicator value for a pin, from the finest level that has it */
 function anVal(k, key) {
@@ -1826,7 +1841,344 @@ function schLoadAll(code) {
   step();
 }
 
+/* ---------- Services and Public buildings overlays ----------
+   OpenStreetMap points, one file per kommun, fetched for the viewport. Points
+   only: no rate, no density indicator. A count of cafés per 1 000 inhabitants
+   would measure how thoroughly volunteers have mapped a place as much as how
+   many cafés it has, and dressing that up as a statistic would be worse than
+   showing the dots and letting a reader judge the coverage.
+
+   Every point keeps the OSM tag that put it in its category, shown in the
+   popup, so "why is this a supermarket?" always has an answer. */
+const SRV_IDX = (D.services_meta || {}).index || D.services_index || {};
+const SRV = {};
+const SRV_ZOOM = 11, SRV_MAX_FILES = 20;
+const SRV_CATS = {
+  grocery:   ["Grocery", "#2E6389", 13],
+  food:      ["Restaurants & cafés", "#B07A1E", 14],
+  pharmacy:  ["Pharmacy", "#1C6B5C", 13],
+  transport: ["Public transport", "#40547F", 12],
+  education: ["Schools", "#5C8A3A", 12],
+  daycare:   ["Förskola", "#7FA34F", 13],
+  health:    ["Health", "#B0331B", 12],
+  culture:   ["Culture", "#82346C", 13],
+  sports:    ["Sports", "#5C5F52", 13],
+};
+const SRV_SET = ["grocery", "food", "pharmacy", "transport"];
+const PUB_SET = ["education", "daycare", "health", "culture", "sports"];
+const SF = { srv: new Set(SRV_SET), pub: new Set(PUB_SET) };
+function srvLoad(code) {
+  if (!code || SRV[code] || SRV["_l_" + code] || !SRV_IDX[code]) return;
+  SRV["_l_" + code] = true;
+  fetch("services/" + code + ".json").then(r => r.json()).then(j => {
+    SRV[code] = j; delete SRV["_l_" + code];
+    if (S.view === "analysis") renderKeep(); else { lfOverlays(); ovLegends(); }
+  }).catch(() => { SRV[code] = []; delete SRV["_l_" + code]; });
+}
+function srvLoadVisible() {
+  if (!LF.map || LF.map.getZoom() < SRV_ZOOM) return;
+  const b = LF.map.getBounds(), c = b.getCenter(), want = [];
+  for (const code in SRV_IDX) {
+    const bb = SRV_IDX[code].bbox;
+    if (!bb || bb[0] > b.getNorth() || bb[2] < b.getSouth() ||
+        bb[1] > b.getEast() || bb[3] < b.getWest()) continue;
+    if (SRV[code] || SRV["_l_" + code]) continue;
+    want.push([code, Math.hypot((bb[0] + bb[2]) / 2 - c.lat, (bb[1] + bb[3]) / 2 - c.lng)]);
+  }
+  want.sort((x, y) => x[1] - y[1]);
+  want.slice(0, SRV_MAX_FILES).forEach(([code]) => srvLoad(code));
+}
+function srvDraw(which) {
+  const on = which === "srv" ? SF.srv : SF.pub;
+  const name = which + "Layer";
+  lfDrop(name);
+  if (!LF.map) return;
+  const z = LF.map.getZoom();
+  if (z < SRV_ZOOM) { LF[which + "Drawn"] = false; srvLoadVisible(); return; }
+  srvLoadVisible();
+  const b = LF.map.getBounds();
+  const g = L.layerGroup();
+  let n = 0;
+  for (const code in SRV) {
+    if (code.startsWith("_l_") || !Array.isArray(SRV[code])) continue;
+    for (const [cat, lat, lon, nm, tag] of SRV[code]) {
+      if (!on.has(cat)) continue;
+      const def = SRV_CATS[cat]; if (!def || z < def[2]) continue;
+      if (!b.contains([lat, lon])) continue;
+      const m = L.circleMarker([lat, lon], { radius: 3.6, weight: 1,
+        color: def[1], fillColor: def[1], fillOpacity: .8,
+        renderer: which === "srv" ? LF.srvCanvas : LF.pubCanvas });
+      m.bindPopup(`<div class="lfpop"><b>${esc(nm || def[0])}</b>
+        <span class="dim">${esc(def[0])}</span>
+        <div class="lfrows"><span class="lfrow"><span>OSM tag</span><b>${esc(tag)}</b></span></div>
+        <p class="cap">© OpenStreetMap contributors (ODbL). Shown because of the tag above — nothing is inferred.</p></div>`,
+        { maxWidth: 280 });
+      m.addTo(g); n++;
+    }
+  }
+  g.addTo(LF.map); LF[name] = g; LF[which + "Drawn"] = true;
+  LF[which + "Count"] = n;
+}
+function srvLegendFor(which) {
+  const cats = which === "srv" ? SRV_SET : PUB_SET;
+  const on = which === "srv" ? SF.srv : SF.pub;
+  const z = LF.map ? LF.map.getZoom() : 0;
+  if (z < SRV_ZOOM) {
+    return `<div class="lgtitle">${which === "srv" ? "Services" : "Public buildings"}<span>zoom in to level ${SRV_ZOOM}</span></div>`;
+  }
+  return `<div class="lgtitle">${which === "srv" ? "Services" : "Public buildings"}<span>${nf(LF[which + "Count"] || 0, 0)} in view · click to filter</span></div>` +
+    cats.map(c => { const d = SRV_CATS[c];
+      return `<div class="lgrow lgclick ${on.has(c) ? "" : "off"}" data-srvcat="${which}:${c}">
+        <i style="background:${on.has(c) ? d[1] : "#FFF"};border:1.2px solid ${d[1]}"></i>${esc(d[0])}
+        ${z < d[2] ? `<em class="dim"> z${d[2]}+</em>` : ""}</div>`; }).join("") +
+    `<div class="lgnote">© OpenStreetMap contributors (ODbL). Points only — a count per inhabitant would measure mapping effort as much as provision.${
+      Object.keys(SRV_IDX).length < 290
+        ? ` <b>Partial coverage:</b> ${Object.keys(SRV_IDX).length} of 290 kommuner fetched so far.`
+        : ""}</div>`;
+}
+
+/* ---------- Infrastructure overlay ---------- */
+const INFRA = D.infra || { projects: [] };
+const INFRA_GEO = { data: null, loading: false };
+const INFRA_TONE = { study: "#8A8C81", decided: "#B07A1E",
+                     construction: "#B0331B", opened: "#5C8A3A" };
+function infraLoad() {
+  if (INFRA_GEO.data || INFRA_GEO.loading) return;
+  INFRA_GEO.loading = true;
+  fetch("infra_projects.geojson").then(r => r.json()).then(j => {
+    INFRA_GEO.data = j; INFRA_GEO.loading = false;
+    if (S.view === "analysis") renderKeep(); else { lfOverlays(); ovLegends(); }
+  }).catch(() => { INFRA_GEO.loading = false; INFRA_GEO.data = { features: [] }; });
+}
+function infraBuild() {
+  infraLoad();
+  if (!LF.map || !INFRA_GEO.data) return;
+  lfDrop("infLayer");
+  const g = L.layerGroup();
+  for (const f of INFRA_GEO.data.features || []) {
+    if (!f.geometry) continue;                 /* not located — never drawn */
+    const p = f.properties;
+    const col = INFRA_TONE[p.status] || "#8A8C81";
+    const pts = f.geometry.type === "Point" ? [f.geometry.coordinates]
+                                            : f.geometry.coordinates;
+    for (const [lon, lat] of pts) {
+      L.circleMarker([lat, lon], { radius: 6, weight: 2.2, color: col,
+        fillColor: "#fff", fillOpacity: .9 })
+        .bindPopup(`<div class="lfpop"><b>${esc(p.name)}</b>
+          <span class="dim">${esc(p.agency || "")}${p.open_year ? " · opens " + p.open_year : p.open_window ? " · " + esc(p.open_window) : ""}</span>
+          <span class="lfact"><button class="lk mini primary" data-go="project/${esc(p.id)}">Project page ›</button></span></div>`,
+          { maxWidth: 300 })
+        .addTo(g);
+    }
+  }
+  g.addTo(LF.map); LF.infLayer = g; LF.infDrawn = true;
+}
+function infraLegend() {
+  const ps = INFRA.projects || [];
+  const drawn = (INFRA_GEO.data ? (INFRA_GEO.data.features || []).filter(f => f.geometry).length : 0);
+  const byStatus = {};
+  ps.forEach(p => { byStatus[p.status] = (byStatus[p.status] || 0) + 1; });
+  return `<div class="lgtitle">Infrastructure<span>${ps.length} projects · ${drawn} located</span></div>` +
+    Object.keys(INFRA_TONE).map(k => byStatus[k]
+      ? `<div class="lgrow"><i style="background:${INFRA_TONE[k]}"></i>${esc(k)} (${byStatus[k]})</div>` : "").join("") +
+    `<div class="lgnote">A project whose stations could not be found in OSM is listed in <b>Pipeline</b> but not drawn — no alignment is sketched between points.</div>`;
+}
+
+/* ---------- Pipeline: every project as a list, with its own CSV ---------- */
+const PIPE = { type: "", status: "" };
+const INFRA_ORDER = { construction: 0, decided: 1, study: 2, opened: 3 };
+const pipeRows = () => (INFRA.projects || [])
+  .filter(p => (!PIPE.type || p.type === PIPE.type) && (!PIPE.status || p.status === PIPE.status))
+  .slice().sort((a, b) =>
+    (INFRA_ORDER[a.status] ?? 9) - (INFRA_ORDER[b.status] ?? 9)
+    || (a.open_year || 9999) - (b.open_year || 9999)
+    || a.name.localeCompare(b.name, "sv"));
+const kNames = codes => (codes || []).map(c => (byCode[c] || {}).name).filter(Boolean);
+function vPipeline() {
+  const rows = pipeRows();
+  const types = [...new Set((INFRA.projects || []).map(p => p.type))].sort();
+  const sts = ["construction", "decided", "study", "opened"];
+  return `
+  <div class="card accent arhead">
+    <div class="arid"><h2>Pipeline</h2>
+      <div class="artags"><span class="tag">${(INFRA.projects || []).length} projects</span>
+        <span class="tag">hand-curated, every row sourced</span></div></div>
+    <div class="tools">
+      <div class="seg"><button class="sg ${!PIPE.type ? "on" : ""}" data-pipetype="">All types</button>
+        ${types.map(t => `<button class="sg ${PIPE.type === t ? "on" : ""}" data-pipetype="${esc(t)}">${esc(t)}</button>`).join("")}</div>
+      <div class="seg"><button class="sg ${!PIPE.status ? "on" : ""}" data-pipestatus="">All</button>
+        ${sts.map(t => `<button class="sg ${PIPE.status === t ? "on" : ""}" data-pipestatus="${esc(t)}">${esc(t)}</button>`).join("")}</div>
+      <button class="lk" data-csv-pipe>↓ Pipeline CSV</button></div>
+  </div>
+  <div class="card">
+    <div class="scrollx"><table class="tbl" data-sortable><thead><tr>
+      <th>Project</th><th>Type</th><th>Status</th><th class="num">Opening</th>
+      <th class="num">Budget</th><th>Price base</th><th>Agency</th><th>Kommuner</th></tr></thead>
+      <tbody>${rows.map(p => `<tr>
+        <th><button class="lk mini" data-go="project/${esc(p.id)}">${esc(p.name)}</button></th>
+        <td>${esc(p.type)}</td>
+        <td><span class="pipdot" style="background:${INFRA_TONE[p.status] || "#8A8C81"}"></span>${esc(p.status)}</td>
+        <td class="num">${p.open_year || esc(p.open_window || "–")}</td>
+        <td class="num">${p.budget_msek != null ? nf(p.budget_msek, 0) + " MSEK" : "–"}</td>
+        <td>${esc(p.price_base || "–")}</td>
+        <td>${esc(p.agency || "")}</td>
+        <td>${esc(kNames(p.kommuner).join(", "))}</td></tr>`).join("")}</tbody></table></div>
+    <p class="cap">A budget is shown only with the price base the source stated — a figure in
+      unknown money is not a figure. A dash means the source publishes none; the Stockholm metro
+      lines, for instance, are funded as one programme rather than per line.
+      Sources: Trafikverket, Region Stockholm, Västtrafik and the project bodies themselves —
+      each row links to the page it came from.</p>
+  </div>`;
+}
+function exportPipelineCsv() {
+  const head = ["id", "name", "type", "status", "open_year", "open_window",
+                "budget_msek", "price_base", "agency", "kommuner", "source_url", "notes"];
+  const rows = pipeRows().map(p => [p.id, p.name, p.type, p.status, p.open_year || "",
+    p.open_window || "", p.budget_msek != null ? p.budget_msek : "", p.price_base || "",
+    p.agency || "", kNames(p.kommuner).join("|"), p.source_url || "", p.notes || ""]);
+  downloadCsv("pipeline_se.csv", [head].concat(rows));
+}
+SHEETS.project = {
+  label: "Infrastructure project",
+  missing: "No such project in this build.",
+  crumb: parts => { const p = (INFRA.projects || []).find(x => x.id === parts[0]);
+    return p ? p.name : parts[0]; },
+  render: parts => {
+    const p = (INFRA.projects || []).find(x => x.id === parts[0]);
+    if (!p) return null;
+    const feat = INFRA_GEO.data ? (INFRA_GEO.data.features || []).find(f => f.properties.id === p.id) : null;
+    const located = feat ? (feat.properties.stations_located || []) : [];
+    const tile = (l, v) => v == null || v === "" ? "" : `<div><span>${esc(l)}</span><b>${v}</b></div>`;
+    return {
+      title: p.name,
+      tags: [p.type, p.status, p.agency, p.open_year ? "opens " + p.open_year : (p.open_window || "")]
+        .filter(Boolean),
+      tools: `<a class="lk" href="${esc(p.source_url)}" target="_blank" rel="noopener">Verify at source ↗</a>` +
+        (feat && feat.geometry ? `<button class="lk" data-go="map?ind=${esc(MK.ind)}&inf=1">Show on map</button>` : "") +
+        `<button class="lk" data-go="pipeline">Pipeline ›</button>`,
+      tiles: `<div class="hl">
+        ${tile("Status", esc(p.status))}
+        ${tile("Opening", p.open_year || p.open_window || "–")}
+        ${tile("Budget", p.budget_msek != null ? nf(p.budget_msek, 0) + " MSEK" : "not published")}
+        ${tile("Price base", p.price_base || "–")}
+        ${tile("Agency", esc(p.agency || ""))}</div>`,
+      body: `<div class="grid-2">
+        <div class="card"><h3>What it is</h3>
+          <p>${esc(p.notes || "No further note recorded.")}</p>
+          <table class="tbl compact"><tbody>
+            <tr><th>Kommuner</th><td>${esc(kNames(p.kommuner).join(", ") || "–")}</td></tr>
+            <tr><th>Stations named</th><td>${esc((feat ? feat.properties.stations : []).join(", ") || "–")}</td></tr>
+            <tr><th>Located in OSM</th><td>${located.length} of ${(feat ? feat.properties.stations.length : 0)}</td></tr>
+          </tbody></table>
+          <p class="cap">${feat && feat.geometry
+            ? "Station points come from OpenStreetMap, matched by name inside the kommuner this project runs through."
+            : "<b>Not drawn on the map.</b> No station could be located, and sketching an alignment between points would be inventing geography."}</p></div>
+        <div class="card"><h3>Source</h3>
+          <p class="cap"><a href="${esc(p.source_url)}" target="_blank" rel="noopener">${esc(p.source_url)}</a></p>
+          ${p.budget_msek != null ? `<p class="cap">Budget ${nf(p.budget_msek, 0)} MSEK at price base ${esc(p.price_base || "unknown")}. Figures from different price bases are not comparable and nothing here is converted.</p>` : `<p class="cap">No budget is published for this project on its own.</p>`}
+          <p class="cap">Curated by hand in <code>data/external/infra_se.csv</code>. Every row carries the page it came from.</p></div>
+      </div>`,
+    };
+  },
+};
+
+/* ---------- Climate risk overlay ----------
+   The national hazard layers are 83-98 MB apiece, so they are never shipped
+   whole: the build clips them per kommun, simplifies in metres and writes one
+   file per kommun per layer. Nothing is drawn on the national view — at that
+   scale an outline of every flood extent in Sweden is a smear — and from zoom
+   10 the viewport's kommuner are fetched nearest-first.
+
+   The horizon or scenario is in the pill label and in the legend, every time.
+   A flood extent without "100-year" beside it is not a fact, it is a shape. */
+const CLIM_IDX = (D.climate_meta || {}).zones || {};
+const CLIM_ZONES = {};              /* "<layer>/<kommun>" -> geojson | [] */
+const CLIM_ZOOM = 10, CLIM_MAX_FILES = 12;
+const CLIM_LAYERS = [
+  ["flood100",   "River flood, 100-year",            "#3E7CA6"],
+  ["flood200",   "River flood, 200-year",            "#2E6389"],
+  ["floodBHF",   "River flood, highest calculated",  "#1E4A6B"],
+  ["coast20",    "Coastal +2.0 m (RH2000)",          "#2F8F8A"],
+  ["coast30",    "Coastal +3.0 m (RH2000)",          "#1E6E69"],
+  ["sea2100_85", "Mean sea level 2100 (RCP8.5)",     "#7A4E8C"],
+  ["landslide",  "Landslide caution zone",           "#9A6B33"],
+];
+const CL = { layer: "flood100" };
+const climAvail = () => CLIM_LAYERS.filter(l => CLIM_IDX[l[0]]);
+function climLoad(layer, code) {
+  const k = layer + "/" + code;
+  if (CLIM_ZONES[k] || CLIM_ZONES["_l_" + k]) return;
+  const idx = CLIM_IDX[layer];
+  if (!idx || !idx.kommuner.includes(code)) { CLIM_ZONES[k] = []; return; }
+  CLIM_ZONES["_l_" + k] = true;
+  fetch("climate/" + layer + "/" + code + ".json").then(r => r.json()).then(j => {
+    CLIM_ZONES[k] = j; delete CLIM_ZONES["_l_" + k];
+    if (S.view === "analysis") renderKeep(); else { lfOverlays(); ovLegends(); }
+  }).catch(() => { CLIM_ZONES[k] = []; delete CLIM_ZONES["_l_" + k]; });
+}
+function climLoadVisible() {
+  if (!LF.map || LF.map.getZoom() < CLIM_ZOOM) return;
+  const b = LF.map.getBounds(), c = b.getCenter();
+  const want = [];
+  for (const code in DESO_IDX) {
+    const m = byCode[code]; if (!m) continue;
+    const bb = boundsOf(AREAS.filter(a => a.kommun === code));
+    if (!bb || !b.intersects(bb)) continue;
+    const k = CL.layer + "/" + code;
+    if (CLIM_ZONES[k] || CLIM_ZONES["_l_" + k]) continue;
+    const cc = bb.getCenter();
+    want.push([code, Math.hypot(cc.lat - c.lat, cc.lng - c.lng)]);
+  }
+  want.sort((x, y) => x[1] - y[1]);
+  want.slice(0, CLIM_MAX_FILES).forEach(([code]) => climLoad(CL.layer, code));
+}
+function climBuild() {
+  if (!LF.map) return;
+  lfDrop("climLayer");
+  if (LF.map.getZoom() < CLIM_ZOOM) { LF.climDrawn = false; climLoadVisible(); return; }
+  climLoadVisible();
+  const col = (CLIM_LAYERS.find(l => l[0] === CL.layer) || [])[2] || "#3E7CA6";
+  const g = L.layerGroup();
+  for (const k in CLIM_ZONES) {
+    if (k.startsWith("_l_") || !k.startsWith(CL.layer + "/")) continue;
+    const gj = CLIM_ZONES[k];
+    if (!gj || !gj.type) continue;
+    L.geoJSON(gj, { style: { color: col, weight: 1, opacity: .85,
+                             fillColor: col, fillOpacity: .28 },
+                    interactive: false }).addTo(g);
+  }
+  g.addTo(LF.map); LF.climLayer = g; LF.climDrawn = true;
+}
+function climLegend() {
+  const avail = climAvail();
+  if (!avail.length) return `<div class="lgtitle">Climate risk<span>no zone files built</span></div>`;
+  const zoomed = LF.map && LF.map.getZoom() >= CLIM_ZOOM;
+  const cur = avail.find(l => l[0] === CL.layer) || avail[0];
+  return `<div class="lgtitle">Climate risk<span>${esc(cur[1])}</span></div>` +
+    `<div class="lgpick">${avail.map(l =>
+      `<button class="lgb ${l[0] === CL.layer ? "on" : ""}" data-climlayer="${l[0]}">${esc(l[1])}</button>`).join("")}</div>` +
+    `<div class="lgrow"><i style="background:${cur[2]};opacity:.5"></i>${esc(cur[1])}</div>` +
+    `<div class="lgnote">${zoomed ? "Zones for the kommuner in view."
+      : `Zoom in to level ${CLIM_ZOOM} to draw the zones.`} Screening only, not a property-level assessment. Källa: MCF, SMHI, SGU.</div>`;
+}
+
 const OV = [
+  { id: "srv", label: "Services", flag: "srv",
+    title: "Grocery, food, pharmacy and public-transport points from OpenStreetMap",
+    avail: () => Object.keys(SRV_IDX).length > 0,
+    build: () => srvDraw("srv"), legend: () => srvLegendFor("srv") },
+  { id: "pub", label: "Public buildings", flag: "pub",
+    title: "Schools, förskolor, health, culture and sports from OpenStreetMap",
+    avail: () => Object.keys(SRV_IDX).length > 0,
+    build: () => srvDraw("pub"), legend: () => srvLegendFor("pub") },
+  { id: "inf", label: "Infrastructure", flag: "inf",
+    title: "Major transport projects — status by colour",
+    avail: () => (INFRA.projects || []).length > 0,
+    build: infraBuild, legend: infraLegend },
+  { id: "clim", label: "Climate risk", flag: "clim",
+    title: "Outline a published hazard zone — pick the layer in the legend (zoom in to draw)",
+    avail: () => climAvail().length > 0,
+    build: climBuild, legend: climLegend },
   { id: "sch", label: "Schools", flag: "sch",
     title: "Show every school with year 9; colour by merit value (zoom in to see them)",
     avail: () => Object.keys(SCH_IDX).length > 0,
@@ -1930,6 +2282,10 @@ function lfInit() {
   map.createPane("schpane");
   map.getPane("schpane").style.zIndex = 450;
   LF.schCanvas = L.canvas({ pane: "schpane", padding: 0.3 });
+  map.createPane("srvpane"); map.getPane("srvpane").style.zIndex = 440;
+  LF.srvCanvas = L.canvas({ pane: "srvpane", padding: 0.3 });
+  map.createPane("pubpane"); map.getPane("pubpane").style.zIndex = 435;
+  LF.pubCanvas = L.canvas({ pane: "pubpane", padding: 0.3 });
   map.on("moveend", lfOverlays);
   lfLayers();
   lfOverlays();

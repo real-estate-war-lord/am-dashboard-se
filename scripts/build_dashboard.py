@@ -51,6 +51,9 @@ def main() -> int:
         "regso": makro.get("regso", []),
         "deso_index": makro.get("deso_index", {}),
         "src_periods": makro.get("src_periods", {}),
+        "infra": makro.get("infra", {"projects": []}),
+        "services_meta": makro.get("services_meta", {}),
+        "climate_meta": makro.get("climate_meta", {}),
         "schools_index": makro.get("schools_index", {}),
         "schools_meta": makro.get("schools_meta", {}),
         "macro": market,
@@ -81,6 +84,19 @@ def main() -> int:
         n_look = len(list(dl.glob("*.json")))
     for name in ("lookup_kommuner.json",):
         sp = PROC / name
+        if sp.exists():
+            shutil.copyfile(sp, out.parent / name)
+
+    # the on-demand service points and climate zones
+    for name in ("services", "climate"):
+        src_d = PROC / name
+        if src_d.exists():
+            dd = out.parent / name
+            if dd.exists():
+                shutil.rmtree(dd)
+            shutil.copytree(src_d, dd)
+    for name in ("infra_projects.geojson",):
+        sp = PROC.parent / "geo" / name
         if sp.exists():
             shutil.copyfile(sp, out.parent / name)
 

@@ -651,10 +651,51 @@ def main() -> int:
                                           {y: {"kommun": y} for y in years}))
             print(f"  {key:14s} kommun:{len(byyear[last])} · {years[0]}–{last}")
             continue
-        if any(s.get("db") not in ("scb", "bra", "polisen", "skolverket", "climate")
-               for s in srcs):
+        if any(s.get("db") not in ("scb", "bra", "polisen", "skolverket", "climate",
+                                   "infra") for s in srcs):
             indicators_out.append(meta_of(ind, {}, {}))
             warn(f"{key}: no SCB source on disk — renders as 'no data'")
+            continue
+
+        inf = next((x for x in srcs if x.get("db") == "infra"), None)
+        if inf:
+            ip = PROC / "infra_index.json"
+            if not ip.exists():
+                indicators_out.append(meta_of(ind, {}, {}))
+                warn(f"{key}: data/processed/infra_index.json missing — run 'make infra'")
+                continue
+            projects = json.loads(ip.read_text(encoding="utf-8")).get("projects") or []
+            this_year = dt.date.today().year
+            col = inf["col"]
+            vals: dict = collections.defaultdict(float)
+            for pr in projects:
+                if col == "projects_upcoming":
+                    # decided or under construction, not yet open
+                    if pr.get("status") not in ("decided", "construction"):
+                        continue
+                    yr = pr.get("open_year")
+                    if yr is not None and yr < this_year:
+                        continue
+                    for code in pr.get("kommuner") or []:
+                        vals[code] += 1
+                elif col == "stations_planned":
+                    if pr.get("status") not in ("decided", "construction"):
+                        continue
+                    n = len(pr.get("stations") or [])
+                    for code in pr.get("kommuner") or []:
+                        vals[code] += n
+            n_set = 0
+            for code, v in vals.items():
+                e = kommuner.get(code)
+                if e is not None:
+                    e[key] = int(v)
+                    n_set += 1
+            # a kommun with no project is a real zero here: the list is a
+            # complete census of what we curated, not a sample
+            for code, e in kommuner.items():
+                e.setdefault(key, 0)
+            indicators_out.append(meta_of(ind, {"kommun": ind.get("asof", "2026")}, {}))
+            print(f"  {key:16s} {n_set} kommuner with at least one")
             continue
 
         cl = next((x for x in srcs if x.get("db") == "climate"), None)
@@ -1047,6 +1088,15 @@ def main() -> int:
             "warnings": warnings,
         },
         "indicators": indicators_out,
+        # Pipeline and the Infrastructure overlay read this list directly
+        "infra": (json.loads((PROC / "infra_index.json").read_text(encoding="utf-8"))
+                  if (PROC / "infra_index.json").exists() else {"projects": []}),
+        # the Services / Public buildings overlays
+        "services_meta": (json.loads((PROC / "services.json").read_text(encoding="utf-8"))
+                          if (PROC / "services.json").exists() else {}),
+        # the Climate risk overlay's zone manifest
+        "climate_meta": (json.loads((PROC / "climate.json").read_text(encoding="utf-8")).get("meta", {})
+                         if (PROC / "climate.json").exists() else {}),
         # the Schools overlay: manifest inline, points fetched per kommun
         "schools_index": (json.loads((PROC / "schools.json").read_text(encoding="utf-8"))
                           if (PROC / "schools.json").exists() else {}).get("index", {}),

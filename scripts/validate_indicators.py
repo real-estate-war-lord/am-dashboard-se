@@ -75,6 +75,13 @@ def check_source(key: str, source: dict) -> None:
         if not out.exists():
             warnings.append(f"{key}: {out.name} not built — run 'make bra'")
         return
+    if db == "infra":
+        if not source.get("col"):
+            errors.append(f"{key}: infra source with no column")
+        p = ROOT / "data" / "external" / "infra_se.csv"
+        if not p.exists():
+            errors.append(f"{key}: data/external/infra_se.csv missing")
+        return
     if db == "climate":
         if not source.get("col"):
             errors.append(f"{key}: climate source with no column")
