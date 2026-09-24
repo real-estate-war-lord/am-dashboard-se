@@ -1,17 +1,27 @@
 # Cloudflare Worker: the listings gateway for the AM Dashboard (Sweden).
 #
-# It is a read-through proxy and nothing else: no KV, no D1, no R2, no queues.
-# Adding a storage binding here would break the promise in docs/LISTINGS.md
-# that the gateway stores nothing.
+# Storage: one KV namespace, holding exactly two keys — arena:heimstaden and
+# arena:victoriahem — each the latest snapshot of that portal's vacancy list,
+# overwritten hourly. No history, no per-user data, nothing else. HomeQ is
+# proxied live and never stored.
+#
+# The snapshot exists because the Arena endpoints accept no geo filter and no
+# pagination: they answer with the landlord's entire national list (3 MB and
+# 8 MB) or nothing at all, so they cannot be proxied per map click.
 
 name = "am-se-listings"
 main = "src/index.js"
 compatibility_date = "2025-09-01"
-
-# Edge caching is done explicitly with caches.default in src/index.js, so the
-# Worker must run on the cache-enabled path. No routes are declared: the
-# workers.dev subdomain is the deployment target for phase 1.
 workers_dev = true
+
+# Rebuild both snapshots hourly. Offset off the hour so it does not land in
+# the crowd of jobs everyone schedules at :00.
+[triggers]
+crons = ["7 * * * *"]
+
+[[kv_namespaces]]
+binding = "LISTINGS_KV"
+id = "9ea5231012ab4188977fdc73134ed345"
 
 [observability]
 enabled = true

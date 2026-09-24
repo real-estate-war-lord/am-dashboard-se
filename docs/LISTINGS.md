@@ -1,9 +1,13 @@
 # Listings gateway
 
-Phase 1 of the listings layer: a Cloudflare Worker that answers "what is for rent
-near this point?" for the dashboard's area pages. It is a read-through proxy with
-a normalising layer, and nothing else — **it stores nothing, and no third-party
-listing data is committed to this repository.**
+A Cloudflare Worker that answers "what is for rent near this point?" for the
+dashboard's area pages, from three sources under one schema.
+
+**No third-party listing data is committed to this repository.** The gateway
+does hold one thing at runtime: the latest hourly snapshot of each Arena
+portal's vacancy list, in Workers KV, overwritten every hour with no history.
+That is a change from phase 1, which stored nothing at all, and it is forced by
+the upstream API — see *Why the portals are snapshotted*.
 
 Everything lives under `gateway/`. It does not touch `src/`, `scripts/`,
 `config/` or the `Makefile`.
@@ -16,10 +20,17 @@ and the response is then withheld from the page. The Worker is the smallest thin
 that fixes that: one hop, same-origin from the browser's point of view, which also
 gives one place to enforce a radius cap, a timeout and an origin allowlist.
 
-It is deliberately **not** a scraper and **not** a database. The dashboard's own
-numbers come from SCB and are computed offline into `data/processed/`; listings are
-live, third-party, and licensed to somebody else. Mixing the two would put data in
-`data/processed/` that we have no right to publish.
+It is deliberately **not** a scraper and **not** an archive. It holds a one-hour
+cache of each portal's current vacancy list because the upstream API leaves no
+alternative, and it throws that away every hour rather than accumulating it.
+
+The dashboard's own numbers come from SCB and are computed offline into
+`data/processed/`; listings are live, third-party and licensed to somebody else.
+Nothing from this gateway is ever written into `data/processed/` or committed —
+that would publish data we have no right to publish, and would also be wrong on
+its own terms: an advertised rent is not a contract rent and is not comparable
+with the SCB rent statistics the area pages are built on. The UI must keep the
+two visibly apart and never draw them as one series.
 
 ## Endpoints
 
@@ -38,12 +49,22 @@ and rejecting it beats forwarding a box over the Black Sea.
 
 ```json
 {
-  "fetchedAt": "2026-09-24T11:04:34.734Z",
-  "radius": 500,
-  "sources": [{ "src": "homeq", "ok": true, "count": 2 }],
+  "fetchedAt": "2026-09-24T11:16:26.663Z",
+  "radius": 1000,
+  "sources": [
+    { "src": "homeq",       "ok": true, "count": 80 },
+    { "src": "heimstaden",  "ok": true, "count": 17, "fetchedAt": "2026-09-24T11:39:13.873Z" },
+    { "src": "victoriahem", "ok": true, "count": 10, "fetchedAt": "2026-09-24T11:39:13.812Z" }
+  ],
+  "deduped": 0,
   "listings": [ /* … sorted by dist_m … */ ]
 }
 ```
+
+A portal entry carries the `fetchedAt` of the **snapshot** it was served from,
+which is older than the response's own `fetchedAt`. HomeQ, being live, has no
+such field. `deduped` is how many HomeQ records were folded into a portal
+record (see *Deduplication*).
 
 `sources` is one entry per adapter and is the honest part of the response. A
 source that fails carries `ok:false`, `count:0` and an `error` string. **A failing
@@ -51,20 +72,50 @@ source is never reported as an empty success** — if every source fails the sta
 code is `502` while the body keeps the shape above, so a client that only checks
 the status cannot mistake an outage for a quiet neighbourhood.
 
-### `GET /text?src=homeq&id=…`
+A portal whose snapshot is missing, or **older than 3 hours**, is `ok:false` with
+a `stale` error and contributes no listings. Stale data is not served as though
+it were current: a flat let three days ago should not appear as available.
+
+### `GET /text?src=&id=…`
 
 ```json
 { "text_start": "En charmig 1a i nära anslutning till affärer, buss och tunnelbana…" }
 ```
 
-The first 220 characters of the ad description, tags stripped and whitespace
-collapsed. It is a second round trip per listing, so it is deliberately *not*
-folded into `/nearby` — the UI asks for it when a card is opened. Cached at the
-edge for one hour.
+The first 220 characters of the ad description, tags stripped, HTML entities
+decoded and whitespace collapsed.
+
+For `homeq` this is a live second round trip, so it is deliberately not folded
+into `/nearby` — the UI asks for it when a card is opened. For the portals the
+text is already in the snapshot (their list endpoint carries the full
+description), so it is served from KV with no upstream call at all. Cached at
+the edge for one hour either way.
 
 ### `GET /health`
 
-`{"ok":true,"sources":["homeq"]}`. No upstream call.
+`{"ok":true,"sources":["homeq","heimstaden","victoriahem"]}`. No upstream call.
+
+### `GET /admin/refresh`
+
+Rebuilds both portal snapshots immediately, the same work the hourly cron does.
+Requires `Authorization: Bearer $REFRESH_SECRET`; with no secret configured the
+endpoint is **closed** (503) rather than open. Never cached, and no CORS headers
+are granted to it — it is an operator endpoint, not something a page calls.
+
+```sh
+curl -H "Authorization: Bearer $REFRESH_SECRET" \
+  https://am-se-listings.am-se-listings-gateway.workers.dev/admin/refresh
+```
+
+```json
+{"refreshedAt":"2026-09-24T11:42:03.623Z","portals":[
+  {"src":"heimstaden","ok":true,"count":492,"dropped":0,"fetchedAt":"…"},
+  {"src":"victoriahem","ok":true,"count":1110,"dropped":2,"fetchedAt":"…"}]}
+```
+
+`dropped` is how many records were discarded for having no usable coordinates.
+The secret is set with `wrangler secret put REFRESH_SECRET` and is not in the
+repository.
 
 ## Listing schema
 
@@ -93,6 +144,8 @@ without knowing which source it came from.
 | `discount` | object\|null | source-shaped campaign object, passed through |
 | `is_new_production` | bool\|null | |
 | `dist_m` | number | metres from the query point, whole metres |
+| `also_on` | string[] | present only on a deduplicated record: other sources carrying the same flat |
+| `also_on_urls` | object | `{src: url}` for those other sources |
 
 Fields a source does not carry stay `null` rather than being guessed — the same
 rule the dashboard applies to suppressed SCB values. A rent is what the landlord
@@ -120,10 +173,97 @@ weighted towards allmännytta and larger private landlords, and towards new
 production. It is a sample of the market, not the market. Treat a count of
 listings near a point as "what is advertised on HomeQ right now", never as vacancy.
 
-Adding a source means one file in `gateway/src/sources/` exporting `SRC`,
-`SRC_LABEL`, `fetchNearby(lat, lon, r, {signal})` and `fetchText(id, {signal})`,
-plus one line in `SOURCES` in `src/index.js`. The envelope, timeout, error
-reporting and CORS are handled for it.
+### Heimstaden (`heimstaden`) and Victoriahem (`victoriahem`)
+
+Two landlords running the same **Arena** letting platform, so one adapter
+serves both — the payloads are the same 69-key shape and only the host differs.
+
+| | |
+|---|---|
+| Heimstaden | `https://mitt.heimstaden.com` |
+| Victoriahem | `https://minasidor.victoriahem.se` |
+
+`GET <host>/rentalobject/Listapartment/published` returns
+
+```json
+{ "status": "success", "data": "<a JSON string containing the array>" }
+```
+
+`data` is a JSON **string** inside the JSON envelope, not an array — it must be
+parsed a second time. Live sizes: ~490 records / 3.2 MB (Heimstaden) and ~1 110
+records / 8.6 MB (Victoriahem).
+
+These are the landlords' own letting systems, so the records carry things HomeQ
+does not: `floor`, `year_built`, `area_name` and the page where you actually
+apply. Coverage is only these two landlords' own stock, nationwide.
+
+#### Why the portals are snapshotted
+
+The endpoint takes **no geo filter and no pagination**. It answers with the
+landlord's entire national vacancy list or nothing — there is no way to ask
+"what is near this point". Proxying it live would mean pulling 12 MB on every
+map click, so instead a cron rebuilds both snapshots hourly into KV and
+`/nearby` trims them to the radius. This is the only thing the gateway stores.
+
+#### Traps in the Arena payload
+
+- **`YearBuilt` is `0`, not null, when unknown** — on *every one* of
+  Victoriahem's 1 110 records and 135 of Heimstaden's. Stored at face value the
+  entire portfolio sits in year zero and any average built-year collapses. It
+  is mapped to `null`. (`Floor` is different: `0` there means bottenvåning and
+  is kept.) The same trap as the RegSO zeros in `build_makro.py`.
+- **`Description` is usually empty; the text lives in `DescriptionHtml`.**
+  Heimstaden fills `Description` on 15 of 489 records and `DescriptionHtml` on
+  486. Reading only `Description`, as the field name suggests, leaves 97 % of
+  Heimstaden's listings with no text. The adapter prefers the plain field and
+  falls back to the HTML one.
+- **`FirstImage` carries no URL.** `ExternalUrl`, `ExternalPartnerUrl` and
+  `Filename` are null on every record in both portals; only `Guid`,
+  `Id`, `DateChanged` and `Extension` are populated. The URL is built the way
+  the portal's own `og:image` builds it:
+  `<host>/Content/ImageUrl?guid=&width=400&height=300&crop=True&datechanged=&extension=`,
+  which 301-redirects to the resized file under `/Cache/` — a redirect a
+  browser follows by itself in an `<img src>`. Most records have no image at
+  all (1 007 of 1 110 Victoriahem, 484 of 489 Heimstaden), so the UI must cope
+  with `image: null` as the normal case, not the exception.
+- **Coordinates can be `0,0`** — "no coordinate" written as a number, which
+  would place the flat in the Gulf of Guinea. Those records are dropped and
+  counted in `dropped`, alongside the ones with nulls.
+- Addresses carry stray whitespace (`"Malakitgatan 12 "`), trimmed on the way in.
+
+### Adding a source
+
+One file in `gateway/src/sources/` exporting `SRC`, `SRC_LABEL`,
+`fetchNearby(lat, lon, r, {signal})` and `fetchText(id, {signal})`, plus one
+line in `SOURCES` in `src/index.js`. The envelope, timeout, error reporting and
+CORS are handled for it. A source that cannot be queried by location belongs in
+the Arena pattern instead: a snapshot plus an entry in `PORTALS`.
+
+## Deduplication
+
+The same flat can be advertised both by its landlord's own portal and on HomeQ.
+A duplicate is detected when **street and number and room count agree exactly**,
+size agrees within **1 m²**, and rent within **1 %** of the smaller of the two.
+
+The portal record wins — it is the landlord's own data, carries floor and year
+built, and links to where you apply — and the HomeQ twin is dropped, recorded on
+the survivor as `also_on: ["homeq"]` plus `also_on_urls`. `deduped` in the
+response counts HomeQ records folded away.
+
+The rule is deliberately strict. A missed merge shows one flat twice, which is
+untidy; a false merge hides a real flat and misstates the rent of the one it
+kept. So a null on either side never matches, and HomeQ's fractional room counts
+(1.5 rum) never match a portal's whole ones.
+
+**In practice it currently fires almost never, and that is the honest finding.**
+Measured across the whole country — 6 448 HomeQ listings against 1 600 portal
+listings — only 15 pairs share a street and number, and **none** of those is the
+same flat: they are different flats in the same building (2 rum / 61 m² against
+1 rum / 40 m², and so on). Heimstaden and Victoriahem do not cross-post to
+HomeQ. The dedupe is insurance for a source that does, not something carrying
+weight today. About 1.5 % of HomeQ addresses (97 of 6 448) are property names
+like "Kv. Vulkanen" rather than street addresses and can never be matched at
+all.
 
 ## Geometry
 
@@ -141,8 +281,17 @@ different costume.
 
 ## Rules
 
-1. **Nothing is stored.** No KV, no D1, no R2, no logs of responses. The only
-   persistence is Cloudflare's edge cache: 1 h for `/text`, 60 s for `/nearby`
+1. **The only stored thing is the portal snapshot.** One KV namespace, exactly
+   two keys — `arena:heimstaden` and `arena:victoriahem` — each the latest
+   vacancy list, overwritten hourly. **Latest only: no history, no time series,
+   no per-user data, nothing else.** Keeping a history would turn the gateway
+   into a database of someone else's listings, which is the thing rule 4 exists
+   to prevent; and a vacancy series is not a market statistic — flats leave the
+   list when let *and* when withdrawn, and the two are indistinguishable from
+   outside. HomeQ is proxied live and never stored.
+
+   Beyond that, the only persistence is Cloudflare's edge cache: 1 h for
+   `/text`, 60 s for `/nearby`
    (short, because listings turn over daily and a stale card is visible to the
    user; the minute exists to absorb a user clicking around a map, which is what
    actually protects the upstream API).
@@ -164,8 +313,12 @@ different costume.
    the live payloads' shape, with invented addresses and ids.
 5. **Origins are allowlisted**: `https://real-estate-war-lord.github.io` and
    `http://localhost:8080`. Anything else gets no CORS headers.
-6. **8 s per source**, enforced with `AbortSignal.timeout`. One slow source cannot
-   hold the response.
+6. **8 s per source** on a request, enforced with `AbortSignal.timeout`; one slow
+   source cannot hold the response. The hourly refresh gets 25 s, since it pulls
+   12 MB with no user waiting.
+7. **A snapshot older than 3 h is not served.** It is reported `ok:false`
+   with a `stale` error instead. Showing a stale vacancy as current is the one
+   failure mode a user would actually act on.
 
 Licensing is the reason for 1–4. The SCB data behind the rest of the dashboard is
 CC0; these listings are not ours, and the gateway's job is to point at them, not
@@ -174,19 +327,46 @@ to accumulate them.
 ## Development
 
 ```sh
-npm --prefix gateway test     # 37 unit tests, no network (one takes 8 s: the timeout budget)
+npm --prefix gateway test     # 93 unit tests, no network (one takes 8 s: the timeout budget)
 cd gateway && npx wrangler dev
 ```
 
-The unit tests cover the box maths, the haversine trim, the normalisation schema
-and the failure envelope, with `fetch` stubbed — they never touch the network, so
-they neither depend on HomeQ being up nor add load to it.
+The tests cover the box maths, the haversine trim, both normalisation schemas,
+the dedupe rules, snapshot staleness, the refresh endpoint's authorisation and
+the failure envelope — with `fetch`, `caches` and KV stubbed. They never touch
+the network, so they neither depend on the sources being up nor add load to
+them. The Arena fixture in `test/fixtures/arena.js` is synthetic but reproduces
+the real payload's structure, including `data`-as-a-string, entity-escaped
+Swedish text, `YearBuilt: 0` and `0,0` coordinates.
 
 Live smoke test:
 
 ```sh
-curl 'http://127.0.0.1:8787/nearby?lat=59.3165&lon=18.0335&r=500'   # Slussen
-curl 'http://127.0.0.1:8787/nearby?lat=59.3710&lon=16.5090&r=1000'  # Eskilstuna centrum
+B=https://am-se-listings.am-se-listings-gateway.workers.dev
+curl "$B/nearby?lat=59.3165&lon=18.0335&r=500"    # Slussen
+curl "$B/nearby?lat=59.3710&lon=16.5090&r=1000"   # Eskilstuna centrum
+curl "$B/nearby?lat=58.5877&lon=16.1924&r=1000"   # Norrkoping centrum
+curl "$B/nearby?lat=55.6953&lon=13.2290&r=1000"   # Lund, Rabylund
+curl "$B/nearby?lat=59.2370&lon=15.2370&r=1000"   # Orebro, Brickebacken
+```
+
+`wrangler dev` runs the cron locally too:
+
+```sh
+curl "http://127.0.0.1:8787/__scheduled?cron=7+*+*+*+*"
+```
+
+## Operations
+
+The hourly cron (`7 * * * *`, offset off the hour) rebuilds both snapshots. To
+force one immediately, call `/admin/refresh` with the bearer secret — see the
+endpoint above. `wrangler tail` shows each run's per-portal counts.
+
+A first deploy to a fresh account needs the KV namespace created and bound:
+
+```sh
+npx wrangler kv namespace create LISTINGS_KV   # then put the id in wrangler.toml
+npx wrangler secret put REFRESH_SECRET         # any long random string
 ```
 
 ## Deploying
