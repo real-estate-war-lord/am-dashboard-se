@@ -15,7 +15,7 @@ the phase checklist below, pick the first unticked phase, and read
 - [x] **Phase 2** — Population outlook (demographics)
 - [x] **Phase 3** — Safety (crime)
 - [x] **Phase 4** — Schools
-- [ ] **Phase 5** — Test property + Analysis + Compare
+- [x] **Phase 5** — Test property + Analysis + Compare
 - [ ] **Phase 6** — Climate risk
 - [ ] **Phase 7** — Overlays: Services, Public buildings, Infra
 - [ ] **Phase 8** — Docs, verification, wrap-up
@@ -51,6 +51,12 @@ eight indicators, Schools overlay with a grade quintile ramp and a datasheet.
 verify_schools.py: **55 of 55 match the API**, suppression reasons intact.
 SALSA has no bulk export anywhere — raw merit shipped and labelled as such.
 Skolenkäten joined for 1 551 schools by unioning the 2025 and 2026 rounds.
+
+**Phase 5** — testprop.js ported with the Sweden box, 24 unit tests, `make test-js`.
+locate() does exact point-in-polygon with holes on lazily fetched rings; 6 of 6
+landmark pins land in the right kommun. Analysis sheet plus a two-pin Compare that
+is NEW work — the Danish repo has none — deliberately with no overall winner.
+Screenshots caught a doubled sign and a card that never resolved.
 
 _(each phase appends a 5-line status here when it is ticked)_
 

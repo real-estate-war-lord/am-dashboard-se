@@ -2,7 +2,7 @@
 # Targets that exist today. `build` and `serve` tell you what is missing
 # rather than failing cryptically — the build scripts land after the data pull.
 
-.PHONY: help selftest test verify geo land simplify riksbank kolada external discover dry fetch status validate links srclinks bra polisen schools build serve
+.PHONY: help selftest test verify geo land simplify riksbank kolada external discover dry fetch status validate links srclinks bra polisen schools lookup test-js build serve
 
 help:
 	@echo "make selftest   offline checks, no network (1 s)"
@@ -17,7 +17,9 @@ help:
 	@echo "make validate   check config/indicators.json against the metadata on disk"
 	@echo "make links      re-fetch every verify-at-source link (network, ~2 min)"
 	@echo "make srclinks   rebuild the verify-at-source queries from the metadata"
-	@echo "make test       render every view headlessly against the built page"
+	@echo "make test       render every view headlessly + the offline unit tests"
+	@echo "make test-js    the offline unit tests only (testprop parser)"
+	@echo "make lookup     boundary rings for the dropped pin"
 	@echo "make verify     recompute 5 kommuner x 3 indicators straight from the API"
 	@echo "make external   Boverket BME, Kronofogden and Kolada -> data/external/"
 	@echo "make bra        reported offences per kommun from Bra SOL (resumable)"
@@ -87,10 +89,17 @@ polisen:
 	python3 scripts/fetch_polisen.py
 
 # ~3 600 API calls, throttled and resumable; a cached unit is not fetched again.
+# boundary rings for the dropped pin, one file per kommun
+lookup:
+	python3 scripts/build_lookup.py
+
+test-js:
+	node --test tests/*.test.js
+
 schools:
 	python3 scripts/fetch_skolverket.py && python3 scripts/import_skolenkaten.py && python3 scripts/build_schools.py
 
-test:
+test: test-js
 	@test -f dist/index.html || { echo "dist/index.html missing — run 'make build' first."; exit 1; }
 	node tests/smoke.js
 

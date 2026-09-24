@@ -60,12 +60,29 @@ def main() -> int:
     html = (html.replace("{{LEAFLET_CSS}}", (SRC / "vendor" / "leaflet.css").read_text(encoding="utf-8"))
                 .replace("{{APP_CSS}}", (SRC / "style.css").read_text(encoding="utf-8"))
                 .replace("{{LEAFLET_JS}}", (SRC / "vendor" / "leaflet.js").read_text(encoding="utf-8"))
+                # testprop.js goes in FIRST: app.js calls parseLocation, and the
+                # module is kept separate so `node --test` can load it without a DOM
+                .replace("{{TESTPROP_JS}}", (SRC / "testprop.js").read_text(encoding="utf-8"))
                 .replace("{{APP_JS}}", (SRC / "app.js").read_text(encoding="utf-8"))
                 .replace("{{DATA}}", payload)
                 .replace("{{BUILT}}", built))
     out = pathlib.Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(html, encoding="utf-8")
+
+    # the on-demand boundary rings for the dropped pin
+    n_look = 0
+    src_look = PROC / "lookup"
+    if src_look.exists():
+        dl = out.parent / "lookup"
+        if dl.exists():
+            shutil.rmtree(dl)
+        shutil.copytree(src_look, dl)
+        n_look = len(list(dl.glob("*.json")))
+    for name in ("lookup_kommuner.json",):
+        sp = PROC / name
+        if sp.exists():
+            shutil.copyfile(sp, out.parent / name)
 
     # the on-demand school point files travel next to the page
     src_sch = PROC / "schools"
@@ -102,6 +119,8 @@ def main() -> int:
         print(f"copied {n_deso} DeSO files → {out.parent / 'deso'}")
     if n_sch:
         print(f"copied {n_sch} school files → {out.parent / 'schools'}")
+    if n_look:
+        print(f"copied {n_look} lookup ring files → {out.parent / 'lookup'}")
     if n_ov:
         print(f"copied {n_ov} overlay layer(s) → {out.parent}")
     miss = market.get("missing") or []

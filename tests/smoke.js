@@ -28,6 +28,9 @@ if (at < 0 || end < 0) { console.error("could not find window.DATA in dist/index
 /* build_dashboard escapes the sequence that would close the tag early */
 const DATA = JSON.parse(html.slice(at + MARK.length, end).replace(/<\\\//g, "</"));
 const appJs = fs.readFileSync(path.join(ROOT, "src", "app.js"), "utf8");
+/* testprop.js is inlined ahead of app.js in the built page, so the sandbox has
+   to load it in the same order — app.js calls parseLocation. */
+const tpJs = fs.readFileSync(path.join(ROOT, "src", "testprop.js"), "utf8");
 
 /* ---- the smallest DOM that lets app.js boot ---- */
 function el(id) {
@@ -104,6 +107,7 @@ function check(name, fn) {
    same scope, handing out exactly what it needs to drive. */
 const EXPORTS = "\n;globalThis.__app = { D, S, MK, AR, T, CH, vMakro, vTable, vArea, vCharts, vMarket, exportCsv, byCode, byRegso, distValues, pageOf };\n";
 try {
+  vm.runInContext(tpJs, sandbox, { filename: "testprop.js" });
   vm.runInContext(appJs + EXPORTS, sandbox, { filename: "app.js" });
 } catch (e) {
   console.error("app.js threw while loading:", e.message);
@@ -426,6 +430,83 @@ assert("and every school indicator says the merit value is raw",
 const tryg = D.indicators.find(i => i.key === "school_trygghet");
 assert("the survey's as-of names both rounds", /2025\+2026/.test(tryg.asof.kommun || ""),
   tryg.asof.kommun);
+
+/* ---- v1.2 the dropped pin ----
+   locate() is exercised here against the real lookup files rather than mocked:
+   point-in-polygon with holes is the kind of code that is either right or
+   embarrassingly wrong, and the only way to know is to drop pins on places
+   whose answer is known. */
+console.log("\ntest property:");
+const lookKom = JSON.parse(fs.readFileSync(path.join(ROOT, "dist", "lookup_kommuner.json"), "utf8"));
+const ringHas = vm.runInContext("ringHas", sandbox);
+const inPolyFn = vm.runInContext("inPoly", sandbox);
+const areaAtPoint = vm.runInContext("areaAtPoint", sandbox);
+const havMFn = vm.runInContext("havM", sandbox);
+
+const pinCases = [
+  ["Stadshuset, Stockholm", 59.3275, 18.0543, "0180"],
+  ["Avenyn, Göteborg", 57.70135, 11.9746, "1480"],
+  ["Turning Torso, Malmö", 55.6135, 12.9769, "1280"],
+  ["Uppsala domkyrka", 59.858, 17.6333, "0380"],
+  ["Kiruna", 67.8557, 20.2253, "2584"],
+  ["Visby, Gotland", 57.634, 18.295, "0980"],
+];
+let pinOk = 0;
+for (const [name, lat, lon, want] of pinCases) {
+  const got = areaAtPoint(lookKom, lat, lon);
+  if (got && got.code === want) pinOk++;
+  else console.log(`    ! ${name}: got ${got ? got.code : "none"}, expected ${want}`);
+}
+assert("a pin lands in the right kommun", pinOk === pinCases.length,
+  `${pinOk} of ${pinCases.length} landmarks`);
+
+/* Out at sea there is no kommun, because the boundaries were clipped to the
+   coastline. In a LAKE there is one, because Swedish kommun boundaries really
+   do divide the inland lakes between the kommuner around them — Vättern belongs
+   to Karlsborg and its neighbours. Those two are different answers and the test
+   says so, because the first draft of it called the lake a bug. */
+assert("a pin in the Baltic belongs to no kommun",
+  areaAtPoint(lookKom, 58.5, 19.5) === null, "no area at sea");
+const lake = areaAtPoint(lookKom, 58.4, 14.55);
+assert("but a pin in Vättern does, as the administrative boundaries do",
+  lake !== null, lake ? `${lake.code} ${lake.name}` : "none");
+
+/* holes must actually subtract */
+const square = [[[0, 0], [0, 10], [10, 10], [10, 0], [0, 0]],
+                [[4, 4], [4, 6], [6, 6], [6, 4], [4, 4]]];
+assert("a point inside the shell is inside", inPolyFn(square, 1, 1) === true, "shell");
+assert("a point inside a hole is NOT inside", inPolyFn(square, 5, 5) === false, "hole subtracted");
+assert("a point outside is outside", inPolyFn(square, 20, 20) === false, "outside");
+
+/* the distance helper, against a known separation */
+const dKm = havMFn(59.3275, 18.0543, 57.70135, 11.9746) / 1000;
+assert("Stockholm to Göteborg is about 400 km", dKm > 390 && dKm < 410, `${dKm.toFixed(0)} km`);
+
+/* the parser is inlined into the page, not only available to node --test */
+assert("testprop is inlined into the built page", /function parseLocation/.test(html),
+  "parseLocation present");
+const parseLoc = vm.runInContext("parseLocation", sandbox);
+assert("and the page can parse a Swedish Maps link",
+  (parseLoc("https://www.google.com/maps/@59.31972,18.07194,17z") || {}).lat === 59.31972, "parsed");
+assert("and refuses a short link by name",
+  (parseLoc("https://maps.app.goo.gl/x") || {}).error === "short_link", "refused");
+
+/* A signed format prints its own sign, so signing the difference again gave
+   "++6,8 %" in the compare column. */
+const fmtAbsFn = vm.runInContext("fmtAbs", sandbox);
+const signedInd = D.indicators.find(i => i.fmt === "signpct1");
+assert("a signed format is not signed twice in the compare column",
+  !/^[+\-−]/.test(fmtAbsFn(signedInd, 6.8)), `fmtAbs -> "${fmtAbsFn(signedInd, 6.8)}"`);
+assert("and a magnitude is used, not the raw value",
+  fmtAbsFn(signedInd, -6.8) === fmtAbsFn(signedInd, 6.8), "magnitude");
+
+/* the Analysis view renders with and without a pin */
+S.view = "analysis";
+const AN_ = vm.runInContext("AN", sandbox);
+AN_.a = null; AN_.b = null;
+let anHtml = vm.runInContext("vAnalysis()", sandbox);
+assert("the Analysis view renders empty", /Paste a Google Maps link/.test(anHtml), "prompt shown");
+assert("and states the privacy position", /never sent to a server/.test(anHtml), "privacy line");
 
 /* ---- v1.2 verify-at-source ----
    The link must reproduce the publisher's query for the cells on screen. Two

@@ -148,6 +148,11 @@ function hashFor() {
   if (S.view === "area") { p = `area/${AR.type}/${AR.code}`; if (AR.group) q.push(`g=${encodeURIComponent(AR.group)}`); if (AR.sub !== "regso") q.push(`sub=${AR.sub}`); if (AR.tab !== "ind") q.push(`t=${AR.tab}`); }
   else if (S.view === "table") p = `table/${T.level}`;
   else if (S.view === "charts") { p = "charts"; q.length = 0; q.push(`ind=${encodeURIComponent(CH.ind)}`, `a=${CH.areas.join(",")}`, `y0=${CH.y0}`, `y1=${CH.y1}`, `med=${CH.median ? 1 : 0}`); if (CH.mode !== "auto") q.push(`mode=${CH.mode}`); if (CH.mode === "dist") q.push(`dist=${CH.dist}`); if (CH.fq !== "year") q.push(`fq=${CH.fq}`); }
+  else if (S.view === "analysis") { p = "analysis"; q.length = 0;
+    if (AN.a) q.push(`a=${AN.a.lat},${AN.a.lon}`);
+    if (AN.la) q.push(`la=${encodeURIComponent(AN.la)}`);
+    if (AN.b) q.push(`b=${AN.b.lat},${AN.b.lon}`);
+    if (AN.lb) q.push(`lb=${encodeURIComponent(AN.lb)}`); }
   else if (S.view === "sheet") { p = sheetHash(SH.kind, ...SH.parts); }
   else if (S.view === "market") { p = "market"; if (MKT.src) q.push("src=1"); }
   else if (S.view === "makro") { p = "map" + (MK.kommun ? "/" + MK.kommun + (MK.sub === "deso" ? "/deso" : "") : "");
@@ -167,6 +172,13 @@ function parseHash() {
   else if (v === "table") { S.view = "table"; if (["kommun", "regso", "deso"].includes(parts[1])) T.level = parts[1]; }
   else if (v === "sources") { S.view = "market"; MKT.src = true; }
   else if (v === "market") { S.view = "market"; MKT.src = q.src === "1"; }
+  else if (v === "analysis") { S.view = "analysis";
+    const one = (q.a || "").split(",").map(Number);
+    AN.a = one.length === 2 && !isNaN(one[0]) ? { lat: one[0], lon: one[1] } : null;
+    const two = (q.b || "").split(",").map(Number);
+    AN.b = two.length === 2 && !isNaN(two[0]) ? { lat: two[0], lon: two[1] } : null;
+    AN.la = q.la || ""; AN.lb = q.lb || "";
+    if (AN.a) anResolve("a"); if (AN.b) anResolve("b"); }
   else if (SHEETS[v] && parts.length > 1) { S.view = "sheet"; SH.kind = v; SH.parts = parts.slice(1); }
   else if (v === "charts") { S.view = "charts"; CH.ind = q.ind || CH.ind; CH.areas = q.a ? q.a.split(",").filter(Boolean) : CH.areas; CH.y0 = q.y0 || CH.y0; CH.y1 = q.y1 || CH.y1; CH.median = q.med !== "0"; CH.mode = q.mode || "auto"; CH.dist = q.dist || "size"; CH.fq = q.fq === "q" ? "q" : "year"; }
   else { S.view = "makro";
@@ -196,8 +208,10 @@ const VIEWS = [
   ["makro",   "Macro map",     "Demographics, income, housing and prices by kommun, RegSO and DeSO", "map"],
   ["table",   "Table",         "Every kommun, RegSO and DeSO side by side — filter, sort, export", "table"],
   ["charts",  "Charts",        "Pick an indicator, areas and years — export the chart as PNG or the data as CSV", "charts"],
-  ["market",  "Market",        "Prices, rents, supply, construction, macro indicators — and the data sources", "market"]];
-const NAV_GROUPS = [["Market intelligence", ["makro", "table", "charts", "market"]]];
+  ["market",  "Market",        "Prices, rents, supply, construction, macro indicators — and the data sources", "market"],
+  ["analysis","Test property",  "Drop a pin from a Google Maps link and see everything this dashboard knows about that spot", "analysis"]];
+const NAV_GROUPS = [["Market intelligence", ["makro", "table", "charts", "market"]],
+                    ["Analysis", ["analysis"]]];
 const viewOf = id => VIEWS.find(v => v[0] === id) || VIEWS[0];
 
 function renderNav() {
@@ -214,6 +228,8 @@ function crumbs() {
   else if (S.view === "makro") { const m = MK.kommun ? byCode[MK.kommun] : null;
     if (m) { tail = m.name; kind = desoMode() ? "DeSO areas" : "RegSO areas"; }
     else { tail = "Map"; kind = "kommuner and RegSO"; } }
+  else if (S.view === "analysis") { tail = "Test property";
+    kind = AN.b ? "two pins compared" : AN.a ? (anName("a") || "a pin") : "drop a pin"; }
   else if (S.view === "sheet") { const def = SHEETS[SH.kind];
     tail = (def && def.crumb && def.crumb(SH.parts)) || SH.parts.join(" / "); kind = (def && def.label) || ""; }
   else { tail = viewOf(S.view)[1]; kind = { table: "every area side by side", charts: "PNG and CSV export", market: "national series and sources" }[S.view] || ""; }
@@ -223,7 +239,7 @@ function renderTop() {
   const { c, tail, kind } = crumbs();
   document.getElementById("hd").innerHTML = `<nav class="crumbs">${c.map(([l, h]) => `<button data-go="${esc(h)}">${esc(l)}</button><i>›</i>`).join("")}<b>${esc(tail)}</b>${kind ? `<span class="dim">${esc(kind)}</span>` : ""}</nav>`;
 }
-const RENDER = { makro: vMakro, table: vTable, area: vArea, charts: vCharts, market: vMarket, sheet: vSheet };
+const RENDER = { makro: vMakro, table: vTable, area: vArea, charts: vCharts, market: vMarket, sheet: vSheet, analysis: vAnalysis };
 function render() {
   renderNav(); renderTop();
   const body = document.getElementById("body");
@@ -242,6 +258,9 @@ document.addEventListener("click", e => {
   if (g("[data-mkown]")) { MK.own = !MK.own; renderKeep(); return; }
   if (g("[data-fs]")) { toggleFullscreen(); return; }
   if (g("[data-back]")) { history.back(); return; }
+  if ((el = g("[data-anclear]"))) { const k = el.dataset.anclear;
+    AN[k] = null; delete AN.res[k]; if (k === "a") AN.la = ""; else AN.lb = "";
+    syncHash(); renderKeep(); return; }
   if ((el = g("[data-ov]"))) { const o = OV.find(x => x.id === el.dataset.ov);
     if (o) { MK[o.flag] = !MK[o.flag]; LF[o.id + "Drawn"] = false; syncHash(); renderKeep(); } return; }
   /* a jump moves the camera and returns — no selection change, so no re-render */
@@ -276,6 +295,9 @@ document.addEventListener("change", e => {
   if (el.id === "chdist") { CH.dist = el.value; syncHash(); renderKeep(); }
   if (el.id === "chq") { chartAdd(null, el.value); }
   if (el.id === "chtitle") { CH.title = el.value; const t = document.getElementById("chsvgtitle"); if (t) t.textContent = CH.title || chartAutoTitle(); }
+  if (el.id === "anin-a" || el.id === "anin-b") { anSet(el.id.slice(-1), el.value); }
+  if (el.id === "anlab-a") { AN.la = el.value.trim(); syncHash(); }
+  if (el.id === "anlab-b") { AN.lb = el.value.trim(); syncHash(); }
   if (el.id === "tregion") { T.lan = el.value; renderTableBody(); }
   if (el.id === "tminpop") { T.minPop = Number(el.value) || 0; renderTableBody(); }
 });
@@ -284,6 +306,7 @@ document.addEventListener("toggle", e => { if (e.target.classList && e.target.cl
 document.addEventListener("keydown", e => {
   if (e.key === "Enter" && e.target.id === "areaq") { areaSearchGo(e.target.value); return; }
   if (e.key === "Enter" && e.target.id === "chq") { chartAdd(null, e.target.value); return; }
+  if (e.key === "Enter" && /^anin-[ab]$/.test(e.target.id)) { anSet(e.target.id.slice(-1), e.target.value); return; }
   if (e.key === "Escape" && S.view === "area") history.back();
   /* Quick jumps. Only on the map view, never with a modifier (Cmd-S must stay
      Save), and never while the reader is typing — the area search box is one
@@ -975,6 +998,192 @@ function vSheet() {
   ${spec.body || ""}`;
 }
 
+/* ---------- the Analysis sheet ----------
+   Everything this dashboard carries for one spot, and — because a reader
+   choosing between two homes wants exactly this — for two spots side by side.
+   The comparison is deliberately NOT scored: rows are aligned and each
+   difference is coloured by that indicator's own direction, with no overall
+   winner, because summing incommensurable indicators into a verdict would be
+   this dashboard inventing a judgement it has no basis for. */
+const AN = { a: null, b: null, la: "", lb: "", res: {} };
+/* the indicator's own format applied to a magnitude, with any sign the format
+   would have added stripped — the caller adds exactly one */
+const fmtAbs = (i, x) => String(fmtOf(i)(Math.abs(x))).replace(/^[+−-]\s*/, "");
+/* parseLocation lives in src/testprop.js and is inlined ahead of this file, so
+   it is testable offline with `node --test` and never touches the DOM. */
+function anSet(k, text) {
+  const err = document.getElementById("anerr-" + k);
+  const r = parseLocation(text);
+  if (r.error) {
+    if (!String(text || "").trim()) { AN[k] = null; delete AN.res[k]; syncHash(); renderKeep(); return; }
+    if (err) err.textContent = r.message;
+    return;
+  }
+  if (err) err.textContent = "";
+  AN[k] = { lat: +r.lat.toFixed(6), lon: +r.lon.toFixed(6) };
+  delete AN.res[k];
+  syncHash();
+  anResolve(k).then(() => renderKeep());
+  renderKeep();
+}
+const anName = k => (k === "a" ? AN.la : AN.lb) || ((AN.res[k] && AN.res[k].regso && AN.res[k].regso.name)
+  || (AN.res[k] && AN.res[k].kommun && AN.res[k].kommun.name) || "");
+async function anResolve(k) {
+  const pin = AN[k]; if (!pin) { delete AN.res[k]; return; }
+  const key = pin.lat + "," + pin.lon;
+  if (AN.res[k] && AN.res[k]._key === key) return;
+  const r = await locate(pin.lat, pin.lon);
+  r._key = key; AN.res[k] = r;
+  if (S.view === "analysis") renderKeep();
+}
+/* the finest entity we actually hold figures for */
+function anEntity(k) {
+  const r = AN.res[k]; if (!r || r.error) return null;
+  const d = r.deso && byDeso[r.deso.code];
+  const q = r.regso && byRegso[r.regso.code];
+  const m = r.kommun && byCode[r.kommun.code];
+  return { deso: d || null, regso: q || null, kommun: m || null };
+}
+const AN_GROUPS = ["Demographics", "Outlook", "Safety", "Schools", "Income & jobs",
+                   "Housing stock", "Rents", "Prices & market", "Area quality"];
+/* one indicator value for a pin, from the finest level that has it */
+function anVal(k, key) {
+  const e = anEntity(k); if (!e) return null;
+  for (const [lvl, o] of [["DeSO", e.deso], ["RegSO", e.regso], ["kommun", e.kommun]]) {
+    if (!o) continue;
+    const v = V(o, key);
+    if (v != null) return { v, lvl, own: lvl !== "kommun" };
+    if (noInherit(indOf(key))) return null;
+  }
+  return null;
+}
+function anRow(i) {
+  const a = anVal("a", i.key), b = AN.b ? anVal("b", i.key) : null;
+  if (!a && !b) return "";
+  const f = fmtOf(i);
+  const d = (a && b) ? a.v - b.v : null;
+  const dcls = d == null ? "" : cls(d, i.key);
+  /* A signed format (signpct1) already prints its own sign, so wrapping it in
+     sign() again produced "++6,8 %". The difference is formatted on its
+     magnitude and signed exactly once. */
+  const dTxt = d == null ? "" : sign(d, x => fmtAbs(i, x));
+  return `<tr><th>${esc(i.short || i.label)}<span class="dim"> ${esc(i.unit || "")}</span></th>
+    <td class="num">${a ? f(a.v) + (a.lvl === "kommun" ? " °" : "") : "–"}</td>
+    ${AN.b ? `<td class="num">${b ? f(b.v) + (b.lvl === "kommun" ? " °" : "") : "–"}</td>
+    <td class="num"><i class="${dcls}">${dTxt}</i></td>` : ""}
+  </tr>`;
+}
+function anWhere(k) {
+  const r = AN.res[k];
+  if (!r) return `<p class="empty">Locating…</p>`;
+  if (r.error) return `<p class="empty">${esc(r.error)}</p>`;
+  const bits = [["Kommun", r.kommun && r.kommun.name], ["RegSO", r.regso && r.regso.name],
+                ["DeSO", r.deso && r.deso.code]];
+  return `<div class="anwhere">${bits.map(([l, v]) => v
+    ? `<span><em>${esc(l)}</em>${esc(v)}</span>` : "").join("")}</div>`;
+}
+function anSchoolsNear(k, n) {
+  const pin = AN[k], r = AN.res[k];
+  if (!pin || !r || !r.kommun) return [];
+  /* neighbouring kommuner matter: the nearest school to a pin near a boundary is
+     often in the next kommun, so every kommun whose bbox is within ~8 km is read */
+  const near = [];
+  for (const code in SCH_IDX) {
+    const bb = SCH_IDX[code].bbox;
+    if (!bb) continue;
+    const dLat = Math.max(0, Math.max(bb[0] - pin.lat, pin.lat - bb[2]));
+    const dLon = Math.max(0, Math.max(bb[1] - pin.lon, pin.lon - bb[3]));
+    if (havM(pin.lat, pin.lon, pin.lat + dLat, pin.lon + dLon) < 8000) near.push(code);
+  }
+  near.forEach(schLoad);
+  const out = [];
+  for (const code of near) {
+    if (!Array.isArray(SCH[code])) continue;
+    for (const s of SCH[code]) out.push({ s, m: havM(pin.lat, pin.lon, s.lat, s.lon) });
+  }
+  out.sort((x, y) => x.m - y.m);
+  return out.slice(0, n || 5);
+}
+function anPinBox(k) {
+  const pin = AN[k];
+  const lab = k === "a" ? AN.la : AN.lb;
+  return `<div class="anpin">
+    <label>${k === "a" ? "Pin A" : "Pin B"}</label>
+    <input id="anin-${k}" class="indsel anin" placeholder="Paste a Google Maps link or 59.33258, 18.06490"
+      value="${esc(pin ? pin.lat + ", " + pin.lon : "")}" autocomplete="off">
+    <input id="anlab-${k}" class="indsel anlab" placeholder="label (optional)" value="${esc(lab)}" autocomplete="off">
+    ${pin ? `<button class="lk mini" data-anclear="${k}">clear</button>` : ""}
+    <span class="anerr" id="anerr-${k}"></span>
+  </div>`;
+}
+function vAnalysis() {
+  setTimeout(anMapInit, 0);
+  const inds = IND.filter(i => AN_GROUPS.includes(i.group));
+  const groups = AN_GROUPS.filter(g => inds.some(i => i.group === g));
+  const both = !!(AN.a && AN.b);
+  const head = `<tr><th>Indicator</th><th class="num">${esc(anName("a") || "Pin A")}</th>${
+    both ? `<th class="num">${esc(anName("b") || "Pin B")}</th><th class="num">A − B</th>` : ""}</tr>`;
+  const sch = AN.a ? anSchoolsNear("a", 5) : [];
+  return `
+  <div class="card accent arhead">
+    <div class="arid"><h2>Test property</h2>
+      <div class="artags"><span class="tag">point-in-polygon on our own boundaries</span>
+      ${AN.a ? `<span class="tag">${esc(AN.a.lat.toFixed(5))}, ${esc(AN.a.lon.toFixed(5))}</span>` : ""}</div>
+    </div>
+    ${anPinBox("a")}
+    ${anPinBox("b")}
+    <p class="cap anpriv"><b>Nothing leaves your browser.</b> The link is parsed here, the point is tested
+      against boundary files this page already serves, and the coordinate lives only in this page's
+      address bar — the part after the # is never sent to a server. A short goo.gl link cannot be
+      read without following it, so it is refused rather than resolved on your behalf.</p>
+  </div>
+  ${!AN.a ? `<div class="card"><p class="empty">Paste a Google Maps link above — right-click a spot in Google Maps and copy the coordinates it offers, or copy the full URL from the address bar.</p></div>` : `
+  <div class="grid-2">
+    <div class="card"><h3>Where it is</h3>${anWhere("a")}
+      ${AN.b ? `<div class="ansep">Pin B</div>${anWhere("b")}` : ""}
+      <div class="mapwrap anmap"><div id="anmapel"></div></div>
+      <p class="cap">Rings simplified to about 40 m for this lookup — enough to say which RegSO a building is in, not a cadastral boundary.</p></div>
+    <div class="card"><h3>Nearest schools with year 9</h3>
+      ${sch.length ? `<table class="tbl compact"><thead><tr><th>School</th><th class="num">Distance</th><th class="num">Merit</th></tr></thead><tbody>
+      ${sch.map(({ s, m }) => `<tr><th><button class="lk mini" data-go="school/${esc(s.code)}">${esc(s.name)}</button></th>
+        <td class="num">${m < 1000 ? nf(Math.round(m / 10) * 10, 0) + " m" : nf(m / 1000, 1) + " km"}</td>
+        <td class="num">${s.merit != null ? nf(s.merit, 1) : "–"}</td></tr>`).join("")}
+      </tbody></table><p class="cap">Straight-line distance, not walking distance. Neighbouring kommuner are included — the nearest school to a pin near a boundary is often across it.</p>`
+      : `<p class="empty">Loading schools near the pin…</p>`}
+    </div>
+  </div>
+  <div class="card"><h3>${both ? "Side by side" : "What this dashboard knows about the spot"}</h3>
+    ${both ? `<p class="cap">Aligned rows, each difference coloured by that indicator's own direction. <b>There is no overall winner</b> — adding up indicators that measure different things would be this dashboard inventing a judgement rather than reporting figures.</p>` : ""}
+    ${groups.map(g => `<h4 class="angrp">${esc(g)}</h4>
+      <table class="tbl compact"><thead>${head}</thead><tbody>
+      ${inds.filter(i => i.group === g).map(anRow).join("")}</tbody></table>`).join("")}
+    <p class="cap">° = the kommun's figure, where no finer statistic exists. A dash means the source publishes nothing for that area — never a zero.</p>
+  </div>`}`;
+}
+function anMapInit() {
+  const el = document.getElementById("anmapel");
+  if (!el || typeof L === "undefined" || !AN.a) return;
+  if (LF.anmap) { try { LF.anmap.remove(); } catch (e) {} LF.anmap = null; }
+  const m = L.map(el, { center: [AN.a.lat, AN.a.lon], zoom: 13, scrollWheelZoom: false });
+  LF.anmap = m;
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18, detectRetina: true,
+    className: "basemap", attribution: '© OpenStreetMap contributors' }).addTo(m);
+  const pins = [["a", AN.a, "#1C6B5C"], ["b", AN.b, "#B0331B"]].filter(x => x[1]);
+  for (const [k, pin, col] of pins) {
+    L.circleMarker([pin.lat, pin.lon], { radius: 8, color: col, weight: 3,
+      fillColor: "#fff", fillOpacity: .9 }).addTo(m)
+      .bindPopup(`<b>${esc(anName(k) || (k === "a" ? "Pin A" : "Pin B"))}</b><br>${pin.lat.toFixed(5)}, ${pin.lon.toFixed(5)}`);
+    /* dashed rings at 500 m and 1 km, non-interactive — a sense of scale, not a claim */
+    for (const r of [500, 1000]) {
+      L.circle([pin.lat, pin.lon], { radius: r, color: col, weight: 1, opacity: .5,
+        dashArray: "4,4", fill: false, interactive: false }).addTo(m);
+    }
+  }
+  if (pins.length === 2) {
+    m.fitBounds(L.latLngBounds(pins.map(x => [x[1].lat, x[1].lon])), { padding: [50, 50] });
+  }
+}
+
 function vArea() {
   const e = areaEntity();
   if (!e) return `<div class="back"><button data-go="map">‹ Macro map</button></div><div class="card"><p class="empty">Unknown area.</p></div>`;
@@ -1314,6 +1523,74 @@ function usoLegend() {
     `<div class="lgnote">Källa: Polismyndigheten. A police assessment of an area's conditions, not a rating of its residents.</div>`;
 }
 
+/* ---------- the test property ----------
+   A pin the reader drops from a Google Maps link, so they can ask "what is this
+   dashboard's answer for THIS address". Nothing is sent anywhere: the link is
+   parsed in the browser by src/testprop.js, the point is tested against our own
+   rings, and the coordinate lives only in this page's URL fragment — which is
+   never sent to a server. The privacy line on the panel says exactly that.
+
+   `pip` already exists for the choropleth; what is added here is `inPoly`,
+   which subtracts the holes. A polygon with a lake in it must NOT contain a
+   point in the lake, and a kommun that encloses another must not swallow it. */
+const TP = { lat: null, lon: null, label: "", rad: 0 };
+const TP_RADII = [0, 500, 1000, 2000, 5000];
+const LOOK = { kom: null, komP: null, sub: {} };   /* lazily fetched ring files */
+
+function inBox(bb, lat, lon) { return bb && lat >= bb[0] && lat <= bb[2] && lon >= bb[1] && lon <= bb[3]; }
+/* ray casting on a [lon, lat] ring */
+function ringHas(ring, lat, lon) {
+  let inside = false;
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const xi = ring[i][0], yi = ring[i][1], xj = ring[j][0], yj = ring[j][1];
+    if ((yi > lat) !== (yj > lat) && lon < (xj - xi) * (lat - yi) / ((yj - yi) || 1e-12) + xi) inside = !inside;
+  }
+  return inside;
+}
+/* one polygon: inside its shell and outside every hole */
+function inPoly(poly, lat, lon) {
+  if (!ringHas(poly[0], lat, lon)) return false;
+  for (let k = 1; k < poly.length; k++) if (ringHas(poly[k], lat, lon)) return false;
+  return true;
+}
+function areaAtPoint(list, lat, lon) {
+  for (const a of list || []) {
+    if (!inBox(a.bbox, lat, lon)) continue;
+    for (const poly of a.p) if (inPoly(poly, lat, lon)) return a;
+  }
+  return null;
+}
+function lookKommuner() {
+  if (LOOK.komP) return LOOK.komP;
+  LOOK.komP = fetch("lookup_kommuner.json").then(r => r.json())
+    .then(j => { LOOK.kom = j; return j; })
+    .catch(() => { LOOK.kom = []; return []; });
+  return LOOK.komP;
+}
+function lookSub(level, code) {
+  const k = level + "_" + code;
+  if (LOOK.sub[k]) return LOOK.sub[k];
+  LOOK.sub[k] = fetch("lookup/" + k + ".json").then(r => r.json())
+    .catch(() => []);
+  return LOOK.sub[k];
+}
+/* {kommun, regso, deso} for a point, or an explanation. Async because the rings
+   are fetched on demand — a pin is rare, and 2.5 MB should not be in the page. */
+async function locate(lat, lon) {
+  const koms = await lookKommuner();
+  const k = areaAtPoint(koms, lat, lon);
+  if (!k) return { error: "That point is in water, or outside Sweden. The boundaries here are land only — a pin in a lake or just off the coast falls outside every area." };
+  const [rs, ds] = await Promise.all([lookSub("regso", k.code), lookSub("deso", k.code)]);
+  return { kommun: k, regso: areaAtPoint(rs, lat, lon), deso: areaAtPoint(ds, lat, lon) };
+}
+const havM = (a, b, c, d) => {
+  /* great-circle metres */
+  const R = 6371000, r = Math.PI / 180;
+  const dLat = (c - a) * r, dLon = (d - b) * r;
+  const x = Math.sin(dLat / 2) ** 2 + Math.cos(a * r) * Math.cos(c * r) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(x)));
+};
+
 /* ---------- Schools overlay ----------
    1 791 points nationally, so they travel one file per kommun and are fetched
    only for the kommuner in view, nearest first and capped per pass — the same
@@ -1327,7 +1604,8 @@ function schLoad(code) {
   if (!code || SCH[code] || SCH["_l_" + code] || !SCH_IDX[code]) return;
   SCH["_l_" + code] = true;
   fetch("schools/" + code + ".json").then(r => r.json()).then(j => {
-    SCH[code] = j; delete SCH["_l_" + code]; lfOverlays(); ovLegends();
+    SCH[code] = j; delete SCH["_l_" + code];
+    if (S.view === "analysis") renderKeep(); else { lfOverlays(); ovLegends(); }
   }).catch(() => { SCH[code] = []; delete SCH["_l_" + code]; });
 }
 function schLoadVisible() {

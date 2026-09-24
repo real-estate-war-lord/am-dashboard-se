@@ -475,3 +475,87 @@ at `#school/<code>` on the Phase 1 sheet shell.
 | the survey covers ~half the country per round | two rounds unioned, each school carries its year |
 | a raw merit value tracks intake as much as teaching | said in the indicator note and on the datasheet |
 
+## Phase 5 — Test property, Analysis and Compare
+
+### Check table
+
+| Piece | Where | Note |
+|---|---|---|
+| `parseLocation` | `src/testprop.js` | DOM-free, `module.exports` at the bottom, 24 unit tests |
+| Sweden box | `TP_BOUNDS` | 55.0–69.2 N, 10.5–24.3 E |
+| short links refused by name | `TP_SHORT_RE` | `short_link`, with an actionable message |
+| exact kommun / RegSO / DeSO | `locate()` in `src/app.js` | point-in-polygon on our own rings, **holes kept** |
+| lazy lookup files | `dist/lookup_kommuner.json` + `dist/lookup/<level>_<kommun>.json` | 2.5 MB + 580 files, largest 189 kB |
+| pin in the hash | `#analysis?a=…&la=…&b=…&lb=…` | the fragment is never sent to a server |
+| Analysis sheet | `vAnalysis()`, own nav group | where it is, nearest schools, every indicator |
+| **Compare two pins** | same view, `b=` | aligned rows, direction-aware, **no overall winner** |
+| `make test-js` | `node --test tests/*.test.js` | wired into `make test` |
+
+### Compare is new work
+
+The Danish repo has no two-pin comparison — branch `v2.5-compare` has zero
+commits ahead of its merge base, and its "compare" is `areaCompareTable()`, the
+area page's indicator table. So this was designed here rather than ported.
+
+The design decision worth recording: **there is no score.** Rows are aligned and
+each difference is coloured by that indicator's own `direction`, with neutral
+indicators left uncoloured. No total, no index, no winner. Adding up indicators
+that measure different things in different units would be this dashboard
+inventing a judgement it has no basis for, and the panel says so in as many words.
+
+### Geometry
+
+`scripts/build_lookup.py` writes rings simplified to **40 m in metres** (not
+degrees — a degree of longitude at 67 °N is 39 % of one at 55 °N), rounded to 4
+decimals (~11 m), with a bbox per area so the page rejects almost everything with
+four comparisons before a ray cast. **Interior rings are kept**, and `inPoly`
+subtracts them: a lake inside a kommun must exclude points in the lake.
+
+### What the pins proved
+
+`tests/smoke.js` drops pins on six landmarks and checks the kommun: 6 of 6.
+Slussen resolves to Stockholm → RegSO Östra Katarina → DeSO 0180C3750_DeSO2025;
+Avenyn to Göteborg → Vasastaden västra.
+
+**A pin at sea belongs to no kommun; a pin in Vättern belongs to Karlsborg.**
+Those are different answers and both are right — the boundaries were clipped to
+the *sea* coastline, while Swedish kommun boundaries really do divide the inland
+lakes between the kommuner around them. The first draft of that test called the
+lake a bug; it is now asserted both ways with the reason.
+
+### Bugs found by the screenshots
+
+1. **The compare column printed "++6,8 %".** `signpct1` already prints its own
+   sign and the difference was signed again on top. `fmtAbs()` now formats the
+   magnitude and the caller signs it exactly once. Asserted.
+2. **The nearest-schools card never resolved.** The lazy school loader called
+   the map's redraw, which does nothing on the Analysis view. It now re-renders
+   whichever view is open.
+
+### Privacy
+
+Stated on the panel and true of the implementation: the link is parsed in the
+browser, the point is tested against boundary files the page already serves, and
+the coordinate lives only in the URL fragment — which browsers do not send to
+servers. A short `goo.gl` link is **refused rather than resolved**, because
+resolving it would mean calling Google on the reader's behalf.
+
+### Gates
+
+| Gate | Result |
+|---|---|
+| `make test-js` | **24 of 24** parser cases |
+| `make test` | clean — 14 new pin/Analysis assertions |
+| `make validate` | clean |
+| `make build` | clean, 16.4 MB + 580 lookup files |
+| screenshots | `v12_analysis.png` (two pins compared) |
+
+### ⚠ raised
+
+| ⚠ | Decision |
+|---|---|
+| the coarse box accepts Oslo and Copenhagen | by design — it catches swapped pairs; `locate()` gives the real answer, and the test says so |
+| 40 m rings are not cadastral | stated on the card |
+| no overall winner in Compare | deliberate; stated in the UI |
+| Phases 6–7 sections of the Analysis sheet | to be added as those phases land |
+
