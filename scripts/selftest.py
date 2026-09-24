@@ -164,7 +164,8 @@ list_index = {"id": ["A"], "size": [2],
 check("list-style category index", [r["A"] for r in scb.flatten(list_index)], ["x", "y"])
 
 print("\nconfig file")
-import json  # noqa: E402
+import json
+import re  # noqa: E402
 cfg_path = pathlib.Path(__file__).resolve().parents[1] / "config" / "tables_se.json"
 cfg = json.loads(cfg_path.read_text(encoding="utf-8"))
 tables = cfg["tables"]
@@ -175,9 +176,24 @@ ok("every entry has levels and time",
    all(t.get("levels") and t.get("time") for t in tables))
 bad_levels = {lv for t in tables for lv in t["levels"]} - {"kommun", "regso", "deso", "all", "none"}
 check("only known levels", bad_levels, set())
+# `years(A..B)` joined `all` and `top(N)` in v1.2: the projection tables run
+# 2024-2070 and the window we want is neither the newest N nor the whole thing.
+# This list is the one place that has to learn a new spec, and it did not, so
+# the check went red in CI — which is the only place that runs selftest.
 bad_time = [t["table"] for t in tables
-            if t["time"] != "all" and not t["time"].startswith("top(")]
+            if t["time"] != "all"
+            and not t["time"].startswith("top(")
+            and not re.fullmatch(r"years\(\d{4}\.\.\d{4}\)", t["time"])]
 check("only known time specs", bad_time, [])
+# and every spec the config uses must actually resolve
+_periods = [str(y) for y in range(2000, 2071)]
+bad_resolve = []
+for t in tables:
+    try:
+        scb.periods_for(_periods, t["time"])
+    except Exception:                                                    # noqa: BLE001
+        bad_resolve.append(t["table"])
+check("every time spec resolves", bad_resolve, [])
 print(f"  ..   {len(tables)} tables, {sum(len(t['levels']) for t in tables)} table/level pulls")
 
 print("\n" + "=" * 60)
