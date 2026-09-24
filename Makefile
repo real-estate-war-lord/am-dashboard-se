@@ -2,7 +2,7 @@
 # Targets that exist today. `build` and `serve` tell you what is missing
 # rather than failing cryptically — the build scripts land after the data pull.
 
-.PHONY: help selftest test verify geo land simplify riksbank kolada external discover dry fetch status validate links srclinks bra polisen schools lookup test-js build serve
+.PHONY: help selftest test verify geo land simplify riksbank kolada external discover dry fetch status validate links srclinks bra polisen schools climate lookup test-js build serve
 
 help:
 	@echo "make selftest   offline checks, no network (1 s)"
@@ -25,6 +25,7 @@ help:
 	@echo "make bra        reported offences per kommun from Bra SOL (resumable)"
 	@echo "make polisen    police-designated vulnerable areas -> area shares"
 	@echo "make schools    every school with year 9 from Skolverket (resumable)"
+	@echo "make climate    flood, coast, sea level, landslide, cloudburst (slow)"
 	@echo "make build      build the dashboard (needs the pull + the registry)"
 	@echo "make serve      serve dist/ at http://localhost:8080"
 
@@ -89,6 +90,11 @@ polisen:
 	python3 scripts/fetch_polisen.py
 
 # ~3 600 API calls, throttled and resumable; a cached unit is not fetched again.
+# flood, coast, sea level, landslide and cloudburst. The fetch is ~3 GB of raw
+# GIS and is cached; the build intersects it all in SWEREF99 TM metres.
+climate:
+	python3 scripts/fetch_climate.py && python3 scripts/build_climate.py
+
 # boundary rings for the dropped pin, one file per kommun
 lookup:
 	python3 scripts/build_lookup.py

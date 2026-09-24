@@ -51,6 +51,10 @@ PAGE_ONLY = {
     # kommun's figure, so the honest "verify at source" is the selection form
     # itself, which is where a reader would go to rebuild the query by hand.
     # Brå's own page states it has no public open-data API.
+    # The climate layers are published as whole national GIS services; the
+    # verifiable thing is the service the shares were computed from.
+    "climate": ("MCF, SMHI och SGU",
+                "https://gis-tjanster.mcf.se/arcgis/rest/services/Oversvamningskarteringar"),
     # Skolverket's API answers per school, not per area, so the verifiable route
     # is the school-unit endpoint the figures are built from.
     "skolverket": ("Skolverket, planned-educations v4",

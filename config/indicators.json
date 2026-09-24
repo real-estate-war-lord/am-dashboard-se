@@ -6713,6 +6713,523 @@
      "page": "https://api.skolverket.se/planned-educations/v4/school-units"
     }
    ]
+  },
+  {
+   "key": "flood100",
+   "label": "River flood, 100-year",
+   "short": "Flood 100-yr",
+   "unit": "% of land area",
+   "level": "deso",
+   "levels": [
+    "kommun",
+    "regso",
+    "deso"
+   ],
+   "hue": [
+    70,
+    110,
+    160
+   ],
+   "sources": [
+    {
+     "db": "climate",
+     "col": "flood100",
+     "geo": "all",
+     "table": "flood100"
+    }
+   ],
+   "calc": "climate_share",
+   "fmt": "pct2",
+   "moe": null,
+   "desc": "Share of the area's land inside MCF's modelled 100-year river flood extent.",
+   "source": "MCF, SMHI and SGU — see the indicator note",
+   "group": "Climate",
+   "direction": "lower_better",
+   "direction_note": "less land inside a published hazard polygon is the sound end",
+   "no_inherit": true,
+   "warn": "Screening indicator for comparing areas, not a property-level risk assessment. It is the share of an area's land inside a published hazard polygon — it says nothing about a particular building, its floor level or its protection. An area the survey never covered has no value here and reads 'Not mapped'. That is not the same as 0 %, which means surveyed and found clear. MCF has mapped about 80 watercourses, not every stream: a kommun none of them runs through is Not mapped.",
+   "src_verify": [
+    {
+     "level": "kommun",
+     "db": "climate",
+     "publisher": "MCF, SMHI och SGU",
+     "label": "MCF, SMHI och SGU",
+     "page": "https://gis-tjanster.mcf.se/arcgis/rest/services/Oversvamningskarteringar"
+    },
+    {
+     "level": "regso",
+     "db": "climate",
+     "publisher": "MCF, SMHI och SGU",
+     "label": "MCF, SMHI och SGU",
+     "page": "https://gis-tjanster.mcf.se/arcgis/rest/services/Oversvamningskarteringar"
+    },
+    {
+     "level": "deso",
+     "db": "climate",
+     "publisher": "MCF, SMHI och SGU",
+     "label": "MCF, SMHI och SGU",
+     "page": "https://gis-tjanster.mcf.se/arcgis/rest/services/Oversvamningskarteringar"
+    }
+   ]
+  },
+  {
+   "key": "flood200",
+   "label": "River flood, 200-year",
+   "short": "Flood 200-yr",
+   "unit": "% of land area",
+   "level": "deso",
+   "levels": [
+    "kommun",
+    "regso",
+    "deso"
+   ],
+   "hue": [
+    60,
+    100,
+    150
+   ],
+   "sources": [
+    {
+     "db": "climate",
+     "col": "flood200",
+     "geo": "all",
+     "table": "flood200"
+    }
+   ],
+   "calc": "climate_share",
+   "fmt": "pct2",
+   "moe": null,
+   "desc": "Share of the area's land inside MCF's modelled 200-year river flood extent.",
+   "source": "MCF, SMHI and SGU — see the indicator note",
+   "group": "Climate",
+   "direction": "lower_better",
+   "direction_note": "less land inside a published hazard polygon is the sound end",
+   "no_inherit": true,
+   "warn": "Screening indicator for comparing areas, not a property-level risk assessment. It is the share of an area's land inside a published hazard polygon — it says nothing about a particular building, its floor level or its protection. An area the survey never covered has no value here and reads 'Not mapped'. That is not the same as 0 %, which means surveyed and found clear. MCF has mapped about 80 watercourses, not every stream.",
+   "src_verify": [
+    {
+     "level": "kommun",
+     "db": "climate",
+     "publisher": "MCF, SMHI och SGU",
+     "label": "MCF, SMHI och SGU",
+     "page": "https://gis-tjanster.mcf.se/arcgis/rest/services/Oversvamningskarteringar"
+    },
+    {
+     "level": "regso",
+     "db": "climate",
+     "publisher": "MCF, SMHI och SGU",
+     "label": "MCF, SMHI och SGU",
+     "page": "https://gis-tjanster.mcf.se/arcgis/rest/services/Oversvamningskarteringar"
+    },
+    {
+     "level": "deso",
+     "db": "climate",
+     "publisher": "MCF, SMHI och SGU",
+     "label": "MCF, SMHI och SGU",
+     "page": "https://gis-tjanster.mcf.se/arcgis/rest/services/Oversvamningskarteringar"
+    }
+   ]
+  },
+  {
+   "key": "floodBHF",
+   "label": "River flood, highest calculated",
+   "short": "Flood BHF",
+   "unit": "% of land area",
+   "level": "deso",
+   "levels": [
+    "kommun",
+    "regso",
+    "deso"
+   ],
+   "hue": [
+    50,
+    90,
+    140
+   ],
+   "sources": [
+    {
+     "db": "climate",
+     "col": "floodBHF",
+     "geo": "all",
+     "table": "floodBHF"
+    }
+   ],
+   "calc": "climate_share",
+   "fmt": "pct2",
+   "moe": null,
+   "desc": "Share of the area's land inside MCF's beräknat högsta flöde — the largest modelled river flood extent.",
+   "source": "MCF, SMHI and SGU — see the indicator note",
+   "group": "Climate",
+   "direction": "lower_better",
+   "direction_note": "less land inside a published hazard polygon is the sound end",
+   "no_inherit": true,
+   "warn": "Screening indicator for comparing areas, not a property-level risk assessment. It is the share of an area's land inside a published hazard polygon — it says nothing about a particular building, its floor level or its protection. An area the survey never covered has no value here and reads 'Not mapped'. That is not the same as 0 %, which means surveyed and found clear. MCF has mapped about 80 watercourses, not every stream.",
+   "src_verify": [
+    {
+     "level": "kommun",
+     "db": "climate",
+     "publisher": "MCF, SMHI och SGU",
+     "label": "MCF, SMHI och SGU",
+     "page": "https://gis-tjanster.mcf.se/arcgis/rest/services/Oversvamningskarteringar"
+    },
+    {
+     "level": "regso",
+     "db": "climate",
+     "publisher": "MCF, SMHI och SGU",
+     "label": "MCF, SMHI och SGU",
+     "page": "https://gis-tjanster.mcf.se/arcgis/rest/services/Oversvamningskarteringar"
+    },
+    {
+     "level": "deso",
+     "db": "climate",
+     "publisher": "MCF, SMHI och SGU",
+     "label": "MCF, SMHI och SGU",
+     "page": "https://gis-tjanster.mcf.se/arcgis/rest/services/Oversvamningskarteringar"
+    }
+   ]
+  },
+  {
+   "key": "coast20",
+   "label": "Coastal water level +2.0 m (RH2000)",
+   "short": "Coast +2.0 m",
+   "unit": "% of land area",
+   "level": "deso",
+   "levels": [
+    "kommun",
+    "regso",
+    "deso"
+   ],
+   "hue": [
+    40,
+    95,
+    135
+   ],
+   "sources": [
+    {
+     "db": "climate",
+     "col": "coast20",
+     "geo": "all",
+     "table": "coast20"
+    }
+   ],
+   "calc": "climate_share",
+   "fmt": "pct2",
+   "moe": null,
+   "desc": "Share of the area's land below a coastal water level of 2.0 m in RH2000, from MCF's coastal inundation mapping.",
+   "source": "MCF, SMHI and SGU — see the indicator note",
+   "group": "Climate",
+   "direction": "lower_better",
+   "direction_note": "less land inside a published hazard polygon is the sound end",
+   "no_inherit": true,
+   "warn": "Screening indicator for comparing areas, not a property-level risk assessment. It is the share of an area's land inside a published hazard polygon — it says nothing about a particular building, its floor level or its protection. An area the survey never covered has no value here and reads 'Not mapped'. That is not the same as 0 %, which means surveyed and found clear. Inland areas are not on the coast and have no value.",
+   "src_verify": [
+    {
+     "level": "kommun",
+     "db": "climate",
+     "publisher": "MCF, SMHI och SGU",
+     "label": "MCF, SMHI och SGU",
+     "page": "https://gis-tjanster.mcf.se/arcgis/rest/services/Oversvamningskarteringar"
+    },
+    {
+     "level": "regso",
+     "db": "climate",
+     "publisher": "MCF, SMHI och SGU",
+     "label": "MCF, SMHI och SGU",
+     "page": "https://gis-tjanster.mcf.se/arcgis/rest/services/Oversvamningskarteringar"
+    },
+    {
+     "level": "deso",
+     "db": "climate",
+     "publisher": "MCF, SMHI och SGU",
+     "label": "MCF, SMHI och SGU",
+     "page": "https://gis-tjanster.mcf.se/arcgis/rest/services/Oversvamningskarteringar"
+    }
+   ]
+  },
+  {
+   "key": "coast30",
+   "label": "Coastal water level +3.0 m (RH2000)",
+   "short": "Coast +3.0 m",
+   "unit": "% of land area",
+   "level": "deso",
+   "levels": [
+    "kommun",
+    "regso",
+    "deso"
+   ],
+   "hue": [
+    30,
+    80,
+    120
+   ],
+   "sources": [
+    {
+     "db": "climate",
+     "col": "coast30",
+     "geo": "all",
+     "table": "coast30"
+    }
+   ],
+   "calc": "climate_share",
+   "fmt": "pct2",
+   "moe": null,
+   "desc": "Share of the area's land below a coastal water level of 3.0 m in RH2000, from MCF's coastal inundation mapping.",
+   "source": "MCF, SMHI and SGU — see the indicator note",
+   "group": "Climate",
+   "direction": "lower_better",
+   "direction_note": "less land inside a published hazard polygon is the sound end",
+   "no_inherit": true,
+   "warn": "Screening indicator for comparing areas, not a property-level risk assessment. It is the share of an area's land inside a published hazard polygon — it says nothing about a particular building, its floor level or its protection. An area the survey never covered has no value here and reads 'Not mapped'. That is not the same as 0 %, which means surveyed and found clear. Inland areas are not on the coast and have no value.",
+   "src_verify": [
+    {
+     "level": "kommun",
+     "db": "climate",
+     "publisher": "MCF, SMHI och SGU",
+     "label": "MCF, SMHI och SGU",
+     "page": "https://gis-tjanster.mcf.se/arcgis/rest/services/Oversvamningskarteringar"
+    },
+    {
+     "level": "regso",
+     "db": "climate",
+     "publisher": "MCF, SMHI och SGU",
+     "label": "MCF, SMHI och SGU",
+     "page": "https://gis-tjanster.mcf.se/arcgis/rest/services/Oversvamningskarteringar"
+    },
+    {
+     "level": "deso",
+     "db": "climate",
+     "publisher": "MCF, SMHI och SGU",
+     "label": "MCF, SMHI och SGU",
+     "page": "https://gis-tjanster.mcf.se/arcgis/rest/services/Oversvamningskarteringar"
+    }
+   ]
+  },
+  {
+   "key": "sea2100_85",
+   "label": "Mean sea level 2100 (RCP8.5, SMHI)",
+   "short": "Sea 2100 RCP8.5",
+   "unit": "% of land area",
+   "level": "deso",
+   "levels": [
+    "kommun",
+    "regso",
+    "deso"
+   ],
+   "hue": [
+    110,
+    60,
+    110
+   ],
+   "sources": [
+    {
+     "db": "climate",
+     "col": "sea2100_85",
+     "geo": "all",
+     "table": "sea2100_85"
+    }
+   ],
+   "calc": "climate_share",
+   "fmt": "pct2",
+   "moe": null,
+   "desc": "Share of the area's land below SMHI's projected mean sea level for 2100 under RCP8.5 (IPCC AR6/SROCC), average estimate.",
+   "source": "MCF, SMHI and SGU — see the indicator note",
+   "group": "Climate",
+   "direction": "lower_better",
+   "direction_note": "less land inside a published hazard polygon is the sound end",
+   "no_inherit": true,
+   "warn": "Screening indicator for comparing areas, not a property-level risk assessment. It is the share of an area's land inside a published hazard polygon — it says nothing about a particular building, its floor level or its protection. An area the survey never covered has no value here and reads 'Not mapped'. That is not the same as 0 %, which means surveyed and found clear. A projected mean level, not a storm surge, and one emissions scenario of several.",
+   "src_verify": [
+    {
+     "level": "kommun",
+     "db": "climate",
+     "publisher": "MCF, SMHI och SGU",
+     "label": "MCF, SMHI och SGU",
+     "page": "https://gis-tjanster.mcf.se/arcgis/rest/services/Oversvamningskarteringar"
+    },
+    {
+     "level": "regso",
+     "db": "climate",
+     "publisher": "MCF, SMHI och SGU",
+     "label": "MCF, SMHI och SGU",
+     "page": "https://gis-tjanster.mcf.se/arcgis/rest/services/Oversvamningskarteringar"
+    },
+    {
+     "level": "deso",
+     "db": "climate",
+     "publisher": "MCF, SMHI och SGU",
+     "label": "MCF, SMHI och SGU",
+     "page": "https://gis-tjanster.mcf.se/arcgis/rest/services/Oversvamningskarteringar"
+    }
+   ]
+  },
+  {
+   "key": "sea2100_45",
+   "label": "Mean sea level 2100 (RCP4.5, SMHI)",
+   "short": "Sea 2100 RCP4.5",
+   "unit": "% of land area",
+   "level": "deso",
+   "levels": [
+    "kommun",
+    "regso",
+    "deso"
+   ],
+   "hue": [
+    130,
+    80,
+    130
+   ],
+   "sources": [
+    {
+     "db": "climate",
+     "col": "sea2100_45",
+     "geo": "all",
+     "table": "sea2100_45"
+    }
+   ],
+   "calc": "climate_share",
+   "fmt": "pct2",
+   "moe": null,
+   "desc": "Share of the area's land below SMHI's projected mean sea level for 2100 under RCP4.5 (IPCC AR6/SROCC), average estimate.",
+   "source": "MCF, SMHI and SGU — see the indicator note",
+   "group": "Climate",
+   "direction": "lower_better",
+   "direction_note": "less land inside a published hazard polygon is the sound end",
+   "no_inherit": true,
+   "warn": "Screening indicator for comparing areas, not a property-level risk assessment. It is the share of an area's land inside a published hazard polygon — it says nothing about a particular building, its floor level or its protection. An area the survey never covered has no value here and reads 'Not mapped'. That is not the same as 0 %, which means surveyed and found clear. A projected mean level, not a storm surge.",
+   "src_verify": [
+    {
+     "level": "kommun",
+     "db": "climate",
+     "publisher": "MCF, SMHI och SGU",
+     "label": "MCF, SMHI och SGU",
+     "page": "https://gis-tjanster.mcf.se/arcgis/rest/services/Oversvamningskarteringar"
+    },
+    {
+     "level": "regso",
+     "db": "climate",
+     "publisher": "MCF, SMHI och SGU",
+     "label": "MCF, SMHI och SGU",
+     "page": "https://gis-tjanster.mcf.se/arcgis/rest/services/Oversvamningskarteringar"
+    },
+    {
+     "level": "deso",
+     "db": "climate",
+     "publisher": "MCF, SMHI och SGU",
+     "label": "MCF, SMHI och SGU",
+     "page": "https://gis-tjanster.mcf.se/arcgis/rest/services/Oversvamningskarteringar"
+    }
+   ]
+  },
+  {
+   "key": "landslide",
+   "label": "Landslide caution zone (SGU)",
+   "short": "Landslide",
+   "unit": "% of land area",
+   "level": "deso",
+   "levels": [
+    "kommun",
+    "regso",
+    "deso"
+   ],
+   "hue": [
+    120,
+    95,
+    60
+   ],
+   "sources": [
+    {
+     "db": "climate",
+     "col": "landslide",
+     "geo": "all",
+     "table": "landslide"
+    }
+   ],
+   "calc": "climate_share",
+   "fmt": "pct2",
+   "moe": null,
+   "desc": "Share of the area's land inside an SGU aktsamhetsområde for landslide in fine-grained soils — the slope-analysis and shoreline zones together.",
+   "source": "MCF, SMHI and SGU — see the indicator note",
+   "group": "Climate",
+   "direction": "lower_better",
+   "direction_note": "less land inside a published hazard polygon is the sound end",
+   "no_inherit": true,
+   "warn": "Screening indicator for comparing areas, not a property-level risk assessment. It is the share of an area's land inside a published hazard polygon — it says nothing about a particular building, its floor level or its protection. An area the survey never covered has no value here and reads 'Not mapped'. That is not the same as 0 %, which means surveyed and found clear. A caution zone flags conditions worth investigating, not a landslide forecast. SGU's survey covers part of the country only.",
+   "src_verify": [
+    {
+     "level": "kommun",
+     "db": "climate",
+     "publisher": "MCF, SMHI och SGU",
+     "label": "MCF, SMHI och SGU",
+     "page": "https://gis-tjanster.mcf.se/arcgis/rest/services/Oversvamningskarteringar"
+    },
+    {
+     "level": "regso",
+     "db": "climate",
+     "publisher": "MCF, SMHI och SGU",
+     "label": "MCF, SMHI och SGU",
+     "page": "https://gis-tjanster.mcf.se/arcgis/rest/services/Oversvamningskarteringar"
+    },
+    {
+     "level": "deso",
+     "db": "climate",
+     "publisher": "MCF, SMHI och SGU",
+     "label": "MCF, SMHI och SGU",
+     "page": "https://gis-tjanster.mcf.se/arcgis/rest/services/Oversvamningskarteringar"
+    }
+   ]
+  },
+  {
+   "key": "cloudburst_mapped",
+   "label": "Kommun has its own cloudburst mapping",
+   "short": "Cloudburst map",
+   "unit": "yes / no",
+   "level": "kommun",
+   "levels": [
+    "kommun"
+   ],
+   "hue": [
+    70,
+    110,
+    160
+   ],
+   "sources": [
+    {
+     "db": "climate",
+     "col": "cloudburst_mapped",
+     "geo": "kommun",
+     "table": "Skyfallskartering_Oversikt"
+    }
+   ],
+   "calc": "climate_flag",
+   "fmt": "cat",
+   "moe": null,
+   "cats": [
+    {
+     "v": 0,
+     "label": "No own mapping",
+     "color": "#C4CBC4"
+    },
+    {
+     "v": 1,
+     "label": "Has its own mapping",
+     "color": "#2F6FA8"
+    }
+   ],
+   "desc": "Whether the kommun has produced its own cloudburst (skyfall) mapping, as recorded in MCF's national overview. It says the work has been done, not what it found — the mappings themselves stay with the kommuner.",
+   "source": "MCF, Skyfallskartering översikt",
+   "group": "Climate",
+   "direction": "neutral",
+   "direction_note": "having made a mapping is preparedness, not a hazard level",
+   "warn": "A record of which kommuner have done the work, from MCF's national overview. It carries no information about how much of the kommun floods in a cloudburst.",
+   "src_verify": [
+    {
+     "level": "kommun",
+     "db": "climate",
+     "publisher": "MCF, SMHI och SGU",
+     "label": "MCF, SMHI och SGU",
+     "page": "https://gis-tjanster.mcf.se/arcgis/rest/services/Oversvamningskarteringar"
+    }
+   ]
   }
  ],
  "src_periods": {

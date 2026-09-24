@@ -454,7 +454,7 @@ function ovLegends() {
     if (e2) e2.innerHTML = (ovOn(o) && o.legend) ? o.legend() : "";
   }
 }
-const GROUP_ORDER = ["Demographics", "Outlook", "Safety", "Schools", "Income & jobs", "Housing stock", "Rents", "Prices & market", "Construction", "Municipal finances", "Area quality"];
+const GROUP_ORDER = ["Demographics", "Outlook", "Safety", "Schools", "Climate", "Income & jobs", "Housing stock", "Rents", "Prices & market", "Construction", "Municipal finances", "Area quality"];
 function indSelect() {
   const L = curInds();
   const groups = GROUP_ORDER.filter(gname => L.some(i => (i.group || "Other") === gname)).concat(L.some(i => !GROUP_ORDER.includes(i.group || "Other")) ? ["Other"] : []);
@@ -1044,7 +1044,7 @@ function anEntity(k) {
   const m = r.kommun && byCode[r.kommun.code];
   return { deso: d || null, regso: q || null, kommun: m || null };
 }
-const AN_GROUPS = ["Demographics", "Outlook", "Safety", "Schools", "Income & jobs",
+const AN_GROUPS = ["Demographics", "Outlook", "Safety", "Schools", "Climate", "Income & jobs",
                    "Housing stock", "Rents", "Prices & market", "Area quality"];
 /* one indicator value for a pin, from the finest level that has it */
 function anVal(k, key) {
@@ -1116,6 +1116,33 @@ function anPinBox(k) {
     <span class="anerr" id="anerr-${k}"></span>
   </div>`;
 }
+/* The Climate block on the Analysis sheet. Kept apart from the generic
+   indicator table because every climate figure needs its horizon or scenario in
+   the label, and because "Not mapped" has to read as a sentence rather than a
+   dash in a column. */
+const CLIM_KEYS = ["flood100", "flood200", "floodBHF", "coast20", "coast30",
+                   "sea2100_85", "sea2100_45", "landslide"];
+function anClimate(k) {
+  const e = anEntity(k); if (!e) return "";
+  const rows = CLIM_KEYS.map(key => {
+    const i = indOf(key); if (!i) return "";
+    const got = anVal(k, key);
+    const txt = got ? fmtOf(i)(got.v) : `<span class="dim">Not mapped</span>`;
+    return `<tr><th>${esc(i.label)}</th><td class="num">${txt}</td></tr>`;
+  }).join("");
+  const cb = e.kommun && e.kommun.cloudburst_mapped;
+  return `<table class="tbl compact"><tbody>${rows}
+    ${cb != null ? `<tr><th>Kommun's own cloudburst mapping</th><td class="num">${cb ? "yes" : "no"}</td></tr>` : ""}
+    </tbody></table>
+    <p class="cap"><b>Screening indicators, not a property assessment.</b> Each is the share of the
+    surrounding area's land inside a published hazard polygon — it says nothing about this
+    building, its floor level or its protection. <b>"Not mapped" is not zero:</b> MCF has mapped
+    about 80 watercourses and SGU's landslide survey covers part of the country, so an area
+    nobody surveyed has no value rather than a clean bill of health.</p>
+    <p class="cap">Källa: MCF (översvämningskartering, kustöversvämning, skyfallsöversikt),
+    SMHI (framtida medelvattenstånd, IPCC AR6/SROCC), SGU (aktsamhetsområden skred, CC0).</p>`;
+}
+
 function vAnalysis() {
   setTimeout(anMapInit, 0);
   const inds = IND.filter(i => AN_GROUPS.includes(i.group));
@@ -1151,6 +1178,16 @@ function vAnalysis() {
       </tbody></table><p class="cap">Straight-line distance, not walking distance. Neighbouring kommuner are included — the nearest school to a pin near a boundary is often across it.</p>`
       : `<p class="empty">Loading schools near the pin…</p>`}
     </div>
+  </div>
+  <div class="grid-2">
+    <div class="card"><h3>Climate risk${AN.b ? " — Pin A" : ""}</h3>${anClimate("a")}</div>
+    ${AN.b ? `<div class="card"><h3>Climate risk — Pin B</h3>${anClimate("b")}</div>`
+           : `<div class="card"><h3>How to read this page</h3>
+      <p class="cap">Every figure is the published number for the area the pin falls in — DeSO where
+      the statistic exists at that level, otherwise RegSO, otherwise the kommun, marked °. Nothing is
+      interpolated to the point itself, and nothing is modelled: if a source publishes no figure for
+      an area, the row shows a dash.</p>
+      <p class="cap">Add a second pin above to compare two spots side by side.</p></div>`}
   </div>
   <div class="card"><h3>${both ? "Side by side" : "What this dashboard knows about the spot"}</h3>
     ${both ? `<p class="cap">Aligned rows, each difference coloured by that indicator's own direction. <b>There is no overall winner</b> — adding up indicators that measure different things would be this dashboard inventing a judgement rather than reporting figures.</p>` : ""}

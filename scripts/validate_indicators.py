@@ -75,6 +75,13 @@ def check_source(key: str, source: dict) -> None:
         if not out.exists():
             warnings.append(f"{key}: {out.name} not built — run 'make bra'")
         return
+    if db == "climate":
+        if not source.get("col"):
+            errors.append(f"{key}: climate source with no column")
+        p = ROOT / "data" / "processed" / "climate.json"
+        if not p.exists():
+            warnings.append(f"{key}: data/processed/climate.json not built — run 'make climate'")
+        return
     if db == "skolverket":
         if not source.get("col"):
             errors.append(f"{key}: Skolverket source with no column")

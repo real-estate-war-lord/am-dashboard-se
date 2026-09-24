@@ -651,9 +651,39 @@ def main() -> int:
                                           {y: {"kommun": y} for y in years}))
             print(f"  {key:14s} kommun:{len(byyear[last])} · {years[0]}–{last}")
             continue
-        if any(s.get("db") not in ("scb", "bra", "polisen", "skolverket") for s in srcs):
+        if any(s.get("db") not in ("scb", "bra", "polisen", "skolverket", "climate")
+               for s in srcs):
             indicators_out.append(meta_of(ind, {}, {}))
             warn(f"{key}: no SCB source on disk — renders as 'no data'")
+            continue
+
+        cl = next((x for x in srcs if x.get("db") == "climate"), None)
+        if cl:
+            cp = PROC / "climate.json"
+            if not cp.exists():
+                indicators_out.append(meta_of(ind, {}, {}))
+                warn(f"{key}: data/processed/climate.json missing — run 'make climate'")
+                continue
+            cj = json.loads(cp.read_text(encoding="utf-8"))
+            col = cl["col"]
+            n = 0
+            asof_c = {}
+            for level, tgt in ENT.items():
+                for code, row in ((cj.get("areas") or {}).get(level) or {}).items():
+                    v = row.get(col)
+                    if v is None:
+                        continue          # not mapped: no value, never 0
+                    e = tgt.get(code)
+                    if e is None:
+                        continue
+                    e[key] = v
+                    n += 1
+                if n:
+                    asof_c[level] = ind.get("asof", "2026")
+            m = meta_of(ind, asof_c, {})
+            m["climate"] = True
+            indicators_out.append(m)
+            print(f"  {key:16s} {n} areas")
             continue
 
         sk = next((x for x in srcs if x.get("db") == "skolverket"), None)
