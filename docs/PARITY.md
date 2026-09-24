@@ -34,7 +34,7 @@ everything below:
 | **MCF** (ex-MSB) | river flood 100/200/BHF, coastal +2.0/+3.0 m, cloudburst flag | polygons → all levels | free reuse, "Källa: MCF" | irregular | the three flood products cover **different** watercourses |
 | **SMHI** | mean sea level 2100, RCP4.5 / RCP8.5 | polygons → all levels | open | irregular | a projected **mean** level, not a storm surge |
 | **SGU** | landslide caution zones | polygons → all levels | CC0 | irregular | a caution zone is conditions worth investigating, not a forecast |
-| **OpenStreetMap** | services, public buildings, station points | points | **ODbL** — share-alike | continuous | volunteer coverage varies; points only, never a rate |
+| **OpenStreetMap** | services, public buildings, station points, rail alignments | points and lines, all 290 kommuner | **ODbL** — share-alike | continuous | volunteer coverage varies; points only, never a rate. Read from the Geofabrik country extract with pyosmium, not Overpass |
 | **Trafikverket** m.fl. | 49 curated infrastructure projects | kommun | open; each row links its own source | manual | not a census of Swedish infrastructure |
 
 ## Known gaps, stated plainly

@@ -158,7 +158,14 @@ function hashFor() {
   else if (S.view === "sheet") { p = sheetHash(SH.kind, ...SH.parts); }
   else if (S.view === "market") { p = "market"; if (MKT.src) q.push("src=1"); }
   else if (S.view === "makro") { p = "map" + (MK.kommun ? "/" + MK.kommun + (MK.sub === "deso" ? "/deso" : "") : "");
-    for (const o of ovList()) if (ovOn(o)) q.push(`${o.id}=1`); }
+    for (const o of ovList()) if (ovOn(o)) q.push(`${o.id}=1`);
+    /* Camera in the hash, so a view can be linked to. Zooming still never
+       changes the selection — this records where the camera is, it does not
+       give it a say in what is selected. */
+    if (LF.map && LF.shownMuni === MK.kommun) {
+      const c = LF.map.getCenter();
+      q.push(`c=${c.lat.toFixed(5)},${c.lng.toFixed(5)}`, `z=${LF.map.getZoom()}`);
+    } }
   else p = S.view;
   return p + "?" + q.join("&");
 }
@@ -193,9 +200,14 @@ function parseHash() {
   if (!curInds().some(i => i.key === MK.ind)) MK.ind = (curInds()[0] || {}).key;
   if (!yearsFor(MK.ind).includes(MK.year)) MK.year = LATEST;
   if (S.view === "makro") {
+    /* an explicit camera in the hash wins over the automatic fit */
+    const cc = (q.c || "").split(",").map(Number);
+    const zz = Number(q.z);
+    const haveCam = cc.length === 2 && !isNaN(cc[0]) && !isNaN(cc[1]) && zz >= 4 && zz <= 18;
+    if (haveCam) { LF.center = [cc[0], cc[1]]; LF.zoom = zz; }
     /* zoom to a municipality the first time it is shown; back to the national frame when it is cleared */
-    if (MK.kommun && MK.kommun !== LF.shownMuni) LF.pendingFit = MK.kommun;
-    if (!MK.kommun && LF.shownMuni) { LF.center = [62.5, 16.5]; LF.zoom = 5; }
+    if (MK.kommun && MK.kommun !== LF.shownMuni && !haveCam) LF.pendingFit = MK.kommun;
+    if (!MK.kommun && LF.shownMuni && !haveCam) { LF.center = [62.5, 16.5]; LF.zoom = 5; }
     LF.shownMuni = MK.kommun;
   }
   return { viewChanged: prevView !== S.view };
@@ -1979,15 +1991,28 @@ function infraBuild() {
     if (!f.geometry) continue;                 /* not located — never drawn */
     const p = f.properties;
     const col = INFRA_TONE[p.status] || "#8A8C81";
+    const popup = `<div class="lfpop"><b>${esc(p.name)}</b>
+      <span class="dim">${esc(p.agency || "")}${p.open_year ? " · opens " + p.open_year : p.open_window ? " · " + esc(p.open_window) : ""}</span>
+      <span class="lfact"><button class="lk mini primary" data-go="project/${esc(p.id)}">Project page ›</button></span></div>`;
+    if (f.geometry.type === "MultiLineString") {
+      /* An alignment OSM actually tags. Drawn as a line, dashed while it is
+         only proposed or decided and solid once it is being built, so the map
+         reads the same way the Pipeline list does. */
+      const dash = p.status === "construction" ? null : "6,4";
+      for (const seg of f.geometry.coordinates) {
+        if (!seg || seg.length < 2) continue;
+        L.polyline(seg.map(c => [c[1], c[0]]),
+          { color: col, weight: 3.5, opacity: .9, dashArray: dash })
+          .bindPopup(popup, { maxWidth: 300 }).addTo(g);
+      }
+      continue;
+    }
     const pts = f.geometry.type === "Point" ? [f.geometry.coordinates]
                                             : f.geometry.coordinates;
     for (const [lon, lat] of pts) {
       L.circleMarker([lat, lon], { radius: 6, weight: 2.2, color: col,
         fillColor: "#fff", fillOpacity: .9 })
-        .bindPopup(`<div class="lfpop"><b>${esc(p.name)}</b>
-          <span class="dim">${esc(p.agency || "")}${p.open_year ? " · opens " + p.open_year : p.open_window ? " · " + esc(p.open_window) : ""}</span>
-          <span class="lfact"><button class="lk mini primary" data-go="project/${esc(p.id)}">Project page ›</button></span></div>`,
-          { maxWidth: 300 })
+        .bindPopup(popup, { maxWidth: 300 })
         .addTo(g);
     }
   }
@@ -1998,7 +2023,9 @@ function infraLegend() {
   const drawn = (INFRA_GEO.data ? (INFRA_GEO.data.features || []).filter(f => f.geometry).length : 0);
   const byStatus = {};
   ps.forEach(p => { byStatus[p.status] = (byStatus[p.status] || 0) + 1; });
-  return `<div class="lgtitle">Infrastructure<span>${ps.length} projects · ${drawn} located</span></div>` +
+  const asLine = INFRA_GEO.data
+    ? (INFRA_GEO.data.features || []).filter(f => f.geometry && f.geometry.type === "MultiLineString").length : 0;
+  return `<div class="lgtitle">Infrastructure<span>${ps.length} projects · ${drawn} drawn (${asLine} as an alignment)</span></div>` +
     Object.keys(INFRA_TONE).map(k => byStatus[k]
       ? `<div class="lgrow"><i style="background:${INFRA_TONE[k]}"></i>${esc(k)} (${byStatus[k]})</div>` : "").join("") +
     `<div class="lgnote">A project whose stations could not be found in OSM is listed in <b>Pipeline</b> but not drawn — no alignment is sketched between points.</div>`;

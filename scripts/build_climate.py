@@ -58,9 +58,19 @@ SMHI_AREAS = ["Blekinge", "Gavleborg", "Gotland", "Halland", "Kalmar", "Norrbott
 # download budget the build drops back to these three, which are the ones a
 # reader is most likely to want to see outlined; the rest stay in the
 # choropleth, and the build log says so.
+# Landslide is deliberately NOT here. Its zones cannot fit either budget — 76 MB
+# alone and a largest file of 4.47 MB against a 3 MB cap — because 242 000 tiny
+# caution polygons have nothing to merge and so do not simplify however far the
+# tolerance is raised. Generating them and then deleting them cost 40 minutes of
+# a build; not generating them costs nothing. The layer is fully available as a
+# number at all three levels, which is where it was always going to be read.
 ZONE_LAYERS = ["flood100", "flood200", "floodBHF", "coast20", "coast30",
-               "sea2100_85", "landslide"]
-ZONE_FALLBACK = ["flood100", "coast20", "sea2100_85"]
+               "sea2100_85"]
+# Everything except landslide. Landslide is the only layer that breaks either
+# budget: 76 MB on its own, and a largest per-kommun file of 4.47 MB against a
+# 3 MB cap, because 242 000 tiny caution polygons have nothing to merge and so
+# do not simplify. The other six come to about 97 MB with no file over 1.2 MB.
+ZONE_FALLBACK = ["flood100", "flood200", "floodBHF", "coast20", "coast30", "sea2100_85"]
 ZONE_BUDGET = 150 * 1024 * 1024
 
 

@@ -100,8 +100,11 @@ climate:
 infra:
 	python3 -u scripts/build_infra.py
 
+# From the Geofabrik country extract, not Overpass: the public Overpass instance
+# rate-limited this client at 16 of 290 kommuner. Download the extract once (see
+# the README) — extract_osm_pbf.py then reads it in one pass.
 services:
-	python3 -u scripts/fetch_osm.py && python3 -u scripts/build_services.py
+	python3 -u scripts/extract_osm_pbf.py && python3 -u scripts/build_services.py
 
 # boundary rings for the dropped pin, one file per kommun
 lookup:
