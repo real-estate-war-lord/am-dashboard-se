@@ -364,3 +364,114 @@ and Sweden spans 14 degrees of it. shapely is used here only, behind
 | drug and weapons offences reflect enforcement effort | said so in the indicator's own description |
 | SOL is a 2000s JSP app that could change without notice | the fetcher asserts Stockholm's row count and fails loudly on a short file |
 
+## Phase 4 — Schools
+
+### Check table
+
+| Indicator | Definition | Level | Coverage | Period |
+|---|---|---|---|---|
+| `school_merit` | merit value, year 9, pupil-weighted | kommun/RegSO/DeSO | **289**/290 kommun | 2025/26 |
+| `school_passed` | passed every subject | all three | 290 kommun | 2025/26 |
+| `school_eligible` | eligible for a vocational programme | all three | 290 kommun | 2025/26 |
+| `school_certified` | certified teachers | all three | 290 kommun | 2025/26 |
+| `school_per_teacher` | pupils per FTE teacher | all three | 290 kommun | 2025/26 |
+| `schools_n` | school units teaching year 9 | all three | 290 kommun | register snapshot |
+| `school_trygghet` | Skolenkäten Trygghet index | all three | 2 841 areas | **2025+2026** |
+| `school_studiero` | Skolenkäten Studiero index | all three | 2 841 areas | **2025+2026** |
+
+All hidden from the chip row. **1 791 schools** with year 9 and coordinates, in
+290 kommuner; 1 786 located in a RegSO, 1 785 in a DeSO by point-in-polygon on
+our own rings.
+
+### Route differences
+
+1. **Skolenhetsregistret carries no coordinates.** It is code, kommun, org nr,
+   name and status — 10 655 rows, no geometry. The brief's route does not exist.
+   `wgs84_Lat`/`wgs84_Long` come from planned-educations **v4 detail**, one call
+   per school. 1 791 of 1 798 have them (99.6 %).
+2. **School-year labels are NOT shifted**, but they are not uniform either:
+   merit, pass rate, eligibility and staffing run to **2025/26**, while the
+   national tests lag a year at **2024/25**. Each metric therefore carries its
+   own period instead of sharing one "as of".
+3. **`totalNumberOfPupils` is always a rounded band** — "cirka 590" — never an
+   exact count, and it counts the whole unit rather than the year-9 cohort. It
+   is the only size measure published, so it is what the pupil-weighting uses,
+   and every Schools indicator says so.
+
+### ⚠ SALSA is not shipped
+
+The SIRIS export module is gone (404). SALSA now exists only inside a stateful
+Oracle APEX app (`f?p=SIRIS:164`) with `p_arg_checksums` on every submit and no
+export of any kind; `statistikdatabasen.skolverket.se` does not carry it either.
+**No bulk file exists.** The merit value shipped here is therefore the **raw**
+one — which is exactly the socioeconomically-confounded number SALSA exists to
+correct. Every label, the popup, the datasheet and the legend say so, and
+`tests/smoke.js` asserts both that no SALSA indicator exists and that the caveat
+is present on every result indicator.
+
+### valueType is preserved, never zeroed
+
+Skolverket suppresses and rounds, and the reasons survive into the page:
+`EXISTS` · `OMITTED_DUE_TO_BASED_ON_FEW_PUPILS` (`..`) ·
+`ROUNDED_OFF_DUE_TO_FEW_PUPILS_NOT_ELIGIBLE` (`~100`) · `MISSING` ·
+`TEACHERS_EXCLUDED_DUE_TO_NO_REQUIRED_LEGITIMATION`. A suppressed school is left
+out of an average rather than counted as zero, and the datasheet prints the
+reason next to the dash.
+
+**Robertsfors (2409) has no merit value at all** — one year-9 school
+(Tundalsskolan) for which the API returns null for merit, pass rate and even the
+pupil band. Verified against the API. It stays a gap; the test names it.
+
+### Skolenkäten
+
+Machine-readable xlsx, read with `zipfile` + regex — no spreadsheet library. The
+Trygghet and Studiero index columns are located **by header name** in row 1 and
+checked against "Index" in row 3, so a layout change fails loudly instead of
+silently shifting a column.
+
+The survey runs on a **roughly two-year rotation** — about 815 schools per round
+— so the build unions 2025 and 2026 and each school carries its own year; the
+indicator's as-of reads "2025+2026". 1 551 of 1 791 schools joined. An index
+needs five respondents; below that the cell is blank, and a genuine 0 is printed
+as 0 — the two are not conflated.
+
+### Verification
+
+`scripts/verify_schools.py` calls the API again for five schools — the largest
+and smallest in a random sample of 12 kommun files, one with a suppressed value,
+and two at random — and compares every field including the suppression reasons.
+
+**55 of 55 values match**, including coordinates to 1e-5, the pupil bands, and
+five distinct valueTypes surviving as reasons rather than numbers.
+
+National pupil-weighted merit value: **233.2**. Stockholm: 256.2.
+
+### UI
+
+Schools overlay on the Phase 1 framework: points in their own canvas pane
+(z-450), one file per kommun fetched nearest-first and capped at 24 per pass,
+nothing drawn below zoom 9. Grade colour mode is a 5-step quintile ramp over the
+schools **in view**, not a fixed national scale; a school with no merit value
+stays hollow in the base hue and never lands in the bottom bin. School datasheet
+at `#school/<code>` on the Phase 1 sheet shell.
+
+### Gates
+
+| Gate | Result |
+|---|---|
+| `make validate` | clean — 67 indicators |
+| `make test` | clean — 13 new Schools assertions |
+| `make build` | clean, 16.4 MB + 290 school files |
+| `scripts/verify_schools.py` | **55 of 55 match the API** |
+| screenshots | `v12_schools.png`, `v12_school_sheet.png` |
+
+### ⚠ raised
+
+| ⚠ | Decision |
+|---|---|
+| SALSA has no export | raw merit shipped, labelled everywhere; asserted |
+| pupil band weights the whole unit, not the year-9 cohort | used and stated; no silent correction |
+| Robertsfors has no published result | stays blank; named in the test |
+| the survey covers ~half the country per round | two rounds unioned, each school carries its year |
+| a raw merit value tracks intake as much as teaching | said in the indicator note and on the datasheet |
+

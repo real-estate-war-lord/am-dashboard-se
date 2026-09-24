@@ -51,6 +51,8 @@ def main() -> int:
         "regso": makro.get("regso", []),
         "deso_index": makro.get("deso_index", {}),
         "src_periods": makro.get("src_periods", {}),
+        "schools_index": makro.get("schools_index", {}),
+        "schools_meta": makro.get("schools_meta", {}),
         "macro": market,
     }
     payload = json.dumps(data, ensure_ascii=False, separators=(",", ":")).replace("</script", "<\\/script")
@@ -64,6 +66,16 @@ def main() -> int:
     out = pathlib.Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(html, encoding="utf-8")
+
+    # the on-demand school point files travel next to the page
+    src_sch = PROC / "schools"
+    n_sch = 0
+    if src_sch.exists():
+        dsch = out.parent / "schools"
+        if dsch.exists():
+            shutil.rmtree(dsch)
+        shutil.copytree(src_sch, dsch)
+        n_sch = len(list(dsch.glob("*.json")))
 
     # the on-demand DeSO files travel next to the page
     src_deso = PROC / "deso"
@@ -88,6 +100,8 @@ def main() -> int:
           f"{len(data['indicators'])} indicators · {len(market.get('series') or {})} macro series")
     if n_deso:
         print(f"copied {n_deso} DeSO files → {out.parent / 'deso'}")
+    if n_sch:
+        print(f"copied {n_sch} school files → {out.parent / 'schools'}")
     if n_ov:
         print(f"copied {n_ov} overlay layer(s) → {out.parent}")
     miss = market.get("missing") or []

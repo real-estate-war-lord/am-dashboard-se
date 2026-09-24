@@ -26,3 +26,5 @@ tests/fixture_*.json
 data/processed/portfolio.json
 data/raw/bra/
 data/raw/polisen/
+data/raw/skolverket/
+data/raw/skolenkaten/

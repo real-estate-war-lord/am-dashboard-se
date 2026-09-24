@@ -51,6 +51,10 @@ PAGE_ONLY = {
     # kommun's figure, so the honest "verify at source" is the selection form
     # itself, which is where a reader would go to rebuild the query by hand.
     # Brå's own page states it has no public open-data API.
+    # Skolverket's API answers per school, not per area, so the verifiable route
+    # is the school-unit endpoint the figures are built from.
+    "skolverket": ("Skolverket, planned-educations v4",
+                   "https://api.skolverket.se/planned-educations/v4/school-units"),
     # Polisen publishes the designation as one file, so the verifiable thing is
     # that file itself plus the report that explains the classes.
     "polisen": ("Polismyndigheten, utsatta områden 2025",

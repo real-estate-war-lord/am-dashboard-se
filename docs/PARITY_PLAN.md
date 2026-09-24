@@ -14,7 +14,7 @@ the phase checklist below, pick the first unticked phase, and read
 - [x] **Phase 1** — UI foundation from DK v2.0–v2.5.1
 - [x] **Phase 2** — Population outlook (demographics)
 - [x] **Phase 3** — Safety (crime)
-- [ ] **Phase 4** — Schools
+- [x] **Phase 4** — Schools
 - [ ] **Phase 5** — Test property + Analysis + Compare
 - [ ] **Phase 6** — Climate risk
 - [ ] **Phase 7** — Overlays: Services, Public buildings, Infra
@@ -45,6 +45,12 @@ Polisen's designated areas intersected into kommun/RegSO/DeSO. verify_bra.py: **
 of 30 match a fresh SOL session**, burglary denominators from the SCB API. Clearance
 omitted — not published per kommun. Six bugs found, the worst being the designation
 inheriting down so the whole of Stockholm read as 4.4 % police-designated.
+
+**Phase 4** — 1 791 schools with year 9 from Skolverket v4 (~3 600 throttled calls),
+eight indicators, Schools overlay with a grade quintile ramp and a datasheet.
+verify_schools.py: **55 of 55 match the API**, suppression reasons intact.
+SALSA has no bulk export anywhere — raw merit shipped and labelled as such.
+Skolenkäten joined for 1 551 schools by unioning the 2025 and 2026 rounds.
 
 _(each phase appends a 5-line status here when it is ticked)_
 

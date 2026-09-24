@@ -651,9 +651,48 @@ def main() -> int:
                                           {y: {"kommun": y} for y in years}))
             print(f"  {key:14s} kommun:{len(byyear[last])} · {years[0]}–{last}")
             continue
-        if any(s.get("db") not in ("scb", "bra", "polisen") for s in srcs):
+        if any(s.get("db") not in ("scb", "bra", "polisen", "skolverket") for s in srcs):
             indicators_out.append(meta_of(ind, {}, {}))
             warn(f"{key}: no SCB source on disk — renders as 'no data'")
+            continue
+
+        sk = next((x for x in srcs if x.get("db") == "skolverket"), None)
+        if sk:
+            sp = PROC / "schools.json"
+            if not sp.exists():
+                indicators_out.append(meta_of(ind, {}, {}))
+                warn(f"{key}: data/processed/schools.json missing — run 'make schools'")
+                continue
+            sj = json.loads(sp.read_text(encoding="utf-8"))
+            col = sk["col"]
+            n = 0
+            asof_s = {}
+            for level, tgt in ENT.items():
+                for code, row in ((sj.get("areas") or {}).get(level) or {}).items():
+                    v = row.get(col)
+                    if v is None:
+                        continue
+                    e = tgt.get(code)
+                    if e is None:
+                        continue
+                    e[key] = v
+                    if row.get(col + "_n") is not None:
+                        e[key + "_n"] = row[col + "_n"]
+                    n += 1
+                per = ((sj.get("meta") or {}).get("periods") or {}).get(col) or []
+                # a count has no publication period; its "as of" is the day the
+                # register was pulled
+                if per:
+                    asof_s[level] = per[0]
+                elif col in ("trygghet", "studiero"):
+                    ys = ((sj.get("meta") or {}).get("enkat") or {}).get("years") or []
+                    asof_s[level] = "+".join(ys) if ys else ""
+                else:
+                    asof_s[level] = (sj.get("meta") or {}).get("fetched") or ""
+            m = meta_of(ind, asof_s, {})
+            m["schools"] = True
+            indicators_out.append(m)
+            print(f"  {key:14s} {n} areas · {asof_s.get('kommun', '')}")
             continue
 
         pol = next((x for x in srcs if x.get("db") == "polisen"), None)
@@ -978,6 +1017,11 @@ def main() -> int:
             "warnings": warnings,
         },
         "indicators": indicators_out,
+        # the Schools overlay: manifest inline, points fetched per kommun
+        "schools_index": (json.loads((PROC / "schools.json").read_text(encoding="utf-8"))
+                          if (PROC / "schools.json").exists() else {}).get("index", {}),
+        "schools_meta": (json.loads((PROC / "schools.json").read_text(encoding="utf-8"))
+                         if (PROC / "schools.json").exists() else {}).get("meta", {}),
         # shared by every verify-at-source link on a monthly or quarterly table:
         # a year is not a Tid code there, so the page needs the real period codes
         "src_periods": src_periods,

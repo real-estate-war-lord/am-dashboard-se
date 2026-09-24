@@ -431,7 +431,7 @@ function ovLegends() {
     if (e2) e2.innerHTML = (ovOn(o) && o.legend) ? o.legend() : "";
   }
 }
-const GROUP_ORDER = ["Demographics", "Outlook", "Safety", "Income & jobs", "Housing stock", "Rents", "Prices & market", "Construction", "Municipal finances", "Area quality"];
+const GROUP_ORDER = ["Demographics", "Outlook", "Safety", "Schools", "Income & jobs", "Housing stock", "Rents", "Prices & market", "Construction", "Municipal finances", "Area quality"];
 function indSelect() {
   const L = curInds();
   const groups = GROUP_ORDER.filter(gname => L.some(i => (i.group || "Other") === gname)).concat(L.some(i => !GROUP_ORDER.includes(i.group || "Other")) ? ["Other"] : []);
@@ -1314,7 +1314,208 @@ function usoLegend() {
     `<div class="lgnote">Källa: Polismyndigheten. A police assessment of an area's conditions, not a rating of its residents.</div>`;
 }
 
+/* ---------- Schools overlay ----------
+   1 791 points nationally, so they travel one file per kommun and are fetched
+   only for the kommuner in view, nearest first and capped per pass — the same
+   convention as the DeSO polygons. Below SCH_ZOOM nothing is drawn at all: a
+   thousand dots over a national map is noise, not information. */
+const SCH_IDX = D.schools_index || {};
+const SCH_META = D.schools_meta || {};
+const SCH = {};                        /* kommun code -> [school, …] */
+const SCH_ZOOM = 9, SCH_MAX_FILES = 24;
+function schLoad(code) {
+  if (!code || SCH[code] || SCH["_l_" + code] || !SCH_IDX[code]) return;
+  SCH["_l_" + code] = true;
+  fetch("schools/" + code + ".json").then(r => r.json()).then(j => {
+    SCH[code] = j; delete SCH["_l_" + code]; lfOverlays(); ovLegends();
+  }).catch(() => { SCH[code] = []; delete SCH["_l_" + code]; });
+}
+function schLoadVisible() {
+  if (!LF.map || LF.map.getZoom() < SCH_ZOOM) return;
+  const b = LF.map.getBounds(), c = b.getCenter();
+  const want = [];
+  for (const code in SCH_IDX) {
+    const bb = SCH_IDX[code].bbox;            /* [S, W, N, E] */
+    if (!bb || bb[0] > b.getNorth() || bb[2] < b.getSouth() ||
+        bb[1] > b.getEast() || bb[3] < b.getWest()) continue;
+    if (SCH[code] || SCH["_l_" + code]) continue;
+    want.push([code, Math.hypot((bb[0] + bb[2]) / 2 - c.lat, (bb[1] + bb[3]) / 2 - c.lng)]);
+  }
+  want.sort((x, y) => x[1] - y[1]);
+  want.slice(0, SCH_MAX_FILES).forEach(([code]) => schLoad(code));
+}
+const schInView = () => {
+  if (!LF.map) return [];
+  const b = LF.map.getBounds(), out = [];
+  for (const code in SCH) {
+    if (code.startsWith("_l_") || !Array.isArray(SCH[code])) continue;
+    for (const s of SCH[code]) if (b.contains([s.lat, s.lon])) out.push(s);
+  }
+  return out;
+};
+/* Grade colour mode: a 5-step quintile ramp over the schools actually in view,
+   not a fixed national scale, so the contrast is useful wherever you are. A
+   school with no merit value keeps the base hue, hollow — never the bottom bin,
+   which would read as "worst" when it means "not published". */
+const SCH_BASE = "#3E6B8C";
+function schScale() {
+  const vals = schInView().map(s => s.merit).filter(v => v != null).sort((a, b) => a - b);
+  if (vals.length < 5) return null;
+  const q = p => vals[Math.min(vals.length - 1, Math.floor(p * vals.length))];
+  return [q(.2), q(.4), q(.6), q(.8)];
+}
+const SCH_RAMP = ["#D9E2E8", "#A8C0D0", "#6E93AE", "#41708F", "#1F4A6B"];
+function schColor(v, br) {
+  if (v == null || !br) return null;
+  let k = 0; while (k < br.length && v > br[k]) k++;
+  return SCH_RAMP[k];
+}
+function schBuild() {
+  schLoadVisible();
+  if (!LF.map) return;
+  lfDrop("schLayer");
+  if (LF.map.getZoom() < SCH_ZOOM) { LF.schDrawn = false; return; }
+  const br = schScale();
+  const g = L.layerGroup();
+  for (const s of schInView()) {
+    const col = schColor(s.merit, br);
+    const m = L.circleMarker([s.lat, s.lon], {
+      radius: 5, weight: 1.4,
+      color: col || SCH_BASE, fillColor: col || "#FFFFFF",
+      fillOpacity: col ? .92 : .15, renderer: LF.schCanvas || undefined,
+    });
+    m.bindPopup(() => schPopup(s), { maxWidth: 320, className: "lfpopw" });
+    m.addTo(g);
+  }
+  g.addTo(LF.map); LF.schLayer = g; LF.schDrawn = true;
+}
+const schAreaRow = (lab, v, f) => v == null ? "" :
+  `<span class="lfrow"><span>${esc(lab)}</span><b>${f(v)}</b></span>`;
+function schPopup(s) {
+  const km = byCode[s.kommun];
+  const iM = indOf("school_merit");
+  const f1 = v => nf(v, 1);
+  const cmp = (v, areaV, lab) => (v == null || areaV == null) ? "" :
+    `<span class="lfrow"><span>vs ${esc(lab)}</span><b class="${cls(v - areaV, "school_merit")}">${sign(v - areaV, x => nf(x, 1))}</b></span>`;
+  const nat = SCH_META.national_merit;
+  const why = s.merit == null ? (s.merit_why === "OMITTED_DUE_TO_BASED_ON_FEW_PUPILS"
+      ? "not published — too few pupils" : "not published") : "";
+  return `<div class="lfpop"><b>${esc(s.name)}</b>
+    <span class="dim">${esc(km ? km.name : s.kommun)}${s.principal ? " · " + esc(s.principal) : ""}${s.pupils ? " · ca " + nf(s.pupils, 0) + " pupils" : ""}</span>
+    <div class="lfbig"><span>Merit value, year 9${s.merit_period ? " · " + esc(s.merit_period) : ""}</span>
+      <b>${s.merit != null ? f1(s.merit) : "–"}</b><em>${esc(why)}</em></div>
+    <div class="lfrows">
+      ${cmp(s.merit, km && km.school_merit, km ? km.name : "kommun")}
+      ${nat != null ? cmp(s.merit, nat, "Sweden") : ""}
+      ${schAreaRow("Passed all subjects", s.passed, v => nf(v, 1) + " %")}
+      ${schAreaRow("Eligible for gymnasium", s.eligible, v => nf(v, 1) + " %")}
+      ${schAreaRow("Certified teachers", s.certified, v => nf(v, 1) + " %")}
+      ${schAreaRow("Pupils per teacher", s.per_teacher, f1)}
+    </div>
+    <span class="lfact"><button class="lk mini primary" data-go="school/${esc(s.code)}">School page ›</button>${km ? `<button class="lk mini" data-go="${withQ(`area/kommun/${km.code}`)}">${esc(km.name)} ›</button>` : ""}</span>
+    <p class="cap">Källa: Skolverket${s.merit_period ? " · " + esc(s.merit_period) : ""}. Raw merit value, not adjusted for pupil background.</p></div>`;
+}
+function schLegend() {
+  const inView = schInView();
+  if (!inView.length) {
+    return `<div class="lgtitle">Schools<span>${LF.map && LF.map.getZoom() < SCH_ZOOM ? "zoom in to show" : "loading…"}</span></div>`;
+  }
+  const br = schScale();
+  const withV = inView.filter(s => s.merit != null).length;
+  const rows = br ? SCH_RAMP.map((c, k) => {
+    const lab = k === 0 ? `≤ ${nf(br[0], 0)}` : k === 4 ? `> ${nf(br[3], 0)}`
+      : `${nf(br[k - 1], 0)} – ${nf(br[k], 0)}`;
+    return `<div class="lgrow"><i style="background:${c}"></i>${lab}</div>`;
+  }).reverse().join("") : "";
+  return `<div class="lgtitle">Schools with year 9<span>merit value · ${inView.length} in view</span></div>` +
+    rows +
+    `<div class="lgrow"><i style="background:#FFFFFF;border:1.4px solid ${SCH_BASE}"></i>not published</div>` +
+    `<div class="lgnote">Quintiles of the ${withV} schools in view. Källa: Skolverket. Raw merit value — not SALSA-adjusted.</div>`;
+}
+
+/* ---------- the school datasheet ---------- */
+SHEETS.school = {
+  label: "School",
+  missing: "That school is not in this build — it may not teach year 9.",
+  crumb: parts => {
+    const s = schFind(parts[0]);
+    return s ? s.name : parts[0];
+  },
+  render: parts => {
+    const s = schFind(parts[0]);
+    if (!s) { schLoadAll(parts[0]); return { missing: null, title: "", tags: [], body: `<div class="card"><p class="empty">Loading…</p></div>` }; }
+    const km = byCode[s.kommun];
+    const tile = (lab, v, f, sub) => v == null ? "" :
+      `<div><span>${esc(lab)}</span><b>${f(v)}</b>${sub ? `<em>${esc(sub)}</em>` : ""}</div>`;
+    const row = (lab, v, f, why) => `<tr><th>${esc(lab)}</th><td class="num">${v == null ? `–<span class="dim"> ${esc(why || "")}</span>` : f(v)}</td></tr>`;
+    return {
+      title: s.name,
+      tags: [km ? km.name : s.kommun, s.principal || "", s.pupils ? `ca ${nf(s.pupils, 0)} pupils` : "",
+             `code ${s.code}`].filter(Boolean),
+      tools: `<button class="lk" data-go="map/${esc(s.kommun)}?ind=school_merit&sch=1">Show on map</button>` +
+             (km ? `<button class="lk" data-go="${withQ(`area/kommun/${km.code}`)}">${esc(km.name)} ›</button>` : ""),
+      tiles: `<div class="hl">
+        ${tile("Merit value", s.merit, v => nf(v, 1), s.merit_period)}
+        ${tile("Passed all subjects", s.passed, v => nf(v, 1) + " %", s.passed_period)}
+        ${tile("Eligible for gymnasium", s.eligible, v => nf(v, 1) + " %", s.eligible_period)}
+        ${tile("Certified teachers", s.certified, v => nf(v, 1) + " %", s.certified_period)}
+        ${tile("Pupils per teacher", s.per_teacher, v => nf(v, 1), s.per_teacher_period)}
+      </div>`,
+      body: `<div class="grid-2">
+        <div class="card"><h3>Year 9 results</h3>
+          <table class="tbl compact"><tbody>
+          ${row("Merit value (max 340)", s.merit, v => nf(v, 1), s.merit_why)}
+          ${row("Passed all subjects", s.passed, v => nf(v, 1) + " %", s.passed_why)}
+          ${row("Eligible for gymnasium (YR)", s.eligible, v => nf(v, 1) + " %", s.eligible_why)}
+          ${row("National test, Swedish", s.nt_sve, v => nf(v, 1), s.nt_sve_why)}
+          ${row("National test, English", s.nt_eng, v => nf(v, 1), s.nt_eng_why)}
+          ${row("National test, maths", s.nt_ma, v => nf(v, 1), s.nt_ma_why)}
+          </tbody></table>
+          <p class="cap">A dash means Skolverket did not publish the figure — most often because too few pupils sat it. It is never a zero.</p></div>
+        <div class="card"><h3>Context</h3>
+          <table class="tbl compact"><tbody>
+          ${row("Kommun mean (pupil-weighted)", km && km.school_merit, v => nf(v, 1))}
+          ${row("Schools with year 9 in the kommun", km && km.schools_n, v => nf(v, 0))}
+          ${row("Certified teachers", s.certified, v => nf(v, 1) + " %", s.certified_why)}
+          ${row("Pupils per teacher", s.per_teacher, v => nf(v, 1), s.per_teacher_why)}
+          </tbody></table>
+          <p class="cap"><b>Not SALSA-adjusted.</b> This is the raw merit value. Skolverket's SALSA model, which accounts for pupil background, has no machine-readable export, so the residual it produces is not shown here. A raw merit value tracks the intake, not only the teaching.</p>
+          <p class="cap">Källa: Skolverket, planned-educations v4${s.merit_period ? ` · ${esc(s.merit_period)}` : ""}.</p></div>
+      </div>`,
+    };
+  },
+};
+function schFind(code) {
+  for (const k in SCH) {
+    if (!Array.isArray(SCH[k])) continue;
+    const hit = SCH[k].find(s => s.code === code);
+    if (hit) return hit;
+  }
+  return null;
+}
+let SCH_ALL_TRIED = false;
+function schLoadAll(code) {
+  /* a datasheet opened from a link has no map context, so find the school by
+     walking the kommun files once */
+  if (SCH_ALL_TRIED) return;
+  SCH_ALL_TRIED = true;
+  const codes = Object.keys(SCH_IDX);
+  let i = 0;
+  const step = () => {
+    if (i >= codes.length || schFind(code)) { render(); return; }
+    const batch = codes.slice(i, i + 40); i += 40;
+    Promise.all(batch.map(c => SCH[c] ? null :
+      fetch("schools/" + c + ".json").then(r => r.json()).then(j => { SCH[c] = j; }).catch(() => {})))
+      .then(() => { if (schFind(code)) render(); else step(); });
+  };
+  step();
+}
+
 const OV = [
+  { id: "sch", label: "Schools", flag: "sch",
+    title: "Show every school with year 9; colour by merit value (zoom in to see them)",
+    avail: () => Object.keys(SCH_IDX).length > 0,
+    build: schBuild, legend: schLegend },
   { id: "uso", label: "Vulnerable areas", flag: "uso",
     title: "Outline the areas the police have designated as utsatt or särskilt utsatt (Dec 2025)",
     build: usoBuild, legend: usoLegend },
@@ -1408,6 +1609,12 @@ function lfInit() {
     if (lvl !== LF.level) lfLayers(); else lfLabels();
     lfOverlays();
   });
+  /* one canvas renderer per map, in its own pane under the popups — a thousand
+     circleMarkers as SVG is what makes a map crawl. The guard in lfGuardCanvas
+     is what keeps it from throwing once this map is replaced. */
+  map.createPane("schpane");
+  map.getPane("schpane").style.zIndex = 450;
+  LF.schCanvas = L.canvas({ pane: "schpane", padding: 0.3 });
   map.on("moveend", lfOverlays);
   lfLayers();
   lfOverlays();

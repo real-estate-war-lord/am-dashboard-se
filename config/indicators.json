@@ -6249,6 +6249,470 @@
     }
    ],
    "no_inherit": true
+  },
+  {
+   "key": "school_merit",
+   "label": "Merit value, year 9",
+   "short": "Merit",
+   "unit": "points (max 340)",
+   "level": "deso",
+   "levels": [
+    "kommun",
+    "regso",
+    "deso"
+   ],
+   "hue": [
+    40,
+    90,
+    120
+   ],
+   "sources": [
+    {
+     "db": "skolverket",
+     "col": "merit",
+     "geo": "all",
+     "table": "planned-educations v4"
+    }
+   ],
+   "calc": "schools_mean",
+   "fmt": "num1",
+   "moe": null,
+   "desc": "Average merit value for year 9, pupil-weighted across the schools in the area. Sixteen or seventeen subjects, A=20 down to E=10, so the maximum is 340.",
+   "source": "Skolverket, planned-educations v4 (year 9)",
+   "group": "Schools",
+   "direction": "higher_better",
+   "direction_note": "a higher merit value is the sound end, but it tracks pupil background closely — read it with the area's income and education indicators",
+   "chip": false,
+   "warn": "Pupil-weighted mean of the values Skolverket publishes per school. The weight is Skolverket's own rounded pupil band ('cirka 590') for the whole school unit, not the year-9 cohort — it is the only size measure published. Schools whose value is suppressed for having too few pupils are left out of the mean, never counted as zero. NOT adjusted for pupil background: this is the raw figure, which is what SALSA exists to correct, and SALSA has no bulk export.",
+   "src_verify": [
+    {
+     "level": "kommun",
+     "db": "skolverket",
+     "publisher": "Skolverket, planned-educations v4",
+     "label": "Skolverket, planned-educations v4",
+     "page": "https://api.skolverket.se/planned-educations/v4/school-units"
+    },
+    {
+     "level": "regso",
+     "db": "skolverket",
+     "publisher": "Skolverket, planned-educations v4",
+     "label": "Skolverket, planned-educations v4",
+     "page": "https://api.skolverket.se/planned-educations/v4/school-units"
+    },
+    {
+     "level": "deso",
+     "db": "skolverket",
+     "publisher": "Skolverket, planned-educations v4",
+     "label": "Skolverket, planned-educations v4",
+     "page": "https://api.skolverket.se/planned-educations/v4/school-units"
+    }
+   ]
+  },
+  {
+   "key": "school_passed",
+   "label": "Passed all subjects, year 9",
+   "short": "Passed all",
+   "unit": "% of pupils",
+   "level": "deso",
+   "levels": [
+    "kommun",
+    "regso",
+    "deso"
+   ],
+   "hue": [
+    40,
+    90,
+    120
+   ],
+   "sources": [
+    {
+     "db": "skolverket",
+     "col": "passed",
+     "geo": "all",
+     "table": "planned-educations v4"
+    }
+   ],
+   "calc": "schools_mean",
+   "fmt": "pct1",
+   "moe": null,
+   "desc": "Share of year-9 pupils with a pass in every subject, pupil-weighted.",
+   "source": "Skolverket, planned-educations v4 (year 9)",
+   "group": "Schools",
+   "direction": "higher_better",
+   "direction_note": "a higher share is the sound end",
+   "chip": false,
+   "warn": "Pupil-weighted mean of the values Skolverket publishes per school. The weight is Skolverket's own rounded pupil band ('cirka 590') for the whole school unit, not the year-9 cohort — it is the only size measure published. Schools whose value is suppressed for having too few pupils are left out of the mean, never counted as zero. NOT adjusted for pupil background: this is the raw figure, which is what SALSA exists to correct, and SALSA has no bulk export.",
+   "src_verify": [
+    {
+     "level": "kommun",
+     "db": "skolverket",
+     "publisher": "Skolverket, planned-educations v4",
+     "label": "Skolverket, planned-educations v4",
+     "page": "https://api.skolverket.se/planned-educations/v4/school-units"
+    },
+    {
+     "level": "regso",
+     "db": "skolverket",
+     "publisher": "Skolverket, planned-educations v4",
+     "label": "Skolverket, planned-educations v4",
+     "page": "https://api.skolverket.se/planned-educations/v4/school-units"
+    },
+    {
+     "level": "deso",
+     "db": "skolverket",
+     "publisher": "Skolverket, planned-educations v4",
+     "label": "Skolverket, planned-educations v4",
+     "page": "https://api.skolverket.se/planned-educations/v4/school-units"
+    }
+   ]
+  },
+  {
+   "key": "school_eligible",
+   "label": "Eligible for gymnasium",
+   "short": "Eligible",
+   "unit": "% of pupils",
+   "level": "deso",
+   "levels": [
+    "kommun",
+    "regso",
+    "deso"
+   ],
+   "hue": [
+    40,
+    90,
+    120
+   ],
+   "sources": [
+    {
+     "db": "skolverket",
+     "col": "eligible",
+     "geo": "all",
+     "table": "planned-educations v4"
+    }
+   ],
+   "calc": "schools_mean",
+   "fmt": "pct1",
+   "moe": null,
+   "desc": "Share of year-9 pupils eligible for a national vocational programme (yrkesprogram), pupil-weighted.",
+   "source": "Skolverket, planned-educations v4 (year 9)",
+   "group": "Schools",
+   "direction": "higher_better",
+   "direction_note": "a higher share is the sound end",
+   "chip": false,
+   "warn": "Pupil-weighted mean of the values Skolverket publishes per school. The weight is Skolverket's own rounded pupil band ('cirka 590') for the whole school unit, not the year-9 cohort — it is the only size measure published. Schools whose value is suppressed for having too few pupils are left out of the mean, never counted as zero. NOT adjusted for pupil background: this is the raw figure, which is what SALSA exists to correct, and SALSA has no bulk export.",
+   "src_verify": [
+    {
+     "level": "kommun",
+     "db": "skolverket",
+     "publisher": "Skolverket, planned-educations v4",
+     "label": "Skolverket, planned-educations v4",
+     "page": "https://api.skolverket.se/planned-educations/v4/school-units"
+    },
+    {
+     "level": "regso",
+     "db": "skolverket",
+     "publisher": "Skolverket, planned-educations v4",
+     "label": "Skolverket, planned-educations v4",
+     "page": "https://api.skolverket.se/planned-educations/v4/school-units"
+    },
+    {
+     "level": "deso",
+     "db": "skolverket",
+     "publisher": "Skolverket, planned-educations v4",
+     "label": "Skolverket, planned-educations v4",
+     "page": "https://api.skolverket.se/planned-educations/v4/school-units"
+    }
+   ]
+  },
+  {
+   "key": "school_certified",
+   "label": "Certified teachers",
+   "short": "Certified",
+   "unit": "% of teachers",
+   "level": "deso",
+   "levels": [
+    "kommun",
+    "regso",
+    "deso"
+   ],
+   "hue": [
+    40,
+    90,
+    120
+   ],
+   "sources": [
+    {
+     "db": "skolverket",
+     "col": "certified",
+     "geo": "all",
+     "table": "planned-educations v4"
+    }
+   ],
+   "calc": "schools_mean",
+   "fmt": "pct1",
+   "moe": null,
+   "desc": "Share of teaching staff with a teaching certificate, pupil-weighted.",
+   "source": "Skolverket, planned-educations v4 (year 9)",
+   "group": "Schools",
+   "direction": "higher_better",
+   "direction_note": "a higher share is the sound end",
+   "chip": false,
+   "warn": "Pupil-weighted mean of the values Skolverket publishes per school. The weight is Skolverket's own rounded pupil band ('cirka 590') for the whole school unit, not the year-9 cohort — it is the only size measure published. Schools whose value is suppressed for having too few pupils are left out of the mean, never counted as zero. NOT adjusted for pupil background: this is the raw figure, which is what SALSA exists to correct, and SALSA has no bulk export.",
+   "src_verify": [
+    {
+     "level": "kommun",
+     "db": "skolverket",
+     "publisher": "Skolverket, planned-educations v4",
+     "label": "Skolverket, planned-educations v4",
+     "page": "https://api.skolverket.se/planned-educations/v4/school-units"
+    },
+    {
+     "level": "regso",
+     "db": "skolverket",
+     "publisher": "Skolverket, planned-educations v4",
+     "label": "Skolverket, planned-educations v4",
+     "page": "https://api.skolverket.se/planned-educations/v4/school-units"
+    },
+    {
+     "level": "deso",
+     "db": "skolverket",
+     "publisher": "Skolverket, planned-educations v4",
+     "label": "Skolverket, planned-educations v4",
+     "page": "https://api.skolverket.se/planned-educations/v4/school-units"
+    }
+   ]
+  },
+  {
+   "key": "school_per_teacher",
+   "label": "Pupils per teacher",
+   "short": "Per teacher",
+   "unit": "pupils",
+   "level": "deso",
+   "levels": [
+    "kommun",
+    "regso",
+    "deso"
+   ],
+   "hue": [
+    40,
+    90,
+    120
+   ],
+   "sources": [
+    {
+     "db": "skolverket",
+     "col": "per_teacher",
+     "geo": "all",
+     "table": "planned-educations v4"
+    }
+   ],
+   "calc": "schools_mean",
+   "fmt": "num1",
+   "moe": null,
+   "desc": "Pupils per full-time-equivalent teacher, pupil-weighted.",
+   "source": "Skolverket, planned-educations v4 (year 9)",
+   "group": "Schools",
+   "direction": "neutral",
+   "direction_note": "a smaller group is not automatically better teaching, and the figure moves with the school's year span",
+   "chip": false,
+   "warn": "Pupil-weighted mean of the values Skolverket publishes per school. The weight is Skolverket's own rounded pupil band ('cirka 590') for the whole school unit, not the year-9 cohort — it is the only size measure published. Schools whose value is suppressed for having too few pupils are left out of the mean, never counted as zero. NOT adjusted for pupil background: this is the raw figure, which is what SALSA exists to correct, and SALSA has no bulk export.",
+   "src_verify": [
+    {
+     "level": "kommun",
+     "db": "skolverket",
+     "publisher": "Skolverket, planned-educations v4",
+     "label": "Skolverket, planned-educations v4",
+     "page": "https://api.skolverket.se/planned-educations/v4/school-units"
+    },
+    {
+     "level": "regso",
+     "db": "skolverket",
+     "publisher": "Skolverket, planned-educations v4",
+     "label": "Skolverket, planned-educations v4",
+     "page": "https://api.skolverket.se/planned-educations/v4/school-units"
+    },
+    {
+     "level": "deso",
+     "db": "skolverket",
+     "publisher": "Skolverket, planned-educations v4",
+     "label": "Skolverket, planned-educations v4",
+     "page": "https://api.skolverket.se/planned-educations/v4/school-units"
+    }
+   ]
+  },
+  {
+   "key": "schools_n",
+   "label": "Schools with year 9",
+   "short": "Schools",
+   "unit": "schools",
+   "level": "deso",
+   "levels": [
+    "kommun",
+    "regso",
+    "deso"
+   ],
+   "hue": [
+    40,
+    90,
+    120
+   ],
+   "sources": [
+    {
+     "db": "skolverket",
+     "col": "schools_n",
+     "geo": "all",
+     "table": "planned-educations v4"
+    }
+   ],
+   "calc": "schools_mean",
+   "fmt": "int",
+   "moe": null,
+   "desc": "Number of school units in the area that teach year 9.",
+   "source": "Skolverket, planned-educations v4 (year 9)",
+   "group": "Schools",
+   "direction": "neutral",
+   "direction_note": "a count, not a score",
+   "chip": false,
+   "warn": "Pupil-weighted mean of the values Skolverket publishes per school. The weight is Skolverket's own rounded pupil band ('cirka 590') for the whole school unit, not the year-9 cohort — it is the only size measure published. Schools whose value is suppressed for having too few pupils are left out of the mean, never counted as zero. NOT adjusted for pupil background: this is the raw figure, which is what SALSA exists to correct, and SALSA has no bulk export.",
+   "src_verify": [
+    {
+     "level": "kommun",
+     "db": "skolverket",
+     "publisher": "Skolverket, planned-educations v4",
+     "label": "Skolverket, planned-educations v4",
+     "page": "https://api.skolverket.se/planned-educations/v4/school-units"
+    },
+    {
+     "level": "regso",
+     "db": "skolverket",
+     "publisher": "Skolverket, planned-educations v4",
+     "label": "Skolverket, planned-educations v4",
+     "page": "https://api.skolverket.se/planned-educations/v4/school-units"
+    },
+    {
+     "level": "deso",
+     "db": "skolverket",
+     "publisher": "Skolverket, planned-educations v4",
+     "label": "Skolverket, planned-educations v4",
+     "page": "https://api.skolverket.se/planned-educations/v4/school-units"
+    }
+   ]
+  },
+  {
+   "key": "school_trygghet",
+   "label": "Pupil-reported safety at school",
+   "short": "Trygghet",
+   "unit": "index 0–10",
+   "level": "deso",
+   "levels": [
+    "kommun",
+    "regso",
+    "deso"
+   ],
+   "hue": [
+    60,
+    110,
+    95
+   ],
+   "sources": [
+    {
+     "db": "skolverket",
+     "col": "trygghet",
+     "geo": "all",
+     "table": "Skolenkäten åk 8"
+    }
+   ],
+   "calc": "schools_mean",
+   "fmt": "num2",
+   "moe": null,
+   "desc": "Skolinspektionen's Trygghet index from the year-8 pupil survey: four questions about feeling safe at school, scored 0–10 and averaged.",
+   "source": "Skolinspektionen, Skolenkäten (year 8)",
+   "group": "Schools",
+   "direction": "higher_better",
+   "direction_note": "pupils reporting they feel safe is the sound end",
+   "chip": false,
+   "warn": "Skolinspektionen's pupil survey of year 8. It runs on a roughly two-year rotation, so this is the union of the 2025 and 2026 rounds and a school carries the year it took part. An index needs at least five respondents; a school below that is blank, not 0. Pupil-weighted across the schools in the area using Skolverket's rounded pupil band.",
+   "src_verify": [
+    {
+     "level": "kommun",
+     "db": "skolverket",
+     "publisher": "Skolverket, planned-educations v4",
+     "label": "Skolverket, planned-educations v4",
+     "page": "https://api.skolverket.se/planned-educations/v4/school-units"
+    },
+    {
+     "level": "regso",
+     "db": "skolverket",
+     "publisher": "Skolverket, planned-educations v4",
+     "label": "Skolverket, planned-educations v4",
+     "page": "https://api.skolverket.se/planned-educations/v4/school-units"
+    },
+    {
+     "level": "deso",
+     "db": "skolverket",
+     "publisher": "Skolverket, planned-educations v4",
+     "label": "Skolverket, planned-educations v4",
+     "page": "https://api.skolverket.se/planned-educations/v4/school-units"
+    }
+   ]
+  },
+  {
+   "key": "school_studiero",
+   "label": "Pupil-reported study calm",
+   "short": "Studiero",
+   "unit": "index 0–10",
+   "level": "deso",
+   "levels": [
+    "kommun",
+    "regso",
+    "deso"
+   ],
+   "hue": [
+    80,
+    100,
+    130
+   ],
+   "sources": [
+    {
+     "db": "skolverket",
+     "col": "studiero",
+     "geo": "all",
+     "table": "Skolenkäten åk 8"
+    }
+   ],
+   "calc": "schools_mean",
+   "fmt": "num2",
+   "moe": null,
+   "desc": "Skolinspektionen's Studiero index from the year-8 pupil survey: how often lessons are calm enough to work in, scored 0–10 and averaged.",
+   "source": "Skolinspektionen, Skolenkäten (year 8)",
+   "group": "Schools",
+   "direction": "higher_better",
+   "direction_note": "calmer lessons are the sound end",
+   "chip": false,
+   "warn": "Skolinspektionen's pupil survey of year 8. It runs on a roughly two-year rotation, so this is the union of the 2025 and 2026 rounds and a school carries the year it took part. An index needs at least five respondents; a school below that is blank, not 0. Pupil-weighted across the schools in the area using Skolverket's rounded pupil band.",
+   "src_verify": [
+    {
+     "level": "kommun",
+     "db": "skolverket",
+     "publisher": "Skolverket, planned-educations v4",
+     "label": "Skolverket, planned-educations v4",
+     "page": "https://api.skolverket.se/planned-educations/v4/school-units"
+    },
+    {
+     "level": "regso",
+     "db": "skolverket",
+     "publisher": "Skolverket, planned-educations v4",
+     "label": "Skolverket, planned-educations v4",
+     "page": "https://api.skolverket.se/planned-educations/v4/school-units"
+    },
+    {
+     "level": "deso",
+     "db": "skolverket",
+     "publisher": "Skolverket, planned-educations v4",
+     "label": "Skolverket, planned-educations v4",
+     "page": "https://api.skolverket.se/planned-educations/v4/school-units"
+    }
+   ]
   }
  ],
  "src_periods": {

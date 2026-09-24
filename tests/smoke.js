@@ -380,6 +380,53 @@ assert("the designation line carries its date",
 assert("and no line at all where there is no designation",
   usoLine(D.regso.find(a => a.vulnerable_area_share == null)) === "", "empty");
 
+/* ---- v1.2 Schools ----
+   The trap here is a suppressed value becoming a zero: Skolverket withholds a
+   figure when too few pupils sat it, and a zero merit value would drag an area
+   average down and colour the map wrong. */
+console.log("\nschools:");
+const SCHI = D.indicators.filter(i => i.group === "Schools");
+assert("eight Schools indicators", SCHI.length === 8, SCHI.map(i => i.key).join(", "));
+assert("none of them is a quick chip", SCHI.every(i => i.chip !== true), "hidden from the chip row");
+assert("the schools manifest ships", Object.keys(D.schools_index || {}).length === 290,
+  `${Object.keys(D.schools_index || {}).length} kommuner`);
+const totalSchools = Object.values(D.schools_index).reduce((a, b) => a + b.n, 0);
+assert("1 791 schools with year 9 and coordinates", totalSchools === 1791, `${totalSchools}`);
+/* 289 of 290, not all: Robertsfors has a single year-9 school and Skolverket
+   publishes nothing for it — the API returns null for merit, pass rate and even
+   the pupil band. That is a real gap in the source, and it must stay a gap
+   rather than become a zero. */
+assert("289 of 290 kommuner have a merit value",
+  D.kommuner.filter(k => k.school_merit != null).length === 289,
+  `${D.kommuner.filter(k => k.school_merit != null).length} of 290`);
+assert("and the gap is Robertsfors, blank rather than zero",
+  byCode["2409"].school_merit == null && byCode["2409"].schools_n === 1,
+  `merit ${byCode["2409"].school_merit}, ${byCode["2409"].schools_n} school`);
+
+/* five schools recomputed one by one in scripts/verify_schools.py */
+assert("Stockholm's pupil-weighted merit value", near2(byCode["0180"].school_merit, 256.2, 0.1),
+  `${byCode["0180"].school_merit}`);
+assert("the national pupil-weighted merit value is published with the build",
+  near2((D.schools_meta || {}).national_merit, 233.2, 0.1), `${(D.schools_meta || {}).national_merit}`);
+
+/* a merit value must be a plausible merit value, never 0 */
+const merits = D.kommuner.map(k => k.school_merit).filter(v => v != null);
+assert("no kommun has a zero merit value", merits.every(v => v > 100),
+  `min ${Math.min(...merits).toFixed(1)}, max ${Math.max(...merits).toFixed(1)}`);
+assert("and none exceeds the 340 maximum", merits.every(v => v <= 340), `max ${Math.max(...merits)}`);
+
+/* SALSA is not shipped, and must not appear by accident */
+assert("no SALSA indicator — it has no bulk export",
+  !D.indicators.some(i => /salsa/i.test(i.key + i.label)), "absent, as logged");
+assert("and every school indicator says the merit value is raw",
+  SCHI.filter(i => /merit|passed|eligible/.test(i.key)).every(i => /NOT adjusted|not adjusted/i.test(i.warn || "")),
+  "caveat present");
+
+/* Skolenkäten runs on a rotation, so its as-of is two years, not one */
+const tryg = D.indicators.find(i => i.key === "school_trygghet");
+assert("the survey's as-of names both rounds", /2025\+2026/.test(tryg.asof.kommun || ""),
+  tryg.asof.kommun);
+
 /* ---- v1.2 verify-at-source ----
    The link must reproduce the publisher's query for the cells on screen. Two
    ways it silently goes wrong: sending a kommun code to a län table (400), and

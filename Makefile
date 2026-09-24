@@ -2,7 +2,7 @@
 # Targets that exist today. `build` and `serve` tell you what is missing
 # rather than failing cryptically — the build scripts land after the data pull.
 
-.PHONY: help selftest test verify geo land simplify riksbank kolada external discover dry fetch status validate links srclinks bra polisen build serve
+.PHONY: help selftest test verify geo land simplify riksbank kolada external discover dry fetch status validate links srclinks bra polisen schools build serve
 
 help:
 	@echo "make selftest   offline checks, no network (1 s)"
@@ -22,6 +22,7 @@ help:
 	@echo "make external   Boverket BME, Kronofogden and Kolada -> data/external/"
 	@echo "make bra        reported offences per kommun from Bra SOL (resumable)"
 	@echo "make polisen    police-designated vulnerable areas -> area shares"
+	@echo "make schools    every school with year 9 from Skolverket (resumable)"
 	@echo "make build      build the dashboard (needs the pull + the registry)"
 	@echo "make serve      serve dist/ at http://localhost:8080"
 
@@ -84,6 +85,10 @@ bra:
 
 polisen:
 	python3 scripts/fetch_polisen.py
+
+# ~3 600 API calls, throttled and resumable; a cached unit is not fetched again.
+schools:
+	python3 scripts/fetch_skolverket.py && python3 scripts/import_skolenkaten.py && python3 scripts/build_schools.py
 
 test:
 	@test -f dist/index.html || { echo "dist/index.html missing — run 'make build' first."; exit 1; }
