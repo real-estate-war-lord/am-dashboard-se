@@ -56,14 +56,29 @@ shares in SWEREF99 TM metres.
   display level is not a publication level; the dashboard's latest year runs ahead
   of individual tables.
 
-### Known limits in this release
+### Known limitations
 
-- **OSM services and public buildings cover 16 of 290 kommuner.** The public Overpass
-  instance rate-limited this client and the fetch stopped rather than keep hammering a
-  donated service. `make services` is resumable; the overlay's legend states its coverage.
-- **Zone outlines ship for three of seven climate layers** (flood 100-year, coastal
-  +2.0 m, mean sea level 2100). The rest are in the choropleth only: landslide zones
-  alone were 76 MB because 242 000 tiny caution polygons have nothing to merge.
+Three things ship incomplete in v1.2 and are the whole content of **v1.2.1**. None of
+them is a wrong number — each is a smaller number of areas than intended, and in every
+case the page says so itself rather than letting a gap pass for a value.
+
+1. **Services and public buildings cover 16 of 290 kommuner.** The public Overpass
+   instance rate-limited this client and the fetch was stopped rather than kept
+   hammering a donated service. The overlay works on what is there and **its legend
+   states its own coverage**, so a sparse map cannot be mistaken for a sparse city.
+   `make services` is resumable. v1.2.1 rebuilds this from the Geofabrik extract
+   instead, which needs no third-party service at all.
+2. **42 of 49 infrastructure projects are not drawn on the map.** Their stations could
+   not be located, because station matching reads the same 16 kommuner of OSM data.
+   They are fully present in **Pipeline** and on their own project pages, with budgets,
+   opening years and sources. Nothing is sketched between points — a line on a map is
+   read as a fact. v1.2.1 takes the alignments from the extract.
+3. **Climate zone outlines ship for three of seven layers** — flood 100-year, coastal
+   +2.0 m and mean sea level 2100. All seven came to 170 MB, over budget, and
+   landslide's largest per-kommun file was 4.47 MB, over the 3 MB cap: 242 000 tiny
+   caution polygons do not simplify because there is nothing to merge. **The other four
+   layers are fully available as numbers** in the choropleth, at all three levels.
+   v1.2.1 raises the set to six, everything except landslide.
 
 ## v1.1.1 — 2026-09-21
 - **Fixed: RegSO and DeSO polygons were drawn in the wrong place.** v1.0's size-reduction pass fed already-swapped coordinates to a function that swaps them itself, so the two files were stored [lat,lon] and `build_makro` swapped them once more. Every sub-municipal polygon has been rendering off the Somali coast since v1.0 — the map looked empty below kommun level. Found by taking a screenshot; the smoke test only checked generated HTML. It now asserts that every ring is inside Sweden and that a kommun's sub-areas are inside that kommun.
