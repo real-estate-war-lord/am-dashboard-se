@@ -685,3 +685,33 @@ this will improve on its own when `make services` completes.
 | `make build` | clean |
 | screenshots | `v12_pipeline.png` |
 
+## Phase 8 — Docs, verification, wrap-up
+
+| Deliverable | Where | Note |
+|---|---|---|
+| source table | `docs/PARITY.md` | licence, real level, caveat, refresh, per source |
+| verification export | `docs/verification/parity_v1_2.csv` | 9 990 rows; blanks carry a `status` |
+| data map | `docs/DATA_MAP_SE.md` §5–§10 | what each source will *not* support |
+| README | v1.2 section + 6 screenshots | |
+| changelog | `CHANGELOG.md` v1.2, **drafted, not tagged** | |
+| refresh workflow | `.github/workflows/refresh.yml` | Brå + Polisen added, `continue-on-error` |
+
+### Final gates
+
+| Gate | Result |
+|---|---|
+| `make validate` | clean — 78 indicators, every code checked against metadata on disk |
+| `make test-js` | **24 of 24** |
+| `make test` | clean — 172+ assertions |
+| `make build` | clean — 16.9 MB page |
+| `make links` | **83 of 83** |
+
+### Independent recomputations across the whole build
+
+| Script | Result |
+|---|---|
+| `verify_outlook.py` | **35 of 35** match the SCB API |
+| `verify_bra.py` | **30 of 30** match a fresh Brå SOL session |
+| `verify_schools.py` | **55 of 55** match the Skolverket API |
+| `tests/smoke.js` pins | **6 of 6** landmarks in the right kommun |
+

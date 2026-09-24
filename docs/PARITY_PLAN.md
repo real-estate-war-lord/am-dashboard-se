@@ -18,7 +18,7 @@ the phase checklist below, pick the first unticked phase, and read
 - [x] **Phase 5** — Test property + Analysis + Compare
 - [x] **Phase 6** — Climate risk
 - [x] **Phase 7** — Overlays: Services, Public buildings, Infra
-- [ ] **Phase 8** — Docs, verification, wrap-up
+- [x] **Phase 8** — Docs, verification, wrap-up
 
 ### Status log
 
@@ -69,7 +69,12 @@ Services and Public buildings overlays built and working but on **16 of 290 komm
 because Overpass rate-limited this client and the fetch was stopped rather than continued.
 `make services` is resumable and the legend states its own coverage.
 
-_(each phase appends a 5-line status here when it is ticked)_
+**Phase 8** — PARITY.md, a 9 990-row verification export, DATA_MAP §5-§10, README with
+six screenshots, a v1.2 changelog (drafted, NOT tagged) and Brå + Polisen added to the
+monthly workflow behind continue-on-error. All five gates clean; the three independent
+verify scripts total 120 of 120 values matching their sources.
+
+**ALL EIGHT PHASES COMPLETE.** Nothing merged, tagged or pushed.
 
 ---
 
