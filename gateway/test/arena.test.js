@@ -11,12 +11,24 @@ import { PAYLOAD, RECORDS, PORTAL } from "./fixtures/arena.js";
 
 const NOW = new Date("2026-09-24T12:00:00.000Z");
 
-test("the two portals are configured as expected", () => {
-  assert.deepEqual(PORTALS, [
+test("the portal registry is well formed", () => {
+  /* The two originals stay at the head; the rest come from discovery. */
+  assert.deepEqual(PORTALS.slice(0, 2), [
     { src: "heimstaden", label: "Heimstaden", host: "https://mitt.heimstaden.com" },
     { src: "victoriahem", label: "Victoriahem", host: "https://minasidor.victoriahem.se" },
   ]);
+  assert.ok(PORTALS.length >= 2);
   assert.equal(kvKey("heimstaden"), "arena:heimstaden");
+
+  const srcs = PORTALS.map((p) => p.src);
+  assert.equal(new Set(srcs).size, srcs.length, "src keys must be unique — they are KV keys");
+  for (const p of PORTALS) {
+    /* An src reaches KV and the /text query string, so keep it boring. */
+    assert.match(p.src, /^[a-z][a-z0-9-]{1,30}$/, p.src);
+    assert.match(p.host, /^https:\/\/[a-z0-9.-]+$/, p.host);
+    assert.ok(!p.host.endsWith("/"), `${p.src} host must not end in a slash`);
+    assert.ok(p.label && p.label.length <= 40, p.src);
+  }
 });
 
 test("`data` arrives as a JSON string and is parsed, not treated as an array", () => {
@@ -71,6 +83,7 @@ test("a record maps onto the same schema HomeQ uses", () => {
     image: out.image,
     text_start: out.text_start,
     discount: null,
+    offer: null,
     is_new_production: null,
   });
 });

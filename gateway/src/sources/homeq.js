@@ -16,6 +16,8 @@
 "use strict";
 
 import { boundingBox, haversine } from "../geo.js";
+import { stripBoilerplate } from "../boilerplate.js";
+import { offerFromDiscount } from "../offers.js";
 
 export const SRC = "homeq";
 export const SRC_LABEL = "HomeQ";
@@ -60,6 +62,11 @@ export function normaliseListing(raw, center) {
     image: raw.images?.[0]?.image ?? null,
     text_start: null,
     discount: raw.discount ?? null,
+    /* HomeQ ships a structured discount rather than prose, so the offer is
+     * composed from it instead of being read out of the description — which
+     * /nearby does not fetch anyway. `enabled` is genuinely false on some
+     * records and those are not offers. */
+    offer: offerFromDiscount(raw.discount),
     is_new_production: null,
     dist_m: Math.round(haversine(center.lat, center.lon, lat, lon)),
   };
@@ -105,9 +112,13 @@ export function toPlainText(html) {
 
 export const TEXT_START_CHARS = 220;
 
-/* The description excerpt for one object id. */
+/* The description excerpt for one object id. The same boilerplate stripper
+ * runs here as on the portals: its patterns are drawn from the portal corpora
+ * and mostly will not match HomeQ prose, but HomeQ's per-listing descriptions
+ * cannot be corpus-analysed the same way — that would mean one request per
+ * listing across ~6 400 ads — so no HomeQ-specific patterns exist yet. */
 export function normaliseText(payload) {
-  const text = toPlainText(payload?.object_ad?.description);
+  const text = stripBoilerplate(toPlainText(payload?.object_ad?.description)).text;
   return { text_start: text.slice(0, TEXT_START_CHARS) || null };
 }
 

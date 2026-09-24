@@ -111,20 +111,37 @@ async function readSnapshot(env, portal) {
   return snap;
 }
 
+/* How many portals are fetched at once. Victoriahem's list is 8.6 MB and
+ * parsing it costs several times that in live objects; nineteen of those in
+ * flight together would run at the Worker's 128 MB ceiling. Four keeps the
+ * peak well under it while still finishing the whole refresh in seconds. */
+const REFRESH_CONCURRENCY = 4;
+
 /* Rebuild every portal snapshot. Each portal is independent: one failing
- * leaves the other's snapshot alone rather than blanking both. */
+ * leaves the others' snapshots alone rather than blanking them. */
 export async function refreshAll(env) {
-  const results = await Promise.all(arena.PORTALS.map(async (portal) => {
-    try {
-      const snap = await arena.fetchPortal(portal, {
-        signal: AbortSignal.timeout(REFRESH_TIMEOUT_MS),
-      });
-      await env.LISTINGS_KV.put(arena.kvKey(portal.src), JSON.stringify(snap));
-      return { src: portal.src, ok: true, count: snap.count, dropped: snap.dropped, fetchedAt: snap.fetchedAt };
-    } catch (err) {
-      return { src: portal.src, ok: false, error: describeError(portal.label, err) };
+  const portals = arena.PORTALS;
+  const results = new Array(portals.length);
+  let next = 0;
+
+  const worker = async () => {
+    for (;;) {
+      const i = next++;
+      if (i >= portals.length) return;
+      const portal = portals[i];
+      try {
+        const snap = await arena.fetchPortal(portal, {
+          signal: AbortSignal.timeout(REFRESH_TIMEOUT_MS),
+        });
+        await env.LISTINGS_KV.put(arena.kvKey(portal.src), JSON.stringify(snap));
+        results[i] = { src: portal.src, ok: true, count: snap.count, dropped: snap.dropped, fetchedAt: snap.fetchedAt };
+      } catch (err) {
+        results[i] = { src: portal.src, ok: false, error: describeError(portal.label, err) };
+      }
     }
-  }));
+  };
+
+  await Promise.all(Array.from({ length: Math.min(REFRESH_CONCURRENCY, portals.length) }, worker));
   return { refreshedAt: new Date().toISOString(), portals: results };
 }
 

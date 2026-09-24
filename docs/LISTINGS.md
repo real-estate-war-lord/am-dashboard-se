@@ -108,10 +108,15 @@ curl -H "Authorization: Bearer $REFRESH_SECRET" \
 ```
 
 ```json
-{"refreshedAt":"2026-09-24T11:42:03.623Z","portals":[
-  {"src":"heimstaden","ok":true,"count":492,"dropped":0,"fetchedAt":"…"},
-  {"src":"victoriahem","ok":true,"count":1110,"dropped":2,"fetchedAt":"…"}]}
+{"refreshedAt":"…","portals":[
+  {"src":"heimstaden","ok":true,"count":492,"dropped":1,"fetchedAt":"…"},
+  {"src":"victoriahem","ok":true,"count":1110,"dropped":2,"fetchedAt":"…"}, …]}
 ```
+
+All 19 portals refresh in about 4 seconds. They are fetched **four at a time**,
+not all at once: Victoriahem's list alone is 8.6 MB and parsing it costs
+several times that in live objects, so nineteen in flight together would run at
+the Worker's 128 MB ceiling.
 
 `dropped` is how many records were discarded for having no usable coordinates.
 The secret is set with `wrangler secret put REFRESH_SECRET` and is not in the
@@ -140,7 +145,8 @@ without knowing which source it came from.
 | `available_from` | string\|null | ISO date |
 | `published` | string\|null | ISO date |
 | `image` | string\|null | first photo, hotlinked from the source's CDN |
-| `text_start` | string\|null | always `null` from `/nearby`; filled by `/text` |
+| `text_start` | string\|null | excerpt, boilerplate-stripped; always `null` from `/nearby` for HomeQ, present for portals |
+| `offer` | object\|null | `{flag:true, snippet}` when the ad advertises a discount |
 | `discount` | object\|null | source-shaped campaign object, passed through |
 | `is_new_production` | bool\|null | |
 | `dist_m` | number | metres from the query point, whole metres |
@@ -164,7 +170,7 @@ talks to an unauthenticated JSON API.
 - `GET /api/v1/object/<id>` — the full ad, read only for its description
 
 The search endpoint returns **every** hit in the box in one response with no
-cursor: an all-Sweden box answers with ~6 500 results. There is therefore no
+cursor: an all-Sweden box answers with ~6 450 results. There is therefore no
 pagination to handle at the radii this gateway allows, and no reason to ever send
 an all-Sweden box.
 
@@ -231,6 +237,84 @@ map click, so instead a cron rebuilds both snapshots hourly into KV and
   counted in `dropped`, alongside the ones with nulls.
 - Addresses carry stray whitespace (`"Malakitgatan 12 "`), trimmed on the way in.
 
+### The portal register
+
+All 19 Arena portals, **checked 2026-09-24**. Counts are that day's vacancy
+list, recorded so a portal that quietly empties or changes shape is noticeable.
+
+| src | landlord | host | listings | with coordinates |
+|---|---|---|---:|---:|
+| `heimstaden` | Heimstaden | `mitt.heimstaden.com` | 492 | 100 % |
+| `victoriahem` | Victoriahem | `minasidor.victoriahem.se` | 1 110 | 100 % |
+| `lkf` | LKF (Lund) | `www.lkf.se` | 146 | 100 % |
+| `uddevallahem` | Uddevallahem | `www.uddevallahem.se` | 81 | 100 % |
+| `helsingborgshem` | Helsingborgshem | `www.helsingborgshem.se` | 30 | 100 % |
+| `dios` | Diös | `minasidor.dios.se` | 29 | 100 % |
+| `trianon` | Trianon | `minasidor.trianon.se` | 27 | 100 % |
+| `nykopingshem` | Nyköpingshem | `minasidor.nykopingshem.se` | 27 | 100 % |
+| `skovdebostader` | Skövdebostäder | `minasidor.skovdebostader.se` | 26 | 100 % |
+| `mitthem` | Mitthem (Sundsvall) | `www.mitthem.se` | 24 | 100 % |
+| `botkyrkabyggen` | Botkyrkabyggen | `www.botkyrkabyggen.se` | 22 | 100 % |
+| `vasbyhem` | Väsbyhem | `www.vasbyhem.se` | 20 | 100 % |
+| `kalmarhem` | Kalmarhem | `minasidor.kalmarhem.se` | 13 | 100 % |
+| `sollentunahem` | Sollentunahem | `minasidor.sollentunahem.se` | 6 | 100 % |
+| `lulebo` | Lulebo (Luleå) | `www.lulebo.se` | 5 | 100 % |
+| `haningebostader` | Haninge Bostäder | `minasidor.haningebostader.se` | 5 | 100 % |
+| `vatterhem` | Jönköpings Rådhus/Vätterhem | `minasidor.vatterhem.se` | 3 | 100 % |
+| `tyresobostader` | Tyresö Bostäder | `www.tyresobostader.se` | 0 | — |
+| `signalisten` | Signalisten (Solna) | `minasidor.signalisten.se` | 0 | — |
+
+Found by `gateway/tools/discover_portals.mjs`, which probed 65 candidate
+landlords — the large private residential owners plus the largest
+allmännyttiga company in each of the ~30 biggest kommuner — against
+`mitt.`, `minasidor.`, `minasidor2.` and `www.` of each domain. 17 answered
+with valid Arena JSON. Re-run it to refresh this table:
+
+```sh
+node gateway/tools/discover_portals.mjs --out report.json
+```
+
+It is deliberately slow and serial: one request at a time, a second apart, a
+normal User-Agent, and HTTP 429 or 503 aborts the whole run. It probes hosts
+in order and stops at a landlord's first hit, so a found portal costs one
+request.
+
+Tyresö Bostäder and Signalisten are included with **empty** lists — valid
+Arena portals advertising nothing on the day. The ≥ 90 % coordinate test could
+not be applied to them, so they are in on the argument that an empty portal
+costs one KV key and contributes nothing, while records that do appear are
+quality-checked at normalisation anyway. Drop them if you would rather only
+carry portals that have proved themselves.
+
+### The landlords with no Arena portal
+
+48 of the 65 have none, and the reason is structural rather than a URL we
+failed to guess: **most large allmännyttiga companies let through a shared
+municipal queue, not their own site.**
+
+| platform | landlords |
+|---|---|
+| Municipal queue — [bostad.stockholm.se](https://bostad.stockholm.se) | Stockholmshem, Svenska Bostäder, Familjebostäder (Sthlm), Förvaltaren, Telge, Huge, Botkyrkabyggen* |
+| Municipal queue — [boplats.se](https://boplats.se) (Göteborg) | Poseidon, Bostadsbolaget, Familjebostäder Gbg |
+| Municipal queue — [boplatssyd.se](https://www.boplatssyd.se) (Skåne) | MKB |
+| Own site, not Arena (serves HTML, no JSON list endpoint) | Stena Fastigheter, SBB, Akelius, Aranäs, Uppsalahem, Hyresbostäder (Norrköping), ÖBO, KBAB, Kopparstaden, HFAB, Östersundshem, Eidar, ABK, Övikshem, Varbergs Bostad, Järfällahus |
+| Own site, own JSON API (not Arena) | Willhem |
+| Inconclusive — TLS handshake failed on every subdomain | Balder, Brinova, MKB, Skebo, Karlskronahem |
+| Inconclusive — connect timeout | Familjebostäder Sthlm, Växjöbostäder, Huge Bostäder |
+| No host resolved | Wallenstam, Rikshem, Einar Mattsson, Magnolia, Ikano, K-Fastigheter, Amasten, Graflunds, Lundbergs, Stångåstaden, Mimer, Bostaden (Umeå), Gavlegårdarna, Kfast, Tunabyggen, AB Bostäder i Borås |
+
+\* Botkyrkabyggen has both a queue presence and its own Arena portal.
+
+**No adapters are built for these.** The queues are a different kind of system
+— you join a line and accrue days, and what is "available" depends on your
+place in it — and modelling that as a listing feed would misrepresent it.
+
+This is why **Stockholm and Göteborg look thin**: their municipal stock is let
+through the queues, so the gateway sees only HomeQ there. A user comparing
+Eskilstuna (226 listings) with Göteborg (7) is seeing a difference in *where
+landlords advertise*, not in how much is for rent. The UI must not present a
+listing count as a vacancy rate.
+
 ### Adding a source
 
 One file in `gateway/src/sources/` exporting `SRC`, `SRC_LABEL`,
@@ -238,6 +322,60 @@ One file in `gateway/src/sources/` exporting `SRC`, `SRC_LABEL`,
 line in `SOURCES` in `src/index.js`. The envelope, timeout, error reporting and
 CORS are handled for it. A source that cannot be queried by location belongs in
 the Arena pattern instead: a snapshot plus an entry in `PORTALS`.
+
+## Campaign text and the `offer` field
+
+Landlords prepend disclaimers and campaign terms to the ad, so the first 220
+characters — all the dashboard shows — often described the offer, the photo
+policy or the viewing procedure rather than the flat. Two rules fix that.
+
+**1. The offer is lifted into its own field**, detected on the *untouched*
+description, so stripping the campaign wording out of the excerpt does not lose
+the fact that there is a campaign:
+
+```json
+"offer": { "flag": true, "snippet": "Kampanj Teckna ett hyresavtal med oss så bjuder vi på månadshyran i februari." }
+```
+
+Triggered by `kampanj`, `rabatt` (which covers `hyresrabatt`), `första
+månaden` or `hyresfri`. The snippet is the source's own sentence, capped at
+140 characters. **No amount is parsed out of the prose** — "2 000 kronor i
+månaden under de första två åren" and "en del av månadshyran" are not the same
+kind of claim, and flattening both to a number would invent precision.
+
+HomeQ is different: it ships a structured discount object
+(`{enabled, discount_type, duration, amount_type, amount}`), so its snippet is
+composed from those fields instead — "3 400 kr rabatt per månad i 6 månader".
+`enabled` is genuinely `false` on some records and those are not offers.
+
+**2. Boilerplate is stripped from the head of the excerpt**, from the pattern
+list in `gateway/src/boilerplate.js`. A pattern is only added when it is
+
+- a phrase repeated **at least 20 times** in one portal's snapshot, **and**
+- not a description of the flat.
+
+The second condition is doing real work. Heimstaden's "Här bor du i en
+välplanerad och modern tvåa…" repeats 73 times because a whole development
+shares one text — it is repetitive, but it describes the flat, so it stays.
+Patterns are anchored at the head and applied repeatedly, because the preamble
+is a stack: campaign opener, campaign terms, rent-year disclaimer, then the
+`Om lägenheten` section label, then finally the description.
+
+Measured over all 19 portals, 2 009 descriptions (2026-09-24):
+
+| | before | after |
+|---|---|---|
+| descriptions opening with boilerplate | 1 052 | **28** |
+
+All of it was Heimstaden's and Victoriahem's: **the other 17 portals have no
+boilerplate at all**, and no pattern fires on them. That is the point of the
+"repeated phrase" rule — the list is tuned to two landlords' copywriting and
+provably leaves everyone else's text alone. 457 of the 2 009 (23 %) carry an
+offer.
+
+HomeQ's own descriptions have not been corpus-analysed, because that would
+mean one request per listing across ~6 400 ads. The same stripper runs on them
+and simply does not match, so no HomeQ-specific patterns exist yet.
 
 ## Deduplication
 
@@ -281,9 +419,9 @@ different costume.
 
 ## Rules
 
-1. **The only stored thing is the portal snapshot.** One KV namespace, exactly
-   two keys — `arena:heimstaden` and `arena:victoriahem` — each the latest
-   vacancy list, overwritten hourly. **Latest only: no history, no time series,
+1. **The only stored thing is the portal snapshot.** One KV namespace, one key
+   per portal (`arena:<src>`, 19 of them), each the latest vacancy list,
+   overwritten hourly. **Latest only: no history, no time series,
    no per-user data, nothing else.** Keeping a history would turn the gateway
    into a database of someone else's listings, which is the thing rule 4 exists
    to prevent; and a vacancy series is not a market statistic — flats leave the
@@ -327,13 +465,13 @@ to accumulate them.
 ## Development
 
 ```sh
-npm --prefix gateway test     # 93 unit tests, no network (one takes 8 s: the timeout budget)
+npm --prefix gateway test     # 114 unit tests, no network (one takes 8 s: the timeout budget)
 cd gateway && npx wrangler dev
 ```
 
 The tests cover the box maths, the haversine trim, both normalisation schemas,
-the dedupe rules, snapshot staleness, the refresh endpoint's authorisation and
-the failure envelope — with `fetch`, `caches` and KV stubbed. They never touch
+the dedupe rules, snapshot staleness, boilerplate stripping, offer detection,
+the refresh endpoint's authorisation and the failure envelope — with `fetch`, `caches` and KV stubbed. They never touch
 the network, so they neither depend on the sources being up nor add load to
 them. The Arena fixture in `test/fixtures/arena.js` is synthetic but reproduces
 the real payload's structure, including `data`-as-a-string, entity-escaped
@@ -368,6 +506,19 @@ A first deploy to a fresh account needs the KV namespace created and bound:
 npx wrangler kv namespace create LISTINGS_KV   # then put the id in wrangler.toml
 npx wrangler secret put REFRESH_SECRET         # any long random string
 ```
+
+## Known limits
+
+- **`/nearby` reads every portal snapshot on every request** — 19 KV reads and
+  about 1.4 MB of JSON parsed per call. It answers in 0.3–0.9 s today, but this
+  grows linearly with the portal count. A combined, spatially bucketed index
+  would be the fix if the register keeps growing.
+- **A listing count is not a vacancy rate.** Coverage depends on where a
+  landlord chooses to advertise, and the municipal queues are invisible here.
+- **An advertised rent is not a contract rent** and is not comparable with the
+  SCB rent statistics on the same area page.
+- Tyresö Bostäder and Signalisten are registered on an unverified coordinate
+  share (both were empty at discovery).
 
 ## Deploying
 

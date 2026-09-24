@@ -19,10 +19,37 @@
 "use strict";
 
 import { haversine } from "../geo.js";
+import { stripBoilerplate } from "../boilerplate.js";
+import { offerFromText } from "../offers.js";
 
+/* Every landlord known to run an Arena tenant portal, with the host that
+ * answers. Found by gateway/tools/discover_portals.mjs, which probed 65
+ * candidates on 2026-09-24; 17 of them answered with valid Arena JSON. The
+ * counts in the comments are that day's vacancy list, recorded so a portal
+ * that quietly goes empty or changes shape is noticeable.
+ *
+ * Heimstaden and Victoriahem come first because they are by far the largest
+ * and were the two this adapter was written against. */
 export const PORTALS = [
   { src: "heimstaden", label: "Heimstaden", host: "https://mitt.heimstaden.com" },
   { src: "victoriahem", label: "Victoriahem", host: "https://minasidor.victoriahem.se" },
+  { src: "lkf", label: "LKF", host: "https://www.lkf.se" },                         /* 146 listings, 100% with coordinates */
+  { src: "uddevallahem", label: "Uddevallahem", host: "https://www.uddevallahem.se" },/* 81 listings, 100% with coordinates */
+  { src: "helsingborgshem", label: "Helsingborgshem", host: "https://www.helsingborgshem.se" },/* 30 listings, 100% with coordinates */
+  { src: "dios", label: "Diös", host: "https://minasidor.dios.se" },                /* 29 listings, 100% with coordinates */
+  { src: "trianon", label: "Trianon", host: "https://minasidor.trianon.se" },       /* 27 listings, 100% with coordinates */
+  { src: "nykopingshem", label: "Nyköpingshem", host: "https://minasidor.nykopingshem.se" },/* 27 listings, 100% with coordinates */
+  { src: "skovdebostader", label: "Skövdebostäder", host: "https://minasidor.skovdebostader.se" },/* 26 listings, 100% with coordinates */
+  { src: "mitthem", label: "Mitthem", host: "https://www.mitthem.se" },             /* 24 listings, 100% with coordinates */
+  { src: "botkyrkabyggen", label: "Botkyrkabyggen", host: "https://www.botkyrkabyggen.se" },/* 22 listings, 100% with coordinates */
+  { src: "vasbyhem", label: "Väsbyhem", host: "https://www.vasbyhem.se" },          /* 20 listings, 100% with coordinates */
+  { src: "kalmarhem", label: "Kalmarhem", host: "https://minasidor.kalmarhem.se" }, /* 13 listings, 100% with coordinates */
+  { src: "sollentunahem", label: "Sollentunahem", host: "https://minasidor.sollentunahem.se" },/* 6 listings, 100% with coordinates */
+  { src: "lulebo", label: "Lulebo", host: "https://www.lulebo.se" },                /* 5 listings, 100% with coordinates */
+  { src: "haningebostader", label: "Haninge Bostäder", host: "https://minasidor.haningebostader.se" },/* 5 listings, 100% with coordinates */
+  { src: "vatterhem", label: "Vätterhem", host: "https://minasidor.vatterhem.se" }, /* 3 listings, 100% with coordinates */
+  { src: "tyresobostader", label: "Tyresö Bostäder", host: "https://www.tyresobostader.se" },/* empty list at discovery — coordinate share unverified */
+  { src: "signalisten", label: "Signalisten", host: "https://minasidor.signalisten.se" },/* empty list at discovery — coordinate share unverified */
 ];
 
 export const LIST_PATH = "/rentalobject/Listapartment/published";
@@ -117,7 +144,12 @@ export function normaliseRecord(raw, portal) {
    * which is populated differs by portal: Heimstaden fills Description on 15
    * of 489 records and DescriptionHtml on 486. Preferring the plain field and
    * falling back to the HTML one is what actually yields text for both. */
-  const text = toPlainText(raw.Description) || toPlainText(raw.DescriptionHtml);
+  const full = toPlainText(raw.Description) || toPlainText(raw.DescriptionHtml);
+  /* The campaign is read off the untouched text, then the campaign wording is
+   * stripped out of the excerpt — so the fact of a discount survives in
+   * `offer` while `text_start` gets on with describing the flat. */
+  const offer = offerFromText(full);
+  const text = stripBoilerplate(full).text;
 
   /* Addresses come out of the letting system with stray whitespace
    * ("Malakitgatan 12 "), which would otherwise reach the popup and, worse,
@@ -148,6 +180,7 @@ export function normaliseRecord(raw, portal) {
     image: imageUrl(portal.host, raw.FirstImage),
     text_start: text ? text.slice(0, TEXT_START_CHARS) : null,
     discount: null,
+    offer,
     is_new_production: null,
   };
 }
