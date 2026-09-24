@@ -586,6 +586,30 @@ assert("the Pipeline view renders every project", (pipeHtml.match(/data-go="proj
   `${(pipeHtml.match(/data-go="project\//g) || []).length} rows`);
 assert("and says a budget needs its price base", /price base/i.test(pipeHtml), "stated");
 
+/* ---- v1.2.1: the three limitations closed ---- */
+console.log("\nv1.2.1 coverage:");
+const srvIdx = (D.services_meta || {}).index || {};
+assert("services cover all 290 kommuner", Object.keys(srvIdx).length === 290,
+  `${Object.keys(srvIdx).length} of 290`);
+const srvTotal = Object.values(srvIdx).reduce((a, b) => a + b.n, 0);
+assert("and carry the whole country's points", srvTotal > 90000, `${srvTotal.toLocaleString()} points`);
+/* services_meta is the whole {meta, index} object, so the route lives one level in */
+const srvRoute = ((D.services_meta || {}).meta || {}).route || "";
+assert("read from the extract, not Overpass", /pbf|Geofabrik/i.test(srvRoute), srvRoute);
+
+const infra = (D.infra || {}).projects || [];
+assert("the project list is unchanged at 49", infra.length === 49, `${infra.length}`);
+
+const zoneLayers = Object.keys(((D.climate_meta || {}).zones) || {});
+assert("six climate layers ship zone outlines", zoneLayers.length === 6,
+  zoneLayers.sort().join(", "));
+assert("and landslide is deliberately not one of them",
+  !zoneLayers.includes("landslide"),
+  "242 000 tiny polygons do not simplify — choropleth only");
+assert("landslide is still fully available as a number",
+  D.kommuner.filter(k => k.landslide != null).length > 250,
+  `${D.kommuner.filter(k => k.landslide != null).length} kommuner`);
+
 /* ---- v1.2 verify-at-source ----
    The link must reproduce the publisher's query for the cells on screen. Two
    ways it silently goes wrong: sending a kommun code to a län table (400), and

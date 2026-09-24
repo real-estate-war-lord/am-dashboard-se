@@ -1,6 +1,42 @@
 # Changelog
 
-## v1.2 — "Sweden parity" (drafted, not tagged)
+## v1.2.1 — the three known limitations, closed
+
+v1.2 shipped with three things incomplete. All three are done, and none of them
+needed a third-party service to be talked into cooperating.
+
+**Services and public buildings: 16 of 290 kommuner → 290 of 290.** Overpass is
+a donated public service and it rate-limited this client; the answer was not to
+ask it harder. `scripts/extract_osm_pbf.py` reads the 818 MB Geofabrik country
+extract with pyosmium in a single pass — 115 473 535 objects — and pulls out
+**100 632 points** across the nine categories. Splitting them per kommun is done
+by point-in-polygon on our own rings rather than by bounding box, because
+neighbouring boxes overlap and a café would otherwise land in two kommuner:
+**99 750 placed, 882 outside every boundary** and left out rather than forced
+into the nearest one. The services legend's partial-coverage note disappears on
+its own, because it was computed from the data rather than written by hand.
+
+**Infrastructure: 7 of 49 drawn → 25 of 49.** The same extract carries 637
+`railway=construction|proposed` alignments. A project gets a line only where OSM
+tags one whose name matches it or one of its stations; failing that it keeps its
+station points, and failing that it is still not drawn. **Nothing is sketched
+between two points.** Of the 24 that remain undrawn, 15 are road projects, which
+this pass deliberately did not cover — an alignment is taken from
+railway/subway/light_rail/tram tagging only. Named stations located rose from
+19 of 65 to 57 of 65.
+
+**Climate zones: three layers → six.** Everything except landslide, about 97 MB,
+every per-kommun file under the 3 MB cap, still lazy-loaded from zoom 10.
+Landslide stays choropleth-only: 76 MB on its own, largest file 4.47 MB, because
+242 000 tiny caution polygons have nothing to merge and so do not simplify.
+
+Also: `scripts/selftest.py` did not know about the `years(A..B)` time spec added
+in v1.2, and **CI is the only place selftest runs**, so the Pages deploy had been
+failing at "Offline checks" since v1.2 was tagged — the live site was still the
+v1.1 build until this was found. selftest now also checks that every spec in
+`config/tables_se.json` actually resolves.
+
+## v1.2 — "Sweden parity"
 
 Six new indicator groups, four overlays, a droppable pin and a project pipeline.
 Every phase is logged in `docs/PARITY_BUILD_LOG.md` with its check table, its

@@ -15,6 +15,34 @@ self-contained HTML page.
 Sibling project: [am-dashboard-dk](https://github.com/real-estate-war-lord/am-dashboard-dk)
 — the Danish edition, whose design this one inherits.
 
+## Geo requirements
+
+The data pipeline is standard-library Python. Three steps are the exception and
+are kept behind their own requirements file, run by hand, with their output
+committed — so `make build` never needs any of them:
+
+```sh
+python3 -m venv .venv && .venv/bin/pip install -r requirements-geo.txt
+```
+
+| Step | Needs | Why |
+|---|---|---|
+| `make polisen`, `make climate` | **shapely** | polygon intersection for the area shares |
+| `make services`, `make infra` | **pyosmium** | reading the Geofabrik `.osm.pbf` country extract |
+
+`pyosmium` is the same libosmium that the `osmium` command-line tool wraps —
+`brew install osmium-tool` gives the CLI equivalent (`osmium tags-filter`,
+`osmium export`) if you prefer it. `scripts/extract_osm_pbf.py` uses the Python
+binding because it does the whole job in one pass instead of writing an
+intermediate GeoJSON of the whole country.
+
+The extract itself is not committed (818 MB):
+
+```sh
+mkdir -p data/raw/osm_pbf && curl -L -o data/raw/osm_pbf/sweden-latest.osm.pbf \
+  https://download.geofabrik.de/europe/sweden-latest.osm.pbf
+```
+
 ## What's new in v1.2 — "Sweden parity"
 
 Six new indicator groups, four map overlays, a pin you can drop from a Google Maps

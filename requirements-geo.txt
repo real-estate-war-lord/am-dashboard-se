@@ -1,1 +1,2 @@
 shapely>=2.0
+osmium>=3.6        # pyosmium: reads the Geofabrik .osm.pbf extract

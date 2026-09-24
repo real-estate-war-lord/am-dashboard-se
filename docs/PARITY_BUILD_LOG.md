@@ -715,3 +715,68 @@ this will improve on its own when `make services` completes.
 | `verify_schools.py` | **55 of 55** match the Skolverket API |
 | `tests/smoke.js` pins | **6 of 6** landmarks in the right kommun |
 
+## v1.2.1 — the three known limitations, closed
+
+### Services and public buildings: 16 → **290 of 290 kommuner**
+
+Overpass is a donated public service and it rate-limited this client at 16
+kommuner. The fix was not to ask it harder but to stop asking it at all:
+`scripts/extract_osm_pbf.py` reads the 818 MB Geofabrik country extract with
+**pyosmium** in one pass.
+
+| | |
+|---|---|
+| objects read | 115 473 535 |
+| POI points found | 100 632 |
+| placed in a kommun | **99 750** |
+| outside every boundary | 882 — at sea or outside the coastline clip, left out rather than snapped to the nearest kommun |
+| largest per-kommun file | 437 kB |
+
+The split is **point-in-polygon on our own rings**, not by bounding box:
+neighbouring kommun boxes overlap, and a café on a border would land in two.
+The overlay's partial-coverage note disappears on its own, because it was
+computed from the data rather than written by hand.
+
+### Infrastructure: 7 → **25 of 49 drawn**
+
+The same extract carries **637** `railway=construction|proposed` alignments.
+A project gets a line only where OSM tags one whose name matches the project or
+one of its stations; failing that it keeps its station points; failing that it
+is still not drawn. **Nothing is sketched between two points.**
+
+| | |
+|---|---|
+| drawn as an alignment | 14 |
+| drawn as station points | 11 |
+| still undrawn | 24 — **15 of them road projects**, which this pass did not cover: alignments are taken from railway/subway/light_rail/tram tagging only |
+| named stations located | 57 of 65, up from 19 |
+
+### Climate zones: three layers → **six**
+
+Everything except landslide, ~97 MB, every per-kommun file under the 3 MB cap,
+still lazy-loaded from zoom 10. Landslide stays choropleth-only for the reason
+already recorded: 76 MB alone, largest file 4.47 MB, because 242 000 tiny
+caution polygons have nothing to merge and so do not simplify. It remains fully
+available as a number at all three levels.
+
+### ⚠ found on the way, and why it mattered
+
+**`scripts/selftest.py` did not know the `years(A..B)` time spec** added in
+Phase 2 — and **CI is the only place selftest runs**, because `make test` runs
+the smoke test instead. The Pages deploy had therefore been failing at "Offline
+checks" since v1.2 was tagged, and the live site was still the v1.1 build until
+this was found. selftest now accepts the spec and additionally checks that every
+spec in `config/tables_se.json` actually resolves, so a future one cannot pass
+the name check and then fail at fetch time.
+
+**CI also never built the Listings page**, because the workflow calls the
+assemblers directly rather than `make build`. index.html went live and
+listings.html 404'd.
+
+**The gateway's 153 tests are green locally** — including under CI's timezone
+and locale, with no network calls and only `node:` built-ins imported — **but
+red on the runner under Node 22**, and I have not reproduced that. They now run
+in a job of their own rather than gating the dashboard's deploy, which is also
+the right shape: the gateway is a Cloudflare Worker deployed by wrangler, on its
+own schedule. **The cause is an open question, not a fixed one.**
+

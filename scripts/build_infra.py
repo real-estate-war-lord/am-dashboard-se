@@ -51,19 +51,42 @@ def main() -> int:
     code_of = {norm(f["properties"].get("name", "")): f["properties"]["code"]
                for f in kom["features"]}
 
-    # every named public-transport point we have, bucketed by kommun
+    # every named public-transport point we have, bucketed by kommun. Read from
+    # the per-kommun files the extract produced — 290 kommuner rather than the
+    # 16 Overpass managed before being rate-limited.
     stops: dict = {}
-    if OSM.exists():
-        for fp in OSM.glob("*.json"):
-            code = fp.stem
-            lst = []
-            for p in json.loads(fp.read_text(encoding="utf-8")):
-                if p.get("c") == "transport" and p.get("n"):
-                    lst.append((norm(p["n"]), p["lat"], p["lon"], p.get("t", "")))
+    srv_dir = ROOT / "data" / "processed" / "services"
+    if srv_dir.exists():
+        for fp in srv_dir.glob("*.json"):
+            lst = [(norm(r[3]), r[1], r[2], r[4])
+                   for r in json.loads(fp.read_text(encoding="utf-8"))
+                   if r[0] == "transport" and r[3]]
             if lst:
-                stops[code] = lst
+                stops[fp.stem] = lst
+    elif OSM.exists():
+        for fp in OSM.glob("*.json"):
+            lst = [(norm(p["n"]), p["lat"], p["lon"], p.get("t", ""))
+                   for p in json.loads(fp.read_text(encoding="utf-8"))
+                   if p.get("c") == "transport" and p.get("n")]
+            if lst:
+                stops[fp.stem] = lst
     print(f"{sum(len(v) for v in stops.values()):,} named transport points in "
           f"{len(stops)} kommuner", flush=True)
+
+    # rail alignments under construction or proposed, from the same extract.
+    # A project gets a LINE only where OSM actually tags one; where it does not,
+    # the project keeps its station points, and where it has neither it is not
+    # drawn at all. Nothing is sketched between two points.
+    rails = []
+    rp = ROOT / "data" / "interim" / "osm" / "rail_lines.json"
+    if rp.exists():
+        for ln in json.loads(rp.read_text(encoding="utf-8")):
+            if len(ln.get("coords") or []) >= 2:
+                rails.append({"name": norm(ln.get("name") or ""),
+                              "raw": ln.get("name") or "",
+                              "kind": ln.get("kind"), "coords": ln["coords"]})
+    print(f"{len(rails):,} railway=construction|proposed alignments in the extract",
+          flush=True)
 
     feats, index = [], []
     problems = []
@@ -102,12 +125,30 @@ def main() -> int:
             if hit:
                 found.append({"name": sn, "lat": hit[1], "lon": hit[2], "osm_tag": hit[3]})
 
+        # An alignment, where OSM tags one whose name matches the project or one
+        # of its stations. Matching is on names only — no spatial guessing about
+        # which line "must" belong to which project.
+        keys = [norm(r.get("name", "")), norm(r.get("label_short", ""))] + \
+               [norm(x) for x in station_names]
+        keys = [k for k in keys if len(k) >= 5]
+        segs = []
+        for rl in rails:
+            if not rl["name"]:
+                continue
+            if any(k in rl["name"] or rl["name"] in k for k in keys):
+                segs.append(rl["coords"])
+
         geom = None
-        if found:
+        gsrc = "none — not drawn"
+        if segs:
+            geom = {"type": "MultiLineString", "coordinates": segs}
+            gsrc = f"osm:railway alignment, {len(segs)} way(s) matched by name"
+        elif found:
             geom = ({"type": "Point", "coordinates": [found[0]["lon"], found[0]["lat"]]}
                     if len(found) == 1 else
                     {"type": "MultiPoint",
                      "coordinates": [[s["lon"], s["lat"]] for s in found]})
+            gsrc = "osm:station points matched by name in the project's kommuner"
 
         props = {
             "id": pid,
@@ -124,8 +165,7 @@ def main() -> int:
             "kommun_names": names,
             "stations": station_names,
             "stations_located": found,
-            "geometry_source": ("osm:name match in the project's kommuner" if found
-                                else "none — not drawn"),
+            "geometry_source": gsrc,
             "source_url": r.get("source_url", ""),
             "source_doc": r.get("source_doc") or None,
             "notes": r.get("notes") or "",
@@ -137,9 +177,11 @@ def main() -> int:
                        "kommuner", "source_url", "notes")})
 
     drawn = sum(1 for f in feats if f["geometry"])
+    as_line = sum(1 for f in feats if (f["geometry"] or {}).get("type") == "MultiLineString")
     located = sum(len(f["properties"]["stations_located"]) for f in feats)
     want = sum(len(f["properties"]["stations"]) for f in feats)
-    print(f"{len(feats)} projects · {drawn} with geometry · "
+    print(f"{len(feats)} projects · {drawn} with geometry "
+          f"({as_line} as an alignment, {drawn - as_line} as station points) · "
           f"{located} of {want} named stations located in OSM", flush=True)
     if problems:
         print(f"\n{len(problems)} problem(s):")
