@@ -61,3 +61,13 @@ function parseLocation(text) {
 }
 
 if (typeof module !== "undefined" && module.exports) module.exports = { parseLocation, TP_BOUNDS, TP_FORMATS, TP_SHORT_MSG };
+/* A classic script's top-level `const` is script-scoped, not a window property,
+   so the Listings page's globals are attached explicitly. src/listings/parse.js
+   was a twin of this file and existed only because testprop.js was not on that
+   branch; it is gone, and both pages now parse a pasted link with exactly the
+   same code so the rules cannot drift apart. */
+if (typeof window !== "undefined") {
+  window.parseLocation = parseLocation;
+  window.TP_BOUNDS = TP_BOUNDS;
+  window.LP_BOUNDS = TP_BOUNDS;      /* the name the Listings page inherited */
+}

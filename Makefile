@@ -28,7 +28,7 @@ help:
 	@echo "make climate    flood, coast, sea level, landslide, cloudburst (slow)"
 	@echo "make infra      curated project list -> map geometry and Pipeline"
 	@echo "make services   OSM points for the Services and Public overlays"
-	@echo "make build      build the dashboard (needs the pull + the registry)"
+	@echo "make build      build the dashboard AND the Listings page into dist/"
 	@echo "make serve      serve dist/ at http://localhost:8080"
 
 selftest:
@@ -121,7 +121,7 @@ build:
 	@test -f config/indicators.json || { echo "config/indicators.json missing — the indicator registry has not been written yet."; exit 1; }
 	@test -n "$$(ls data/raw/*.jsonl.gz 2>/dev/null)" || { echo "no data on disk — run 'make fetch' first (45-90 min)."; exit 1; }
 	@test -f data/geo/kommuner.geojson || { echo "data/geo/*.geojson missing — run 'make simplify' first."; exit 1; }
-	python3 scripts/build_makro.py && python3 scripts/build_market.py && python3 scripts/build_dashboard.py
+	python3 scripts/build_makro.py && python3 scripts/build_market.py && python3 scripts/build_dashboard.py && python3 scripts/build_listings.py
 
 serve:
 	@test -f dist/index.html || { echo "dist/index.html does not exist yet. Order: make fetch -> registry -> make build -> make serve."; exit 1; }

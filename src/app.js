@@ -214,15 +214,32 @@ const VIEWS = [
   ["charts",  "Charts",        "Pick an indicator, areas and years — export the chart as PNG or the data as CSV", "charts"],
   ["market",  "Market",        "Prices, rents, supply, construction, macro indicators — and the data sources", "market"],
   ["pipeline","Pipeline",     "Every major transport project, its status, opening year and budget", "pipeline"],
-  ["analysis","Test property",  "Drop a pin from a Google Maps link and see everything this dashboard knows about that spot", "analysis"]];
+  ["analysis","Test property",  "Drop a pin from a Google Maps link and see everything this dashboard knows about that spot", "analysis"],
+  ["listings","Listings",       "What is advertised for rent near a point, live from the listings gateway — third-party data, kept apart from the dashboard's own statistics", "listings"]];
 const NAV_GROUPS = [["Market intelligence", ["makro", "table", "charts", "market", "pipeline"]],
-                    ["Analysis", ["analysis"]]];
+                    ["Analysis", ["analysis", "listings"]]];
+/* Listings is its own page (dist/listings.html), not a view of this one: it has
+   its own map, its own state and its own stylesheet, and it reads live
+   third-party data through a gateway rather than anything in window.DATA. The
+   nav entry is therefore a link, and the pin travels in the hash the page
+   already understands. Keeping the two pages apart is also the honest
+   arrangement — an advertised rent is not a contract rent, and the dashboard's
+   own rent statistics must never be drawn as one series with it. */
+const LISTINGS_HREF = "listings.html";
+const listingsUrl = (lat, lon, r) => LISTINGS_HREF +
+  (lat != null ? `#at=${(+lat).toFixed(6)},${(+lon).toFixed(6)}&r=${r || 1000}` : "");
 const viewOf = id => VIEWS.find(v => v[0] === id) || VIEWS[0];
 
 function renderNav() {
   const on = S.view === "area" ? "makro" : S.view;
   document.getElementById("nav").innerHTML = NAV_GROUPS.map(([lab, ids]) => `<div class="nav-glab">${lab}</div>` +
-    ids.map(id => { const v = viewOf(id); return `<button class="nav-item ${on === id ? "on" : ""}" data-go="${v[3]}" title="${esc(v[2])}"><b>${v[1]}</b></button>`; }).join("")).join("");
+    ids.map(id => { const v = viewOf(id);
+      if (id === "listings") {
+        /* a real link to a real page — the pin comes along when there is one */
+        const pin = AN.a;
+        return `<a class="nav-item" href="${esc(listingsUrl(pin && pin.lat, pin && pin.lon, 1000))}" title="${esc(v[2])}"><b>${v[1]}</b><span class="navext">↗</span></a>`;
+      }
+      return `<button class="nav-item ${on === id ? "on" : ""}" data-go="${v[3]}" title="${esc(v[2])}"><b>${v[1]}</b></button>`; }).join("")).join("");
 }
 /* the top bar is a breadcrumb: Sweden › municipality › area — every step is a link, the last one is where you are */
 function crumbs() {
@@ -1174,6 +1191,9 @@ function vAnalysis() {
     </div>
     ${anPinBox("a")}
     ${anPinBox("b")}
+    ${AN.a ? `<div class="tools"><a class="lk primary" href="${esc(listingsUrl(AN.a.lat, AN.a.lon, 1000))}">What is for rent near Pin A ↗</a>${
+      AN.b ? `<a class="lk" href="${esc(listingsUrl(AN.b.lat, AN.b.lon, 1000))}">…near Pin B ↗</a>` : ""}
+      <span class="cap">Live third-party adverts, through the listings gateway. An advertised rent is not a contract rent and is not comparable with the SCB rent statistics on this page.</span></div>` : ""}
     <p class="cap anpriv"><b>Nothing leaves your browser.</b> The link is parsed here, the point is tested
       against boundary files this page already serves, and the coordinate lives only in this page's
       address bar — the part after the # is never sent to a server. A short goo.gl link cannot be

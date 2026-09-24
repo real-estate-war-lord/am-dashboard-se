@@ -1397,6 +1397,10 @@ a.srcv:hover{border-bottom-style:solid}
 .lgrow.lgclick{cursor:pointer;pointer-events:auto}
 .lgrow.lgclick.off{opacity:.45}
 .lgrow.lgclick:hover{text-decoration:underline}
+/* the Listings nav entry is a link to another page, not a view of this one */
+a.nav-item{display:flex;align-items:center;justify-content:space-between;text-decoration:none}
+a.nav-item .navext{opacity:.5;font-size:11px;margin-left:8px}
+a.nav-item:hover .navext{opacity:.9}
 /* the test-property panel */
 .anpin{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:6px 0}
 .anpin label{font-family:var(--mono);font-size:11px;color:var(--muted);min-width:44px}
