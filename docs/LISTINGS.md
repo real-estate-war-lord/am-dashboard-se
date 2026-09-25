@@ -1,7 +1,21 @@
 # Listings gateway
 
 A Cloudflare Worker that answers "what is for rent near this point?" for the
-dashboard's area pages, from three sources under one schema.
+dashboard, from three kinds of source under one schema.
+
+> **Where this appears in the UI (v2.0).** The standalone Listings page is gone.
+> Its logic lives in `src/listings/view.js`, which the dashboard inlines, and its
+> interface is now two things: the **Rental listings** section of **Test
+> property**, and the **Rental listings** layer in the map's **Layers ▾** menu.
+> `dist/listings.html` is a four-line redirect that resolves an old
+> `#at=lat,lon&r=` link through the same codec the app uses, so a shared link
+> cannot land on a different pin than it was copied from.
+>
+> Folding the two together was the point: a reader now sees an advertised rent
+> and SCB's rent statistic for the same ground on one screen — which makes the
+> sentence that keeps them apart ("an advertised rent is not a contract rent")
+> load-bearing rather than decorative. It is printed under every summary, and
+> the two are never drawn as one series.
 
 **No third-party listing data is committed to this repository.** The gateway
 does hold one thing at runtime: the latest hourly snapshot of each Arena

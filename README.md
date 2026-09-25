@@ -43,6 +43,72 @@ mkdir -p data/raw/osm_pbf && curl -L -o data/raw/osm_pbf/sweden-latest.osm.pbf \
   https://download.geofabrik.de/europe/sweden-latest.osm.pbf
 ```
 
+## What's new in v2.0 — "one of everything"
+
+The same data, rebuilt around one of each thing. Seven destinations became four, three
+grouped `<select>`s became one indicator picker, six overlay buttons became one Layers
+menu, two pages became one Test property, and four exporters became one schema.
+
+- **Four destinations** — Map · Data · Charts · Test property, with Export ▾ in the
+  sidebar footer. Market, Pipeline and Sources are tabs of Data; the old Market view's
+  four large charts are one National series table with a sparkline and a source on every
+  row. Every old link still works: `src/route_core.js` holds the alias table, it is
+  unit-tested, and it rewrites in place so Back still goes where you came from.
+- **One indicator picker** on the Map, the Area page, Data › Areas, Charts and Test
+  property. Search, every group, the unit, ↓ for lower-is-better, and an availability tag
+  — the history span, or `snapshot`, or `projection` / `scenario` for the two families
+  that have no year to select. On a RegSO or DeSO page the indicators that would be
+  showing the kommun's figure are listed under **From the municipality**, because that is
+  a different claim about the same number.
+- **One period control**, in whichever of four modes the indicator needs, and labelled
+  with **its** latest period rather than the dashboard's. The quarterly toggle is real:
+  reported offences are published as a rolling four-quarter sum, and `y=2025K4` is a
+  period like any other.
+- **The area page is a study row** — the chart panel and a draggable mini-map, same
+  height, one indicator at a time — with the 13-group KEY FIGURES block gone and four
+  toggles whose open state is in the URL. Below kommun level an inherited figure says
+  "municipality figure" in words; the lone `°` is gone from every table and tile.
+- **Test property reads every layer at one pin**, and the Listings page is a section of
+  it rather than a second application at a second address: what is advertised nearby,
+  next to what SCB publishes for the same ground, with the caveat that keeps those two
+  apart on the same screen as both of them.
+- **Rental listings are a map layer too**, grouped HomeQ / landlord portals / municipal
+  queues, from zoom 13. The gateway gained `GET /bbox` for it — a viewport is a
+  rectangle, and answering one with a radius either misses the corners or over-fetches.
+- **One export schema.** Seven items, one long format, and a unit check that runs before
+  the file is written: a kSEK column holding SEK is the mistake it guards.
+- **Responsive as a layout, not a patch.** No horizontal overflow at 1366, 1440, 1536 or
+  390; at 1024 and below the sidebar is a top bar with a drawer.
+
+### Routes
+
+| Route | What it is |
+|---|---|
+| `#map[/<kommun>[/deso]]` | the map, optionally drilled into one kommun |
+| `#data/areas/<kommun\|regso\|deso>` | every area side by side |
+| `#data/projects` · `#data/national` · `#data/sources` | the other three Data tabs |
+| `#charts?ind=&a=` | the chart generator |
+| `#area/<kommun\|regso\|deso>/<code>` | one area |
+| `#property?p=lat,lon[:label]` | one pin, read against every layer |
+| `#school/<code>` · `#project/<id>` | the two datasheets |
+
+Shared keys: `ind` · `y` (a year or a quarter) · `fq=q` · `lay` · `zones=0` · `show` ·
+`rad` · `cols=all` · `c`/`z` (the map camera). A key is written only when it differs from
+the default, so a link stays readable. Old spellings — `#table/*`, `#pipeline`,
+`#market`, `#sources`, `#analysis?a=`, `#compare?a=`, the five overlay flags, `?t=`/`?g=`
+and `listings.html#at=` — all redirect.
+
+### Screenshots
+
+| | |
+|---|---|
+| ![Map](docs/ui_v2/map-kommun_1440x900.png) | ![Area page](docs/ui_v2/area-kommun_1440x900.png) |
+| One toolbar row, the area card, the layers menu | The study row: chart panel and draggable mini-map |
+| ![Test property](docs/ui_v2/property-listings_1440x900.png) | ![Data](docs/ui_v2/data-areas_1440x900.png) |
+| One pin, every layer, advertised rents beside SCB's | Areas, with the headline columns by default |
+
+The full review set — every route at 1440 and at 390 — is in [`docs/ui_v2/`](docs/ui_v2).
+
 ## What's new in v1.2 — "Sweden parity"
 
 Six new indicator groups, four map overlays, a pin you can drop from a Google Maps
@@ -60,8 +126,8 @@ link, and a project pipeline. Full source table in [`docs/PARITY.md`](docs/PARIT
 - **Climate risk** — river flood (100-yr, 200-yr, BHF), coastal levels, projected mean
   sea level 2100 and landslide caution zones, as land-area shares at all three levels.
 - **Test property** — paste a Google Maps link, get the exact kommun, RegSO and DeSO by
-  point-in-polygon on our own boundaries, every indicator for that spot, and a second
-  pin beside it. Nothing leaves the browser.
+  point-in-polygon on our own boundaries, and every indicator for that spot. Nothing
+  leaves the browser. (v2.0 made this one pin at a time and folded the listings into it.)
 - **Pipeline** — 49 major transport projects, each with the page it came from.
 
 Direction awareness runs through all of it: every indicator declares whether higher or
@@ -77,7 +143,7 @@ of flerbostadshus has no better end and colouring one green would be editorialis
 | ![Schools](docs/screenshots/v12_schools.png) | ![Climate](docs/screenshots/v12_climate.png) |
 | 1 791 schools coloured by merit value | River flood zones along Göta älv |
 | ![Test property](docs/screenshots/v12_analysis.png) | ![Pipeline](docs/screenshots/v12_pipeline.png) |
-| Two pins compared, with no overall winner | 49 projects, each linked to its source |
+| The v1.2 two-pin sheet, replaced in v2.0 | 49 projects, each linked to its source |
 
 ### Three things this release is careful about
 
@@ -85,8 +151,9 @@ of flerbostadshus has no better end and colouring one green would be editorialis
 - **Not mapped is not zero.** MCF's 100-year, 200-year and BHF flood products cover 76,
   71 and 78 different watercourses, so coverage is tested per layer: an area no record of
   *that* layer reaches reads "Not mapped", not 0 %.
-- **No scores.** The two-pin comparison aligns rows and colours each difference by that
-  indicator's own direction. There is no total and no winner.
+- **No scores.** Differences are coloured by that indicator's own direction. There is no
+  total and no winner, because adding up indicators that measure different things would
+  be this dashboard inventing a judgement it has no basis for.
 
 ## What's new in v1.1
 
@@ -117,6 +184,9 @@ Built and running.
 - [x] Dashboard build (`dist/index.html`, one self-contained file)
 - [x] Boundaries clipped to the coastline; v1.0 published
 - [x] v1.1 — Boverket BME, Kronofogden, Kolada, five unused tables, independent verification
+- [x] v1.2 / v1.2.1 — outlook, safety, schools, climate, infrastructure, services
+- [x] v2.0 — the UI overhaul: four destinations, one picker, one export schema, listings
+      folded into Test property
 - [ ] Next: a län layer of its own, so the län-level sources stop borrowing the kommun map
 
 ## Running it

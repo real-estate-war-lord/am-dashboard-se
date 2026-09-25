@@ -582,7 +582,9 @@ def phase11(r: Report, page, errs) -> None:
     r.head("P11", "legends and the words that must not appear")
     hop(page, "#map/0180?lay=infra,public,services,schools&ind=sea2100_85&c=" + STHLM + "&z=12")
     page.wait_for_timeout(1200)
-    bs = boxes(page, "[data-testid^=legend]")
+    # the stack's own container carries data-testid=legends and of course
+    # overlaps every card inside it
+    bs = boxes(page, "[data-testid^=legend]:not([data-testid=legends])")
     pairs = [(i, j) for i in range(len(bs)) for j in range(i + 1, len(bs)) if overlap(bs[i], bs[j])]
     r.ok("legends never overlap each other", not pairs, f"{len(bs)} legends, {len(pairs)} overlaps")
     mapbox = page.eval_on_selector("[data-testid=map]", "e => { const r = e.getBoundingClientRect();"
@@ -592,11 +594,18 @@ def phase11(r: Report, page, errs) -> None:
     r.ok("no legend carries a filter button",
          page.eval_on_selector_all("[data-testid^=legend] [data-srvcat], [data-testid^=legend] .lgb",
                                    "e => e.length") == 0)
+    # What must be gone is the FEATURE, not the English word: an indicator's
+    # caveat may reasonably say "compare with the equity ratio first". So the
+    # sweep looks at what a reader can click or read as a heading.
+    CONTROLS = "button, a, [role=button], h1, h2, h3, h4, [data-testid=nav-item]"
     for name, route in ROUTES.items():
         hop(page, route)
+        labels = page.eval_on_selector_all(CONTROLS, "e => e.map(x => x.innerText.trim())")
         t = text(page)
-        r.ok(f'no "Compare" on {name}', "Compare" not in t)
-        r.ok(f'no "Climate risk" button on {name}', "Climate risk" not in t)
+        bad = [l for l in labels if l == "Compare" or l.startswith("Compare ")]
+        r.ok(f'no Compare control on {name}', not bad, "; ".join(bad[:3]))
+        bad = [l for l in labels if "Climate risk" in l]
+        r.ok(f'no "Climate risk" control on {name}', not bad, "; ".join(bad[:3]))
         r.ok(f'no "KEY FIGURES" on {name}', "KEY FIGURES" not in t.upper())
 
 

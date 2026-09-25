@@ -2,7 +2,8 @@
 
 Branch `v2.0-ui`, cut from `main` at v1.2.1 (`6dc69df`). **Do not push, merge or tag.**
 
-A new session continues from here: read §Status, then the phase that is `TODO`.
+**All eleven phases are done.** Nothing is pushed, merged or tagged. A new session
+picks up from §What a reviewer should look at and §Open ⚠ below.
 
 ---
 
@@ -18,16 +19,38 @@ A new session continues from here: read §Status, then the phase that is `TODO`.
 | P5 | Map area card | **done** | f81658e |
 | P6 | Area page | **done** | 94154eb |
 | P7 | Test property with Listings built in | **done** | bfe1383 |
-| P8 | Export ▾ | TODO | |
-| P9 | Number and label consistency | TODO | |
-| P10 | Responsive | TODO | |
-| P11 | Tests, screenshots, wrap-up | TODO | |
+| P8 | Export ▾ | **done** | e2d1e19 |
+| P9 | Number and label consistency | **done** | b9229a9 |
+| P10 | Responsive | **done** | 5f4f42d |
+| P11 | Tests, screenshots, wrap-up | **done** | this commit |
 
-Open ⚠:
-- `#data/areas/regso` renders 11.6 MB of HTML (3 363 rows × 67 indicator columns).
-  Pre-existing, but it is a glitch by the quality bar of this round — the fix is the
-  default column set (headline + active indicator) with the rest behind `Columns ▾`.
-  Scheduled into P8 with the export work, since both are about what a table is *for*.
+### Open ⚠
+
+1. **`#data/areas/regso?cols=all` is 11.7 MB of DOM.** The default is now the headline
+   column set (3.2 MB) and the full set is opt-in, which is what makes the page usable —
+   but asking for all 67 columns over 3 363 rows is still slow. A real fix is row
+   virtualisation, which is a day's work and was not in this round's scope.
+2. **The Playwright fixture is anchored, not recorded in place.** Live supply at the
+   task's pin was ten adverts, none within a kilometre, so the fixture is recorded around
+   two dense centres and moved onto that pin. The distances and the density are a real
+   neighbourhood's, the location is not. `tests/fixtures/record_listings.py` says so at
+   the top; re-record with `--from` if a denser Södermalm ever exists.
+3. **The `/bbox` covering circle is capped at 3 km**, so a viewport wider than about
+   4.2 km across is only partly covered. The answer says `covered: false` and the legend
+   says the view is wider than one query covers — it is honest, not complete. Raising
+   `R_MAX` for `/bbox` alone would fix it and was left alone because it changes how much
+   the donated upstream sources are asked for.
+4. **No axe-core accessibility sweep.** The Danish spec has one (AC-A1); this round has
+   focus-visible styling, real controls, `aria-expanded` on every trigger and a keyboard
+   path through the drawer and the popovers, but no automated audit.
+5. **`make test` renders every view in a DOM stub, not a browser.** The browser checks
+   live in `tests/ui_v2/spec.py`, which is not wired into `make`. Adding a `make ui`
+   target needs Playwright in CI, which is a separate decision.
+
+### What a reviewer should look at
+
+Serve and open: `python3 -m http.server 8081 --directory dist`, then
+http://localhost:8081/ . The ten-point checklist is at the end of the final report.
 
 ---
 
@@ -106,6 +129,30 @@ Open ⚠:
   dashboard rather than copied.
 
 ---
+
+## How it was built
+
+Eleven commits, one per phase, each with the full gate green before it
+(`make validate && make test && make test-js && make build`, plus
+`tests/ui_v2/spec.py --upto P<n>`):
+
+| Phase | Commit | Scope |
+|---|---|---|
+| P1 | `b6c914f` | four destinations, the Data section, the route alias table, the map teardown registry |
+| P2 | `12ef3a3` | the unified search, one toolbar row, legends that are only keys |
+| P3 | `d23651a` | Layers ▾, rental listings as a map layer, the gateway's `/bbox` |
+| P4 | `79dd55e` | the indicator picker and the period control, everywhere |
+| P5 | `f81658e` | the map's area card, HeadlineTiles as one component |
+| P6 | `94154eb` | the area page as a study row |
+| P7 | `bfe1383` | Test property with the listings module folded in |
+| P8 | `e2d1e19` | one export model, one schema, the unit check |
+| P9 | `b9229a9` | one number format, one rank format, one signed-change path |
+| P10 | `5f4f42d` | responsive, and the grid bug behind every 390 px overflow |
+| P11 | this commit | the spec, the screenshots, the documentation |
+
+New modules, all IIFE-wrapped, DOM-free and unit-tested offline:
+`src/route_core.js` (25 tests), `src/export_core.js` (20 tests), and
+`src/listings/view.js` (27 tests, pre-existing, wrapped in P1).
 
 ## The task, verbatim
 

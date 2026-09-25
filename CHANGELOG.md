@@ -1,5 +1,138 @@
 # Changelog
 
+## v2.0 — "one of everything" (draft, not released)
+
+A UI round. No data build script changed, no indicator moved, no number is
+computed differently — except where the old UI was computing one wrongly, which
+is listed under *Fixed*. What changed is that there is now one of each thing.
+
+**Four destinations instead of seven.** Map · Data · Charts · Test property, with
+Export ▾ in the sidebar footer. Market, Pipeline and the folded Sources list are
+the three non-default tabs of Data. The old Market view's four large charts are
+one National series table with a sparkline and a source on every row; the two
+breakdowns that carry the actual point — new-build rent by rent-setting model,
+vacancy by owner category — stay as folds.
+
+**Every old link still works.** `src/route_core.js` owns the hash spelling: the
+canonical paths, the alias table and the codecs, unit-tested offline (25 tests).
+`toV2()` is idempotent, which is what makes it safe to run on every hashchange,
+and an old link is rewritten with `replaceState` so Back still goes where the
+reader came from rather than bouncing off the redirect. `#table/*`, `#pipeline`,
+`#market`, `#sources`, `#analysis?a=`, `#compare?a=`, the five overlay flags,
+`?t=`/`?g=` and `listings.html#at=` all land where they should.
+
+**One indicator picker** on the Map, the Area page, Data › Areas, Charts and Test
+property, with search, every group, the unit, a ↓ for lower-is-better and an
+availability tag. On a RegSO or DeSO page the indicators that would be showing
+the kommun's figure are listed under *From the municipality*, because those are
+two different claims about the same number.
+
+**One period control**, in whichever of four modes the active indicator needs —
+a year select, a Yearly | Quarterly segment where the source publishes quarters,
+a static badge for a projection, a static badge naming a climate scenario — and
+labelled with that indicator's own latest period rather than the dashboard's. The
+quarterly toggle is real rather than decorative: reported offences are published
+as a rolling four-quarter sum, `V()` reads it when the period is a quarter, and
+one key carries both kinds (`y=2025` or `y=2025K4`).
+
+**Climate is an indicator family, not an overlay button.** Choosing a Climate
+indicator draws its hazard zones from zoom 10 with a hide toggle; choosing
+anything else removes them. `zones=0` overrides.
+
+**One Layers ▾ menu** instead of six toolbar buttons, with the sub-filters that
+used to live inside each floating legend. The legends on the map are keys and
+nothing else, each collapsible, stacked so two of them cannot cover each other.
+
+**The area page is a study row.** The 13-group KEY FIGURES block is gone; in its
+place five clickable headline tiles, the picker and period, then the chart panel
+beside a draggable mini-map at the same height, then four toggles whose open
+state is in the URL. The panel renders whichever of four shapes the indicator
+needs and never mixes them: a solid green observed line, a dashed purple
+projection (every point of it projected, with the one observed figure marked
+separately rather than spliced on), a climate share under its own scenario, or a
+distribution strip where the publisher has issued the figure once.
+
+**Test property reads every layer at one pin**, built from the area page's own
+components rather than a second set, anchored on the pin's finest area — DeSO,
+else RegSO, else the kommun, with the level on the page. Nine sections: rental
+listings nearby, services and public buildings within the radius, schools,
+infrastructure, safety, climate, the area profile and the sources.
+
+**The Listings page is now a section of it.** It was a second application at a
+second address; `listings.html` is a four-line redirect built from the same
+codec. A reader compares what is advertised today against what SCB publishes for
+the same ground without changing pages — and the caveat that keeps those two
+apart sits on the same screen as both of them. Rental listings are also a map
+layer, grouped HomeQ / landlord portals / municipal queues, from zoom 13, one
+request per viewport debounced 600 ms, and no box fetched twice in a session.
+
+**The gateway gained `GET /bbox?s=&w=&n=&e=`** (deployed). A viewport is a
+rectangle: answering one with a radius around its centre either misses the
+corners — the inscribed circle leaves 21 % of the box out — or over-fetches,
+since the circumscribed circle is 27 % larger in area. `/bbox` covers the box,
+runs the *same* per-source fan-out as `/nearby` so "a failing source is never an
+empty success" cannot drift between the two, and trims the answer back to the
+rectangle. `/nearby` is byte-for-byte unchanged and a test asserts it.
+
+**One export model.** Seven items in one menu, one long schema across This view,
+All area data, National series and Test property, projects and nearby in their
+own columns. Every row carries its source, table id, verify URL, the publisher's
+as-of and this build's fetch date; `value_type` separates an observation from a
+projection from an inherited figure; a suppressed value is an empty cell and
+never a zero. A unit check runs before the file is written and says so, loudly,
+without refusing — refusing would hide the problem and writing silently would
+publish it. "All area data" fetches the lazy DeSO files first, so it means all
+of it.
+
+**Responsive as a layout.** No horizontal overflow at 1366×768, 1440×900,
+1536×864 or 390×844 on any route; at 1024 and below the sidebar is a 52 px top
+bar with a drawer (Esc closes it and returns the focus), the study row stacks,
+tables scroll inside their cards and the legend stack folds behind one pill.
+
+**One number format.** Every signed change goes through one path, so a format
+that prints its own sign can no longer produce "++6,8 %"; percentage points for a
+change in a share and per cent for a change in a level; "vs median" is a
+difference and never a percentage *of* a median; rank is "#n of N" everywhere,
+with N counting the peers that have a figure; an inherited value reads `muni`
+rather than a bare degree sign.
+
+### Fixed
+
+- `dropMaps()` called `map.stop()` before `map.off()`. Leaflet's `stop()`
+  completes a pan animation, completing one fires `moveend`, and that handler
+  writes the camera into `LF` — so loading `#map/0180?c=…&z=14` landed at the
+  zoom of the map it had just replaced.
+- The area page's mini-map built its colour scale from the areas' own values
+  while filling the polygons from the inherited ones, so a RegSO page showing a
+  kommun-level indicator drew one flat colour under a legend that read "no data".
+- The app grid used `1fr`, which is `minmax(auto, 1fr)`: a wide table stretched
+  the column and the whole page scrolled sideways instead of the table. Every
+  route overflowed at 390 px, one of them by 2 090 px.
+- `exportPipelineCsv()` had its arguments the wrong way round and passed arrays
+  where strings were wanted, so it wrote a file named after a JavaScript array
+  with comma-separated cells.
+- A DeSO file arriving after a pin was resolved did not re-render, so Test
+  property went on reading the pin at RegSO level after the finer figures landed.
+- `src/listings/view.js` declared `median` at top level and so does `app.js`;
+  inlining both as classic scripts in one global scope was a SyntaxError that
+  blanked the page. It is an IIFE now, and `build_dashboard.py` runs
+  `node --check` over all five inlined files.
+- The Areas table drew every indicator at every level — 3 363 RegSO × 67
+  indicators is 225 000 cells and 11 MB of DOM. It draws the headline set by
+  default, with the full set one click away; the export is unaffected.
+
+### Tests
+
+`tests/ui_v2/spec.py` is the acceptance spec: 169 checks in headless Chromium,
+runnable per phase (`--upto P4`), plus one separate `--live` check against the
+real gateway. The listings gateway is otherwise answered from
+`tests/fixtures/listings_stockholm.json` — a real recording with every
+third-party string replaced by a synthetic stand-in, because `docs/LISTINGS.md`
+promises that no third-party listing data is committed here and a test file is
+not a reason to break that. `make test-js` is 96 tests across five modules;
+`make test` renders every view headlessly and asserts the documented numbers.
+
+
 ## v1.2.1 — the three known limitations, closed
 
 v1.2 shipped with three things incomplete. All three are done, and none of them
