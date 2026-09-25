@@ -534,6 +534,7 @@ document.addEventListener("click", e => {
     if (LST.sort === k) LST.desc = !LST.desc; else { LST.sort = k; LST.desc = false; }
     syncHash(); lstSectionRefresh(); return; }
   if ((el = g("[data-lstrow]"))) { lstFocus(el.dataset.lstrow); return; }
+  if (g("[data-legpill]")) { document.body.classList.toggle("legopen"); return; }
   if ((el = g("[data-legfold]"))) { const k = el.dataset.legfold; UI.legFold[k] = !UI.legFold[k]; ovLegends(); return; }
   /* a jump moves the camera and returns — no selection change, so no re-render */
   if ((el = g("[data-pipetype]"))) { PIPE.type = el.dataset.pipetype; syncHash(); renderKeep(); return; }
@@ -1253,7 +1254,8 @@ function vMakro() {
         <div class="maplegend" id="maplegend" data-testid="legend"></div>
         <div class="maplegend" id="lg-zones" data-testid="legend-zones"></div>
         ${ovList().map(o => `<div class="maplegend" id="lg-${o.id}" data-testid="legend-${o.id}"></div>`).join("")}
-      </div></div>
+      </div>
+      <button class="legpill" data-legpill aria-label="Show or hide the map legend">Legend ▾</button></div>
     ${srcNote(`<p class="cap">${muni ? "Click a polygon for its figures and a link to its page." : "Click a polygon for its figures; open a kommun with the search box above or from the popup. Table view lists everything side by side."} Colour classes: quintiles of the visible areas. Boundaries: SCB RegSO/DeSO 2025 (CC0), clipped to the coastline with OSM land polygons (ODbL); basemap OpenStreetMap.</p>`)}
   </div>`;
 }
