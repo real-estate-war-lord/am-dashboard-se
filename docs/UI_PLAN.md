@@ -11,7 +11,7 @@ A new session continues from here: read §Status, then the phase that is `TODO`.
 | Phase | Scope | State | Commit |
 |---|---|---|---|
 | P0 | This plan | done | — |
-| P1 | Navigation and routes | TODO | |
+| P1 | Navigation and routes | **done** | b6c914f |
 | P2 | One toolbar on the Map | TODO | |
 | P3 | Layers ▾ including Rental listings | TODO | |
 | P4 | Indicator picker + period control | TODO | |
@@ -23,7 +23,11 @@ A new session continues from here: read §Status, then the phase that is `TODO`.
 | P10 | Responsive | TODO | |
 | P11 | Tests, screenshots, wrap-up | TODO | |
 
-Open ⚠: none recorded yet.
+Open ⚠:
+- `#data/areas/regso` renders 11.6 MB of HTML (3 363 rows × 67 indicator columns).
+  Pre-existing, but it is a glitch by the quality bar of this round — the fix is the
+  default column set (headline + active indicator) with the rest behind `Columns ▾`.
+  Scheduled into P8 with the export work, since both are about what a table is *for*.
 
 ---
 
@@ -63,6 +67,24 @@ Open ⚠: none recorded yet.
   the deployed Listings behaviour cannot regress. Deploy only after `gateway/` tests pass.
   The radius fallback stays in the client for the case where `/bbox` answers 404 (an older
   deployment), radius = half the viewport diagonal capped at 2 000 m.
+- **dist/ and the `built` stamps are committed once, at the end.** `dist/index.html`
+  is 17 MB and is tracked; committing it in each of eleven phase commits would roughly
+  double a repository that is already 263 MB. The phase commits carry source, tests and
+  docs; `dist/`, `dist/listings.html` and the three `built` dates in `data/processed`
+  go in with the final commit.
+- **`src/listings/view.js` is now an IIFE.** It declared `median` at top level and so
+  does `app.js`; inlining both as classic scripts in one global scope blanked the page
+  with `Identifier 'median' has already been declared` — the Danish brief's risk R1,
+  hit on the first build. `build_dashboard.py` now runs `node --check` over all four
+  inlined files.
+- **The Playwright fixture is sanitised.** `docs/LISTINGS.md` promises that no
+  third-party listing data is committed here. `tests/fixtures/record_listings.py`
+  records a real gateway answer and replaces every third-party string (address,
+  landlord, area, listing and image URL, description, source id) with a synthetic
+  stand-in, keeping the source mix, allocation, audience, rooms, size, rent and
+  coordinates. The recorded set is 10 listings — 6 HomeQ direct, 4 municipal-queue —
+  with 7 one-room, 2 two-room and 1 three-room, which is exactly what the n ≥ 3
+  median rule and the reserved-audience filter need to be exercised.
 - **New pure modules** (IIFE, one `window.X`, `node --test`-able, inlined by
   `build_dashboard.py`): `src/route_core.js` (hash alias table + codecs),
   `src/export_core.js` (long-schema row builders + unit assertions). The listings
