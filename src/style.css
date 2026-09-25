@@ -1738,3 +1738,31 @@ td.dim .moe{color:inherit}
 .lgb:hover{border-color:var(--ink);color:var(--ink)}
 .lgrow b{margin-left:auto;font-family:var(--mono);font-size:10.5px}
 @media (max-width:600px){.lst-cards{grid-template-columns:1fr}.lst-card .facts{grid-template-columns:1fr}}
+
+/* ---- the indicator picker ---- */
+.indbtn{display:inline-flex;align-items:baseline;gap:6px;max-width:32ch;white-space:nowrap;overflow:hidden}
+.indbtn b{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.indbtn i{font-style:normal;font-family:var(--mono);font-size:10.5px;color:var(--muted);white-space:nowrap;flex:0 0 auto}
+.indbtn i.u{max-width:14ch;overflow:hidden;text-overflow:ellipsis}
+.indbtn i.tag-muni{color:var(--ink2);background:var(--panel2);border:1px solid var(--line);border-radius:4px;padding:0 4px}
+.pickerpop{width:min(440px,92vw);max-height:70vh;padding:8px}
+.pickerpop #indsearch{width:100%;margin-bottom:6px}
+.pkbody{overflow:auto;max-height:58vh;display:flex;flex-direction:column;gap:2px}
+.pkglab{font-family:var(--mono);font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--muted);padding:9px 8px 3px;display:flex;gap:8px;align-items:baseline}
+.pkglab em{font-style:normal;letter-spacing:0;text-transform:none;font-size:10px;color:var(--dim)}
+.pkrow{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:baseline;width:100%;
+  text-align:left;background:none;border:0;border-radius:7px;padding:5px 8px;cursor:pointer;font:inherit;font-size:13px}
+.pkrow:hover{background:var(--panel2)}
+.pkrow.on{background:#EAF2EF}
+.pkrow .pkl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pkrow .lb{font-style:normal;font-family:var(--mono);font-size:10px;color:var(--muted);cursor:help}
+.pkrow .pku{font-family:var(--mono);font-size:10.5px;color:var(--muted);white-space:nowrap;max-width:18ch;overflow:hidden;text-overflow:ellipsis}
+.pkrow .pkt{font-family:var(--mono);font-size:9.5px;color:var(--dim);white-space:nowrap;min-width:5.5em;text-align:right}
+.pkrow .pkt.tag-muni{color:var(--ink2)}
+.pkrow .pkt.tag-proj{color:#5B4A9C}
+.pkrow .pkt.tag-clim{color:#2F4E8C}
+/* the period control */
+.period{display:inline-flex;align-items:center;gap:6px}
+.fclab.clim{border-color:#C7D2E6;background:#EDF1F8;color:#2F4E8C}
+.qseg .sg{font-size:11px}
+.pkrow .sh{font-style:normal;font-family:var(--mono);font-size:10px;color:var(--dim)}

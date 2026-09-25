@@ -312,11 +312,16 @@ def phase4(r: Report, page, errs) -> None:
     groups = page.eval_on_selector_all("[data-testid=ind-picker-pop] [data-group]",
                                        "e => e.map(x => x.getAttribute('data-group'))")
     r.ok("and shows every group", len(groups) >= 10, f"{len(groups)} groups")
+    before = page.eval_on_selector_all("[data-testid=ind-picker-pop] [data-ind]", "e => e.length")
     page.fill("[data-testid=ind-search]", "rent")
     page.wait_for_timeout(250)
-    vis = page.eval_on_selector_all("[data-testid=ind-picker-pop] [data-ind]",
-                                    "e => e.filter(x => x.offsetParent !== null).map(x => x.innerText.toLowerCase())")
-    r.ok("search filters to matching rows", vis and all("rent" in v for v in vis), f"{len(vis)} rows")
+    # A row matches on its own text OR on its group — "New dwellings that are
+    # hyresrätt" belongs under Rents, and its header is right above it on screen.
+    vis = page.eval_on_selector_all(
+        "[data-testid=ind-picker-pop] [data-ind]",
+        "e => e.map(x => (x.closest('[data-group]').getAttribute('data-group') + ' ' + x.innerText).toLowerCase())")
+    r.ok("search filters to matching rows",
+         vis and len(vis) < before and all("rent" in v for v in vis), f"{len(vis)} of {before} rows")
     page.keyboard.press("Enter")
     page.wait_for_timeout(500)
     r.ok("Enter selects the first match", "ind=" in page.evaluate("location.hash"),

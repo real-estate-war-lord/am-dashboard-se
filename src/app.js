@@ -111,7 +111,7 @@ const S = { view: "makro" };
 const YEARS = ((D.meta && D.meta.years) || []).slice().sort();
 const LATEST = (D.meta && D.meta.latest_year) || (YEARS[YEARS.length - 1] || "");
 /* sub = which layer a drilled kommun shows: its RegSO (default) or its DeSO */
-const MK = { ind: (IND[0] || {}).key, kommun: null, own: false, year: LATEST, sub: "regso" };
+const MK = { ind: (IND[0] || {}).key, kommun: null, own: false, year: LATEST, sub: "regso", fq: "year" };
 const desoMode = () => !!(MK.kommun && MK.sub === "deso" && desoLoaded(MK.kommun));
 
 /* area page: `show` is the set of open <details> sections, serialised as show= */
@@ -149,7 +149,14 @@ const QUICK_KEYS = ["growth", "income_med", "rent", "unemp", "renters", "kt_tal"
 /* link into the chart generator with one area pre-selected */
 const chartLink = (key, type, code) => `charts?ind=${encodeURIComponent(key)}&a=${type}:${code}&y0=&y1=&med=1`;
 /* value of indicator k for kommun/area o in the selected year (latest = live field, else history) */
-const V = (o, k, y) => { const yr = y || MK.year; if (!o) return null; if (!yr || yr === LATEST) return o[k] ?? null; const h = o.hist && o.hist[k]; return h && h[yr] != null ? h[yr] : null; };
+const V = (o, k, y) => {
+  const yr = y || MK.year; if (!o) return null;
+  /* a quarter reads the rolling four-quarter series, a year the yearly one —
+     the period carries its own kind, so nothing else has to branch */
+  if (yr && /K\d/.test(yr)) { const q = o.q && o.q[k]; return q && q[yr] != null ? q[yr] : null; }
+  if (!yr || yr === LATEST) return o[k] ?? null;
+  const h = o.hist && o.hist[k]; return h && h[yr] != null ? h[yr] : null;
+};
 /* the published margin of error that travels with a value, when the source has one */
 const MOE = (o, k, y) => { const yr = y || MK.year; if (!o) return null; if (!yr || yr === LATEST) return o[k + "_moe"] ?? null; const h = o.hist && o.hist[k + "_moe"]; return h && h[yr] != null ? h[yr] : null; };
 const yearsForPool = (k, pool) => YEARS.filter(y => y === LATEST || pool.some(m => m.hist && m.hist[k] && m.hist[k][y] != null));
@@ -198,7 +205,8 @@ function showValue(set, defaults) {
 
 function hashFor() {
   const q = {};
-  const withInd = () => { if (MK.ind) q.ind = MK.ind; if (MK.year && MK.year !== LATEST) q.y = MK.year; };
+  const withInd = () => { if (MK.ind) q.ind = MK.ind; if (MK.year && MK.year !== LATEST) q.y = MK.year;
+    if (MK.fq === "q") q.fq = "q"; };
   let p;
   if (S.view === "area") {
     p = `area/${AR.type}/${AR.code}`; withInd();
@@ -251,7 +259,8 @@ function parseHash() {
   const q = r.query, parts = r.parts, v = r.view;
   const prevView = S.view;
   if (q.ind) MK.ind = q.ind;
-  MK.year = q.y && YEARS.includes(q.y) ? q.y : LATEST;
+  MK.fq = q.fq === "q" ? "q" : "year";
+  MK.year = q.y || LATEST;
   LAY.clear();
   String(q.lay || "").split(",").filter(Boolean).forEach(k => { if (RC.LAYERS.includes(k)) LAY.add(k); });
   ZN.off = q.zones === "0";
@@ -287,7 +296,8 @@ function parseHash() {
     if (MK.sub === "deso") loadDeso(MK.kommun);
   }
   if (!curInds().some(i => i.key === MK.ind)) MK.ind = (curInds()[0] || {}).key;
-  if (!yearsFor(MK.ind).includes(MK.year)) MK.year = LATEST;
+  if (MK.fq === "q" && !quarterly(curInd())) MK.fq = "year";
+  if (!curPeriods().includes(MK.year)) MK.year = LATEST;
   if (S.view === "makro") {
     /* an explicit camera in the hash wins over the automatic fit */
     const cc = (q.c || "").split(",").map(Number);
@@ -385,6 +395,7 @@ function render() {
   const body = document.getElementById("body");
   body.innerHTML = (RENDER[S.view] || vMakro)();
   enableSort(body);
+  if (UI.menu === "picker") { const f = document.getElementById("indsearch"); if (f) { f.focus(); f.select(); } }
 }
 function renderKeep() { const m = document.getElementById("main"), y = m.scrollTop; render(); m.scrollTop = y; }
 
@@ -470,7 +481,7 @@ document.addEventListener("click", e => {
   let el;
   /* A popover closes on any click that is not inside it and not on its own
      trigger — one rule for the Export menu, the Layers menu and the picker. */
-  if ((el = g("[data-menu]"))) { UI.menu = UI.menu === el.dataset.menu ? null : el.dataset.menu; renderKeep(); return; }
+  if ((el = g("[data-menu]"))) { UI.menu = UI.menu === el.dataset.menu ? null : el.dataset.menu; UI.pickQ = ""; renderKeep(); return; }
   if (UI.menu && !g(".menupop")) { UI.menu = null; renderKeep(); }
   if ((el = g("[data-go]"))) { navClose(); go(el.dataset.go); return; }
   if ((el = g("[data-searchgo]"))) { searchGo(el.dataset.searchgo); return; }
@@ -517,15 +528,20 @@ document.addEventListener("click", e => {
     AR.show.delete("dist"); AR.show.delete("sub"); AR.show.delete("figures");
     AR.show.add(k === "ind" ? "figures" : k); syncHash(); renderKeep(); return; }
   if ((el = g("[data-arsub]"))) { AR.sub = el.dataset.arsub; syncHash(); renderKeep(); return; }
-  if ((el = g("[data-indq]"))) { MK.ind = el.dataset.indq; if (!yearsFor(MK.ind).includes(MK.year)) MK.year = LATEST; syncHash(); renderKeep(); return; }
+  if ((el = g("[data-indq]"))) { MK.ind = el.dataset.indq;
+    if (MK.fq === "q" && !quarterly(curInd())) MK.fq = "year";
+    if (!curPeriods().includes(MK.year)) MK.year = LATEST; syncHash(); renderKeep(); return; }
+  if ((el = g("[data-pick]"))) { const [sc, ...rest] = el.dataset.pick.split(":"); pickerPick(sc, rest.join(":")); return; }
+  if ((el = g("[data-fq]"))) { MK.fq = el.dataset.fq; MK.year = LATEST; syncHash(); renderKeep(); return; }
   if (g("[data-mftoggle]")) { UI.mfOpen = !UI.mfOpen; const p = document.getElementById("mfpanel"), b = g("[data-mftoggle]"); if (p) p.style.display = UI.mfOpen ? "" : "none"; if (b) b.classList.toggle("on", UI.mfOpen); return; }
-  if ((el = g("[data-arind]"))) { MK.ind = el.dataset.arind; if (!yearsFor(MK.ind).includes(MK.year)) MK.year = LATEST; syncHash(); renderKeep(); return; }
+  if ((el = g("[data-arind]"))) { MK.ind = el.dataset.arind;
+    if (MK.fq === "q" && !quarterly(curInd())) MK.fq = "year";
+    if (!curPeriods().includes(MK.year)) MK.year = LATEST; syncHash(); renderKeep(); return; }
   if ((el = g(".im"))) { tipToggle(el); return; }
   tipHide();
 });
 document.addEventListener("change", e => {
   const el = e.target;
-  if (el.id === "indsel") { MK.ind = el.value; if (!yearsFor(MK.ind).includes(MK.year)) MK.year = LATEST; syncHash(); renderKeep(); }
   if (el.id === "yearsel") { MK.year = el.value; syncHash(); renderKeep(); }
   if (el.id === "mindsel") { MK.mind = el.value; syncHash(); renderKeep(); }
   if (el.id === "chind") { CH.ind = el.value; syncHash(); renderKeep(); }
@@ -545,7 +561,8 @@ document.addEventListener("input", e => {
   if (e.target.id === "tq") { T.q = e.target.value.trim().toLowerCase(); renderTableBody(); return; }
   /* the search box redraws its own dropdown and nothing else — a full re-render
      would take the focus and the caret with it on every keystroke */
-  if (e.target.id === "areaq") { SR.q = e.target.value; SR.sel = 0; SR.open = true; searchRefresh(); }
+  if (e.target.id === "areaq") { SR.q = e.target.value; SR.sel = 0; SR.open = true; searchRefresh(); return; }
+  if (e.target.id === "indsearch") { UI.pickQ = e.target.value; pickerRefresh(); }
 });
 document.addEventListener("focusin", e => {
   if (e.target.id === "areaq") { SR.open = true; searchRefresh(); }
@@ -573,10 +590,11 @@ document.addEventListener("keydown", e => {
     }
     if (e.key === "Escape") { SR.open = false; searchRefresh(); e.target.blur(); return; }
   }
+  if (e.target.id === "indsearch" && e.key === "Enter") { pickerEnter(); return; }
   if (e.key === "Enter" && e.target.id === "chq") { chartAdd(null, e.target.value); return; }
   if (e.key === "Enter" && e.target.id === "propin") { propSet(e.target.value); return; }
   if (e.key === "Escape") {
-    if (UI.menu) { UI.menu = null; renderKeep(); return; }
+    if (UI.menu) { UI.menu = null; UI.pickQ = ""; renderKeep(); return; }
     if (document.body.classList.contains("navopen")) { navClose(); return; }
     if (LF.fullKey) { closeMiniFull(); return; }
     if (S.view === "area") history.back();
@@ -737,17 +755,128 @@ function legCard(id, label, inner) {
   return `<div class="lgc ${folded ? "folded" : ""}"><button class="lgfold" data-legfold="${esc(id)}" title="${folded ? "Show" : "Hide"} the ${esc(label)} key" aria-expanded="${!folded}">${folded ? "+" : "–"}</button>${folded ? `<div class="lgtitle">${esc(label)}</div>` : inner}</div>`;
 }
 const GROUP_ORDER = ["Demographics", "Outlook", "Safety", "Schools", "Climate", "Growth signals", "Income & jobs", "Housing stock", "Rents", "Prices & market", "Construction", "Municipal finances", "Area quality"];
-function indSelect() {
-  const L = curInds();
-  const groups = GROUP_ORDER.filter(gname => L.some(i => (i.group || "Other") === gname)).concat(L.some(i => !GROUP_ORDER.includes(i.group || "Other")) ? ["Other"] : []);
-  return `<select id="indsel" class="indsel" aria-label="Indicator">${groups.map(gname => `<optgroup label="${esc(gname)}">${L.filter(i => (i.group || "Other") === gname).map(i =>
-    `<option value="${i.key}" ${MK.ind === i.key ? "selected" : ""}>${esc(i.label)}${i.unit ? " · " + esc(i.unit) : ""}</option>`).join("")}</optgroup>`).join("")}</select>`;
+const MUNI_GROUP = "From the municipality";
+
+/* ---------- IndicatorPicker ----------
+   One component, one markup, one behaviour, on the Map, the Area page, Data ›
+   Areas, Charts and Test property. Before this there were three different
+   grouped <select>s and the reader had to learn each one.
+
+   `scope` says whose indicator it sets: "map" is the shared MK.ind that the map,
+   the tables and the area pages all read; "chart" is the chart generator's own.
+   Everything else — the groups, the search, the availability tags — is the same.
+
+   An indicator whose value at THIS level is the kommun's is listed under "From
+   the municipality" rather than mixed in with the ones the area publishes
+   itself, because those are two different claims about the same number. */
+const pickerList = sc => (sc === "chart" ? IND.concat(IND_DESO.filter(i => !IND.some(x => x.key === i.key))) : curInds());
+const pickerCur = sc => (sc === "chart" ? chartInd() : curInd());
+
+/* Which keys, in the context on screen, would be showing the kommun's figure. */
+function pickerMuniKeys(sc) {
+  const out = new Set();
+  if (sc === "chart") return out;
+  if (S.view === "area") {
+    const e = areaEntity();
+    if (!e || e.type === "kommun" || !e.kommun) return out;
+    for (const i of e.inds) if (V(e.o, i.key) == null && canInherit(i.key) && V(e.kommun, i.key) != null) out.add(i.key);
+    return out;
+  }
+  if (S.view === "property") {
+    for (const i of IND) { const a = propVal(i.key); if (a && !a.own) out.add(i.key); }
+    return out;
+  }
+  if (S.view === "makro" && MK.kommun) {
+    const sub = desoMode() ? "deso" : "regso";
+    for (const i of IND) if (!(i.levels || []).includes(sub) && canInherit(i.key)) out.add(i.key);
+    return out;
+  }
+  if (S.view === "table" && T.level !== "kommun") {
+    for (const i of IND) if (!(i.levels || []).includes(T.level) && canInherit(i.key)) out.add(i.key);
+  }
+  return out;
 }
+/* The right-aligned availability tag: the history span, or `snapshot` when the
+   publisher has issued the figure once, or `muni` when it is inherited here. */
+function pickerTag(i, muniKeys, sc) {
+  if (muniKeys.has(i.key)) return { t: "muni", cls: "tag-muni", title: "the kommun's figure is what is shown at this level" };
+  if (isOutlook(i)) return { t: "projection", cls: "tag-proj", title: "a published statement about a future year, not an observation" };
+  if (isClimKey(i.key)) return { t: "scenario", cls: "tag-clim", title: "a screening share under a named scenario" };
+  const ys = sc === "chart" ? histYears(i.key, MUNI) : yearsForPool(i.key, curPool());
+  const hy = ys.filter(y => y !== LATEST);
+  if (hy.length > 1) return { t: hy[0] + "–", cls: "", title: `history from ${hy[0]}` };
+  return { t: "snapshot", cls: "", title: "published once — no history to plot" };
+}
+/* Label, short label, group and unit — not the description. A row whose
+   definition happens to mention the word, while nothing on the row does, reads
+   as a bug rather than as a match. The short label is on the row for the same
+   reason: it is what the chips are named after, so searching it has to be
+   something the reader can see the result of. */
+const pickerMatch = (i, q) => !q || [i.label, i.short, i.group, i.unit].some(x => String(x || "").toLowerCase().includes(q));
+
+function pickerRows(sc) {
+  const L = pickerList(sc), cur = pickerCur(sc), muniKeys = pickerMuniKeys(sc);
+  const q = (UI.pickQ || "").trim().toLowerCase();
+  const groups = GROUP_ORDER.filter(g => L.some(i => (i.group || "Other") === g))
+    .concat(L.some(i => !GROUP_ORDER.includes(i.group || "Other")) ? ["Other"] : []);
+  const out = [];
+  const row = i => {
+    const tag = pickerTag(i, muniKeys, sc);
+    return `<button class="pkrow ${i.key === cur.key ? "on" : ""}" role="option" aria-selected="${i.key === cur.key}"
+      data-ind="${esc(i.key)}" data-pick="${sc}:${esc(i.key)}" title="${esc(i.desc || i.label)}">
+      <span class="pkl">${esc(i.label)}${i.short && i.short !== i.label ? ` <em class="sh">${esc(i.short)}</em>` : ""}${lowerBetter(i) ? ` <em class="lb" title="lower is better">↓</em>` : ""}</span>
+      <span class="pku">${esc(i.unit || "")}</span>
+      <span class="pkt ${tag.cls}" title="${esc(tag.title)}">${esc(tag.t)}</span></button>`;
+  };
+  for (const g of groups) {
+    const rows = L.filter(i => (i.group || "Other") === g && !muniKeys.has(i.key) && pickerMatch(i, q));
+    if (!rows.length) continue;
+    out.push(`<div class="pkgroup" data-group="${esc(g)}"><div class="pkglab">${esc(g)}</div>${rows.map(row).join("")}</div>`);
+  }
+  const inh = L.filter(i => muniKeys.has(i.key) && pickerMatch(i, q));
+  if (inh.length) {
+    out.push(`<div class="pkgroup" data-group="${esc(MUNI_GROUP)}"><div class="pkglab">${esc(MUNI_GROUP)}
+      <em>shown here as the kommun's figure</em></div>${inh.map(row).join("")}</div>`);
+  }
+  if (!out.length) return `<div class="snone">No indicator matches “${esc(UI.pickQ || "")}”.</div>`;
+  return out.join("");
+}
+function indPicker(scope) {
+  const sc = scope || "map";
+  const i = pickerCur(sc);
+  const muniKeys = pickerMuniKeys(sc);
+  const open = UI.menu === "picker";
+  return `<span class="menu picker" data-testid="ind-picker">
+    <button class="lk indbtn" data-testid="ind-picker-btn" data-menu="picker" data-pickscope="${sc}"
+      aria-haspopup="listbox" aria-expanded="${open}" title="${esc(i.desc || i.label)}">
+      <b>${esc(i.label)}</b><i class="u">${esc(i.unit || "")}</i>${muniKeys.has(i.key) ? `<i class="tag-muni">municipality</i>` : ""} ▾</button>
+    ${open ? `<div class="menupop pickerpop" role="dialog" aria-label="Indicator" data-testid="ind-picker-pop">
+      <input id="indsearch" data-testid="ind-search" class="indsel" placeholder="Search indicators…" autocomplete="off"
+        value="${esc(UI.pickQ || "")}" data-pickscope="${sc}">
+      <div class="pkbody" id="pkbody" role="listbox">${pickerRows(sc)}</div>
+    </div>` : ""}</span>`;
+}
+function pickerRefresh() {
+  const sc = (document.querySelector("[data-testid=ind-search]") || { dataset: {} }).dataset.pickscope || "map";
+  const b = document.getElementById("pkbody"); if (b) b.innerHTML = pickerRows(sc);
+}
+function pickerPick(sc, key) {
+  UI.menu = null; UI.pickQ = "";
+  if (sc === "chart") CH.ind = key;
+  else { MK.ind = key; if (!curPeriods().includes(MK.year)) MK.year = LATEST; }
+  syncHash(); renderKeep();
+}
+function pickerEnter() {
+  const sc = (document.querySelector("[data-testid=ind-search]") || { dataset: {} }).dataset.pickscope || "map";
+  const first = document.querySelector("[data-testid=ind-picker-pop] .pkrow");
+  if (first) pickerPick(sc, first.dataset.ind);
+}
+/* the chips: the figures people ask for first, one click each */
 function indQuick() {
-  /* the six figures people ask for first, one click each */
   const L = curInds(); const ks = QUICK_KEYS.map(k => L.find(i => i.key === k)).filter(Boolean);
-  return ks.length > 1 ? `<div class="iq">${ks.map(i => `<button class="iqb ${MK.ind === i.key ? "on" : ""}" data-indq="${i.key}" title="${esc(i.label)}">${esc(i.short || i.label)}</button>`).join("")}</div>` : "";
+  return ks.length > 1 ? `<div class="iq" data-testid="ind-chips">${ks.map(i => `<button class="iqb ${MK.ind === i.key ? "on" : ""}" data-indq="${i.key}" title="${esc(i.label)}">${esc(i.short || i.label)}</button>`).join("")}</div>` : "";
 }
+
 /* ---------- the unified search ----------
    One box. It takes a kommun, a RegSO or a DeSO by name or by code, and it also
    takes a Google Maps link or a bare "lat, lon" — which resolves to a Test
@@ -913,15 +1042,63 @@ function indExplain(i) {
     ${i.warn ? `<p class="warnline">⚠ ${esc(i.warn)}</p>` : ""}</div>
   </details>`;
 }
-function yearSelect() {
-  const oi = outlookOf(curInd());
-  if (oi) return `<span class="fclab" title="${esc((curInd().warn || ""))}">${esc(oi.label)} · SCB ${esc((oi.published || "").slice(0, 4))}</span>`;
-  const ys = yearsFor(MK.ind);
-  if (ys.length < 2) return "";
-  const hy = ys.filter(y => y !== LATEST); const lastHist = hy[hy.length - 1];
+/* ---------- PeriodControl ----------
+   One control, four modes, chosen by the active indicator rather than by the
+   view — so the same indicator reads the same way on the map, in the table and
+   on an area page, and a projection can never appear next to a year selector
+   that implies it was observed.
+
+     year       a select of the periods this indicator actually has
+     quarter    the same, plus a Yearly | Quarterly segment where the source
+                publishes quarters (Safety: reported offences, rolling 4 quarters)
+     projection a static badge — an Outlook indicator is one published statement
+                about a future year, so there is nothing to select
+     climate    a static badge naming the scenario, for the same reason
+
+   A quarter is carried in the same `y=` key as a year ("2025K4"), so a link is
+   the same shape either way and V() is the only place that has to know. */
+const isQuarter = t => /K\d/.test(String(t || ""));
+const qPeriodsOf = i => (i && i.q_periods) || [];
+/* Quarters are only offered where every area in the pool actually has them — a
+   mixed pool would show a figure for some areas and a dash for the rest. */
+function quarterly(i) {
+  if (!i || qPeriodsOf(i).length < 2) return false;
   const pool = curPool();
-  const label = y => y === LATEST ? (lastHist && lastHist !== LATEST && !pool.some(m => m.hist && m.hist[MK.ind] && m.hist[MK.ind][LATEST] != null) ? `latest (${lastHist} data)` : `${y} (latest)`) : y;
-  return `<select id="yearsel" class="indsel" aria-label="Year">${ys.filter(y => !(y === lastHist && label(LATEST).startsWith("latest ("))).map(y => `<option value="${y}" ${MK.year === y ? "selected" : ""}>${label(y)}</option>`).join("")}</select>`;
+  return pool.length > 0 && pool.every(o => o && o.q && o.q[i.key]);
+}
+function curPeriods() {
+  const i = curInd();
+  if (MK.fq === "q" && quarterly(i)) return qPeriodsOf(i);
+  return yearsFor(MK.ind);
+}
+function periodControl() {
+  const i = curInd();
+  const oi = outlookOf(i);
+  if (oi) {
+    return `<span class="period" data-testid="period"><span class="fclab" data-testid="period-proj"
+      title="${esc(i.warn || "")}">${esc(oi.label)} · SCB ${esc((oi.published || "").slice(0, 4))}</span></span>`;
+  }
+  if (isClimKey(i.key)) {
+    /* the indicator's own scenario, from its label and its publisher */
+    const src = String(i.source || "").replace(/^Källa:\s*/i, "").split(/[.,(]/)[0].trim();
+    return `<span class="period" data-testid="period"><span class="fclab clim" data-testid="period-clim"
+      title="${esc(i.desc || "")}">${esc(i.label)}${src ? " · " + esc(src) : ""}</span></span>`;
+  }
+  const q = quarterly(i);
+  const ps = curPeriods();
+  const seg = q ? `<span class="seg qseg" data-testid="period-fq">${[["year", "Yearly"], ["q", "Quarterly"]].map(([m, l]) =>
+    `<button class="sg ${(MK.fq === m || (m === "year" && MK.fq !== "q")) ? "on" : ""}" data-fq="${m}"
+      title="${m === "q" ? "Each point is the rolling sum of the four quarters ending there" : "One figure per year"}">${l}</button>`).join("")}</span>` : "";
+  if (ps.length < 2) return seg ? `<span class="period" data-testid="period">${seg}</span>` : "";
+  /* The select names the indicator's OWN latest period, not the dashboard's: an
+     indicator whose newest figure is two years old must not read "2026". */
+  const hy = ps.filter(y => y !== LATEST); const lastHist = hy[hy.length - 1];
+  const pool = curPool();
+  const lagging = lastHist && lastHist !== LATEST && !pool.some(m => m.hist && m.hist[MK.ind] && m.hist[MK.ind][LATEST] != null);
+  const label = y => y !== LATEST ? y : (lagging ? `${lastHist} (latest)` : `${y} (latest)`);
+  const opts = ps.filter(y => !(lagging && y === lastHist));
+  return `<span class="period" data-testid="period">${seg}<select id="yearsel" class="indsel" data-testid="period-year"
+    aria-label="Period">${opts.map(y => `<option value="${y}" ${MK.year === y ? "selected" : ""}>${esc(label(y))}</option>`).join("")}</select></span>`;
 }
 
 /* geometry helpers: largest ring, centroid */
@@ -979,7 +1156,7 @@ function vMakro() {
   return `
   <div class="card accent" id="mapcard">
     <div class="card-head tools-only">
-      <div class="tools" data-testid="map-toolbar" data-row="1">${areaSearch()}${layersMenuHtml()}${indSelect()}${yearSelect()}${subToggle()}</div>
+      <div class="tools" data-testid="map-toolbar" data-row="1">${areaSearch()}${layersMenuHtml()}${indPicker("map")}${periodControl()}${subToggle()}</div>
       <div class="chiprow" data-row="2">${indQuick()}</div></div>
     ${indExplain(ind)}
     ${muni ? muniStrip(muni) : ""}
@@ -1099,7 +1276,7 @@ function vTable() {
   const ind = curInd(), cols = tableCols(), y0 = yearsFor(ind.key)[0];
   return `
   <div class="card accent">
-    <div class="card-head tools-only"><div class="tools">${indSelect()}${yearSelect()}</div>${indQuick()}</div>
+    <div class="card-head tools-only"><div class="tools">${indPicker("map")}${periodControl()}</div>${indQuick()}</div>
     ${indExplain(ind)}
     <div class="tfilters">
       <input id="tq" type="search" placeholder="Search kommun, RegSO or code…" value="${esc(T.q)}">
@@ -1582,6 +1759,7 @@ function vProperty() {
       <span class="anerr" id="properr"></span>
     </div>
     ${pinned ? `<div class="tools">
+      ${indPicker("map")}${periodControl()}
       <button class="lk" data-go="${withQ("map/" + (r.kommun ? r.kommun.code : ""))}">Open on map</button>
       ${r.regso && byRegso[r.regso.code] ? `<button class="lk" data-go="${withQ("area/regso/" + r.regso.code)}">${esc(r.regso.name)} ›</button>` : ""}
       ${r.kommun ? `<button class="lk" data-go="${withQ("area/kommun/" + r.kommun.code)}">${esc(r.kommun.name)} ›</button>` : ""}
@@ -1664,7 +1842,7 @@ function vArea() {
       <h2>${esc(e.name)}</h2>
       <div class="artags"><span class="tag">${esc(e.typeLabel)}</span><span class="tag">code ${esc(e.code)}</span>${e.o.pop != null ? `<span class="tag">${nf(e.o.pop, 0)} inhabitants</span>` : ""}${e.type === "kommun" ? `<span class="tag">${e.ctx.length} postal codes</span>` : ""}${e.type === "regso" && e.o.codes && e.o.codes.length > 1 ? `<span class="tag">merged codes ${esc(e.o.codes.join(", "))}</span>` : ""}</div>
     </div>
-    <div class="tools">${yearSelect()}<button class="lk" data-go="${withQ(mapHash)}">Show on map</button><button class="lk" data-go="${chartLink(MK.ind, e.type, e.code)}">↗ Chart</button>${e.type !== "deso" && desoAvail(e.type === "kommun" ? e.code : e.o.kommun) ? `<button class="lk primary" data-go="map/${e.type === "kommun" ? e.code : e.o.kommun}/deso?ind=${MK.ind}">DeSO ›</button>` : ""}</div>
+    <div class="tools">${indPicker("map")}${periodControl()}<button class="lk" data-go="${withQ(mapHash)}">Show on map</button><button class="lk" data-go="${chartLink(MK.ind, e.type, e.code)}">↗ Chart</button>${e.type !== "deso" && desoAvail(e.type === "kommun" ? e.code : e.o.kommun) ? `<button class="lk primary" data-go="map/${e.type === "kommun" ? e.code : e.o.kommun}/deso?ind=${MK.ind}">DeSO ›</button>` : ""}</div>
     ${headlineHtml(e)}
     ${usoLine(e.o)}${outlookLine(e.type === "kommun" ? e.o : e.kommun, e.type !== "kommun")}
   </div>
@@ -3320,8 +3498,6 @@ function chartSvgLine(withTitle) {
 }
 function vCharts() {
   const ind = chartInd(), ys = chartYears(); const ents = CH.areas.map(chEntity).filter(Boolean);
-  const L = IND.concat(IND_DESO.filter(i => !IND.some(x => x.key === i.key)));
-  const groups = GROUP_ORDER.filter(gn => L.some(i => (i.group || "Other") === gn)).concat(L.some(i => !GROUP_ORDER.includes(i.group || "Other")) ? ["Other"] : []);
   const quick = [["Top 5 kommuner", MUNI.slice().sort((a, b) => (b.pop || 0) - (a.pop || 0)).slice(0, 5).map(m => "kommun:" + m.code)],
                  ["Storstäder", ["0180", "1480", "1280"].filter(c => byCode[c]).map(c => "kommun:" + c)],
                  ["University towns", ["0380", "1280", "0580", "1880"].filter(c => byCode[c]).map(c => "kommun:" + c)]];
@@ -3329,7 +3505,7 @@ function vCharts() {
   return `
   <div class="card accent">
     <div class="card-head tools-only"><div class="tools">
-      <select id="chind" class="indsel">${groups.map(gn => `<optgroup label="${esc(gn)}">${L.filter(i => (i.group || "Other") === gn).map(i => `<option value="${i.key}" ${CH.ind === i.key ? "selected" : ""}>${esc(i.label)}${i.unit ? " · " + esc(i.unit) : ""}</option>`).join("")}</optgroup>`).join("")}</select>
+      ${indPicker("chart")}
       ${(() => { const fy = chartFcYears(); const ys = fy || YEARS; const lo = ys[0], hi = ys[ys.length - 1];
         return `<select id="chy0" class="indsel"><option value="">from ${lo}</option>${ys.map(y => `<option value="${y}" ${CH.y0 === y ? "selected" : ""}>${y}</option>`).join("")}</select>
       <select id="chy1" class="indsel"><option value="">to ${hi}</option>${ys.map(y => `<option value="${y}" ${CH.y1 === y ? "selected" : ""}>${y}</option>`).join("")}</select>`; })()}
