@@ -19,7 +19,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font
 h1,h2,h3{font-family:var(--disp);margin:0;letter-spacing:-.02em;font-weight:600}
 .num,b,.rval{font-family:var(--mono);font-variant-numeric:tabular-nums}
 .bad{color:var(--bad)}.good{color:var(--good)}.ghost,.dim{color:var(--dim)}
-.app{display:grid;grid-template-columns:268px 1fr;height:100vh}
+.app{display:grid;grid-template-columns:268px minmax(0,1fr);height:100vh}
 
 aside{background:var(--side);color:var(--side-ink);display:flex;flex-direction:column;overflow-y:auto}
 .brand{padding:28px 22px 22px}
@@ -48,7 +48,13 @@ aside{background:var(--side);color:var(--side-ink);display:flex;flex-direction:c
 .side-foot label{display:block;margin:10px 0 4px;font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase}
 #remu{width:100%;background:var(--side2);border:1px solid #2C3A32;color:var(--side-ink);font-family:var(--mono);font-size:10.5px;padding:5px 7px}
 
-main{overflow-y:auto;display:flex;flex-direction:column}
+/* min-width:0 on both, or a wide table stretches the flex item and then the
+   grid column, and the whole page scrolls sideways instead of the table. This is
+   what made every route overflow at 390 px. */
+main{overflow-y:auto;display:flex;flex-direction:column;min-width:0}
+#body{min-width:0}
+.card{min-width:0;max-width:100%}
+.scrollx{overflow-x:auto;max-width:100%;-webkit-overflow-scrolling:touch}
 .topbar{position:sticky;top:0;z-index:20;background:var(--bg);border-bottom:1px solid var(--line);padding:18px 26px 14px}
 #hd{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;flex-wrap:wrap}
 .hd-eyebrow{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:3px}
@@ -1422,7 +1428,7 @@ a.nav-item:hover .navext{opacity:.9}
 #mapcard:fullscreen .maplegend,#mapcard.fs-fallback .maplegend{bottom:20px}
 .mklegend{display:none}
 /* area page header: headline row */
-.arhead .hl{flex-basis:100%;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:9px;overflow:hidden;margin-top:12px}
+.hl{flex-basis:100%;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:9px;overflow:hidden;margin-top:12px}
 .hlc{background:var(--panel);border:0;text-align:left;padding:10px 14px 9px;cursor:pointer;font:inherit;display:flex;flex-direction:column;gap:2px;min-width:0}
 .hlc:hover{background:var(--panel2)}
 .hlc.on{background:#F0F4EE;box-shadow:inset 0 3px 0 var(--ink)}
@@ -1432,8 +1438,8 @@ a.nav-item:hover .navext{opacity:.9}
 .hlc em i{font-style:normal;font-weight:600}
 .hlc .up{color:var(--good)}.hlc .dn{color:var(--bad)}
 .arhead h2{margin-top:0}
-@media (max-width:1180px){.arhead .hl{grid-template-columns:repeat(3,minmax(0,1fr))}}
-@media (max-width:820px){.arhead .hl{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:1180px){.hl{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:820px){.hl{grid-template-columns:repeat(2,minmax(0,1fr))}}
 /* tiles: one context line, chart link in the corner */
 .hero .tile .tm{display:flex;flex-wrap:wrap;gap:2px 10px}
 .hero .tile{position:relative}
@@ -1495,3 +1501,392 @@ th .thn{display:inline}
 .moe.wide{color:#B0331B}
 .moe.wide::after{content:"!";margin-left:.15em;font-weight:600}
 td.dim .moe{color:inherit}
+
+
+/* ============================================================================
+   v2.0 — the shell, the menus and the shared components
+   ==========================================================================*/
+
+/* 240 px rather than 268 recovers 28 px of content width, which is what makes the
+   study row fit at 1366 without the mini-map going square. */
+.app{grid-template-columns:240px minmax(0,1fr)}
+
+/* the mobile top bar and its drawer exist at every width but are hidden on the
+   desktop, so "is the sidebar visible" and "is the drawer open" stay two
+   separate questions */
+.mtop{display:none}
+.drawer{display:none}
+.scrim{display:none}
+
+.pageact{display:flex;gap:8px;align-items:center;margin-left:auto}
+#hd{flex:1 1 auto}
+.topbar{display:flex;align-items:flex-start;gap:16px}
+
+/* ---- popover menus: Export ▾, Layers ▾, the indicator picker ---- */
+.menu{position:relative;display:inline-flex}
+.menupop{position:absolute;top:calc(100% + 6px);right:0;z-index:60;min-width:220px;max-width:min(420px,92vw);
+  background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
+  box-shadow:0 14px 40px rgba(20,28,24,.16);padding:6px;display:flex;flex-direction:column;gap:1px}
+.menupop.wide{min-width:300px}
+.menupop .mlab{font-family:var(--mono);font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;
+  color:var(--muted);padding:8px 9px 4px}
+.menupop .mi{display:block;width:100%;text-align:left;background:none;border:0;border-radius:7px;
+  padding:8px 9px;font:inherit;font-size:13px;color:var(--ink);cursor:pointer}
+.menupop .mi:hover{background:var(--panel2)}
+.menupop .mi.off{color:var(--dim);cursor:default}
+.menupop .mi em{display:block;font-style:normal;font-family:var(--mono);font-size:10px;color:var(--dim);margin-top:1px}
+.menupop .mi.row{display:grid;grid-template-columns:18px 1fr;gap:8px;align-items:start}
+.menupop .mi.row span{display:block}
+.menupop .mi.row b{font-weight:600;font-size:13px;font-family:var(--body);display:block}
+.menupop .mi.row em{font-style:normal;display:block;font-family:var(--mono);font-size:10.5px;color:var(--muted);margin-top:2px}
+.menupop .tick{font-style:normal;display:inline-flex;align-items:center;justify-content:center;
+  width:16px;height:16px;border:1px solid var(--line);border-radius:4px;font-size:11px;color:var(--good);
+  background:var(--panel2);margin-top:1px}
+.menupop .mi.row.on .tick{border-color:var(--good);background:#EAF2EF}
+.msubs{display:flex;flex-wrap:wrap;gap:4px;padding:2px 9px 8px 35px}
+.mchip{display:inline-flex;align-items:center;gap:5px;background:var(--panel2);border:1px solid var(--line);
+  border-radius:999px;padding:3px 9px;font-family:var(--mono);font-size:10.5px;color:var(--ink2);cursor:pointer}
+.mchip.on{border-color:var(--ink);color:var(--ink)}
+.mchip i{width:8px;height:8px;border-radius:50%;border:1.2px solid var(--line);display:inline-block}
+.side-foot .menu{width:100%}
+.side-foot .lk.wide{width:100%;justify-content:center}
+.side-foot .menupop{right:auto;left:0;bottom:calc(100% + 6px);top:auto}
+.xcap{margin-top:8px;font-size:10.5px;line-height:1.5;color:var(--side-muted)}
+
+/* ---- the Data section header ---- */
+.dhead{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:0 0 12px}
+.dhead .seg{flex:0 1 auto}
+.dhead .menu{margin-left:auto}
+
+/* ---- shareable <details> sections ---- */
+.sec{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);margin:0 0 12px}
+.sec>summary{cursor:pointer;padding:13px 16px;display:flex;align-items:baseline;gap:10px;list-style:none}
+.sec>summary::-webkit-details-marker{display:none}
+.sec>summary::before{content:"";width:0;height:0;border:5px solid transparent;border-left-color:var(--muted);
+  transform:translateY(1px);transition:transform .12s}
+.sec[open]>summary::before{transform:rotate(90deg) translateX(1px)}
+.sec>summary b{font-family:var(--disp);font-size:15px;font-weight:600;letter-spacing:-.01em}
+.sec>summary .dim{font-family:var(--mono);font-size:10.5px}
+.secbody{padding:0 16px 16px}
+
+/* ---- legends: keys only, stacked, collapsible, never overlapping ---- */
+.maplegs{display:flex;flex-direction:column;align-items:flex-end;gap:8px;
+  max-height:62%;overflow:auto;pointer-events:none}
+.maplegs>*{pointer-events:auto}
+.maplegend:empty{display:none}
+.lgc{position:relative}
+.lgfold{position:absolute;top:4px;right:4px;z-index:2;width:18px;height:18px;line-height:1;
+  background:var(--panel);border:1px solid var(--line);border-radius:5px;color:var(--muted);
+  font-family:var(--mono);font-size:12px;cursor:pointer;padding:0}
+.lgfold:hover{color:var(--ink);border-color:var(--ink)}
+.lgc.folded .lgtitle{margin:0;padding-right:22px}
+
+/* ---- mini-map: draggable, with its own full screen ---- */
+.mapwrap{position:relative}
+.mfull{position:absolute;top:8px;right:8px;z-index:500;width:26px;height:26px;line-height:1;
+  background:var(--panel);border:1px solid var(--line);border-radius:6px;cursor:pointer;
+  font-size:13px;color:var(--ink2);padding:0}
+.mfull:hover{color:var(--ink);border-color:var(--ink)}
+.mapwrap.is-full{position:fixed;inset:0;z-index:300;margin:0;background:var(--panel)}
+.mapwrap.is-full>div:first-child{height:100vh !important}
+.mapwrap.is-full .maplegend{bottom:16px;right:16px}
+
+/* ---- Test property ---- */
+.inh{color:var(--muted)}
+.anpin{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:10px 0 0}
+.anpin .anin{flex:1 1 320px;min-width:220px}
+.anpin .anlab{flex:0 1 160px}
+.anerr{font-family:var(--mono);font-size:11px;color:var(--bad)}
+.sparkcell{width:130px;color:var(--ink2)}
+
+/* ============================================================================
+   v2.0 — responsive: one column, a top bar and a drawer at 1024 px and below
+   ==========================================================================*/
+@media (max-width:1024px){
+  body{overflow:auto}
+  .app{grid-template-columns:minmax(0,1fr);height:auto}
+  main{overflow:visible}
+  aside{display:none}
+  .mtop{display:flex;align-items:center;gap:10px;height:52px;padding:0 14px;position:sticky;top:0;z-index:40;
+    background:var(--side);color:var(--side-ink)}
+  .navtog{background:none;border:0;color:var(--side-ink);font-size:20px;line-height:1;cursor:pointer;padding:4px 6px}
+  .mbrand{font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:#F2F3EE}
+  .mview{margin-left:auto;font-family:var(--mono);font-size:10.5px;color:var(--side-muted)}
+  .scrim{display:block;position:fixed;inset:0;z-index:45;background:rgba(20,23,15,.42)}
+  .scrim[hidden]{display:none}
+  .drawer{display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:50;width:280px;
+    max-width:86vw;background:var(--side);color:var(--side-ink);overflow-y:auto}
+  .drawer[hidden]{display:none}
+  .drawer .brand{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+  .drawerx{background:none;border:0;color:var(--side-muted);font-size:15px;cursor:pointer;padding:0 2px}
+  .drawer #navdrawer{display:flex;flex-direction:column;padding:0 12px 14px}
+  .topbar{position:static;padding:14px 16px 10px;flex-wrap:wrap}
+  #body{padding:12px 16px}
+  /* the map's one row is a desktop affordance: it wraps here, and the map moves
+     down rather than the page moving sideways */
+  [data-testid=map-toolbar]{flex-wrap:wrap}
+  [data-testid=map-toolbar] .asrch{flex:1 1 100%;max-width:none}
+  [data-testid=map-toolbar] .indbtn{max-width:none}
+  .tfilters,.tools,.chips,.dhead{flex-wrap:wrap}
+  .grid-2,.grid-23{grid-template-columns:1fr}
+  .card{padding:12px}
+  .scrollx{overflow-x:auto}
+  .tools{gap:6px}
+  #lfmap{height:60vh}
+}
+@media (max-width:600px){
+  .hero{grid-template-columns:1fr 1fr}
+  /* the legend stack would cover the map at this width, so it folds behind one
+     pill and the map is what the screen is for */
+  .maplegs{display:none}
+  body.legopen .maplegs{display:flex;max-height:70%}
+  .legpill{display:inline-flex}
+  .anpin .anin,.anpin .anlab{flex:1 1 100%}
+  .menupop{position:fixed;left:8px;right:8px;top:auto;bottom:8px;max-width:none;min-width:0}
+  .side-foot .menupop{left:8px;right:8px;bottom:8px}
+  #lfmap{height:55vh}
+}
+
+/* ---- the map's one toolbar row ----
+   Row 1 must not wrap: it is what decides how far down the map starts, and the
+   budget is 200 px from the top of the viewport at 1366×768. The search box is
+   the only elastic control, so it is the one that shrinks. */
+[data-testid=map-toolbar]{flex-wrap:nowrap;align-items:center;gap:6px}
+[data-testid=map-toolbar] .asrch{flex:1 1 200px;min-width:130px;max-width:360px}
+[data-testid=map-toolbar] .asrch input{width:100%}
+[data-testid=map-toolbar] .indsel{height:28px;padding-top:0;padding-bottom:0;max-width:22ch}
+[data-testid=map-toolbar] .indbtn{max-width:30ch;height:28px}
+[data-testid=map-toolbar] .lk{height:28px;padding-top:0;padding-bottom:0;display:inline-flex;align-items:center}
+[data-testid=map-toolbar] .seg .sg,[data-testid=map-toolbar] .seg button{padding-top:3px;padding-bottom:3px}
+.card-head.tools-only{gap:6px}
+.chiprow{margin:0}
+.chiprow .iq{margin:0}
+#mapcard>.indx{margin:6px 0 0}
+#mapcard>.indx>summary{padding:5px 0}
+
+/* the mobile legend pill: hidden on the desktop, where the stack simply fits */
+.legpill{display:none;position:absolute;right:10px;bottom:10px;z-index:801;align-items:center;gap:5px;
+  background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:5px 11px;
+  font-family:var(--mono);font-size:11px;color:var(--ink2);cursor:pointer;box-shadow:0 2px 8px rgba(20,28,24,.12)}
+.legpill:hover{color:var(--ink);border-color:var(--ink)}
+
+/* ---- the unified search dropdown ---- */
+.asrch{position:relative;display:inline-flex;align-items:center;gap:4px}
+.asrch .qmark{width:20px;height:20px;flex:0 0 20px;border:1px solid var(--line);border-radius:50%;
+  background:var(--panel);color:var(--muted);font-family:var(--mono);font-size:10.5px;line-height:1;
+  cursor:help;padding:0}
+.asrch .qmark:hover{color:var(--ink);border-color:var(--ink)}
+.sdrop{display:none;position:absolute;top:calc(100% + 5px);left:0;z-index:70;width:min(420px,88vw);
+  background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
+  box-shadow:0 14px 40px rgba(20,28,24,.16);padding:6px;max-height:60vh;overflow:auto}
+.asrch[aria-expanded=true] .sdrop{display:block}
+.sjump{display:flex;align-items:center;gap:5px;flex-wrap:wrap;padding:4px 6px 8px;border-bottom:1px solid var(--line2);margin-bottom:5px}
+.sjump em{font-style:normal;font-family:var(--mono);font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--muted);margin-right:2px}
+.sjump button{background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:3px 10px;
+  font-family:var(--mono);font-size:10.5px;color:var(--ink2);cursor:pointer}
+.sjump button:hover{border-color:var(--ink);color:var(--ink)}
+.srow{display:block;width:100%;text-align:left;background:none;border:0;border-radius:7px;padding:6px 8px;cursor:pointer;font:inherit}
+.srow:hover,.srow.on{background:var(--panel2)}
+.srow b{display:block;font-family:var(--body);font-size:13px;font-weight:600}
+.srow em{display:block;font-style:normal;font-family:var(--mono);font-size:10.5px;color:var(--muted);margin-top:1px}
+.snone{padding:8px;font-size:12.5px;color:var(--muted)}
+
+/* ============================================================================
+   v2.0 — rental listings (the map layer and the Test property section)
+   Moved in from src/listings/listings.css when the standalone page became a
+   section. Every colour is a token, so the two read as one product.
+   ==========================================================================*/
+.lst-mk{border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.28)}
+.lst-pin{border-radius:50%;border:3px solid var(--side);background:#fff;box-shadow:0 0 0 1px rgba(0,0,0,.2)}
+/* the basemap is reference, not content: desaturated so the markers are what the eye lands on */
+.basemap{filter:saturate(.35) brightness(1.06)}
+
+.lstpop .leaflet-popup-content{margin:0;width:300px !important}
+.lst-card{font-family:var(--body);font-size:12.5px;color:var(--ink)}
+.lst-card .img{width:100%;height:148px;object-fit:cover;display:block;background:var(--panel2);border-radius:var(--r) var(--r) 0 0}
+.lst-card .noimg{width:100%;height:80px;display:flex;align-items:center;justify-content:center;
+  background:var(--panel2);color:var(--dim);font-family:var(--mono);font-size:11px;
+  border-radius:var(--r) var(--r) 0 0;border-bottom:1px solid var(--line2)}
+.lst-card .pad{padding:10px 12px 12px}
+.lst-card h3{font-family:var(--disp);font-size:15px;margin:0 0 2px;font-weight:600}
+.lst-card .sub{color:var(--muted);font-size:11.5px;margin-bottom:8px}
+.lst-card .facts{display:grid;grid-template-columns:1fr 1fr;gap:3px 10px;font-family:var(--mono);font-size:11.5px;margin-bottom:8px}
+.lst-card .facts i{font-style:normal;color:var(--muted)}
+.lst-card .badges{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px}
+.lst-bdg{font-size:10.5px;font-family:var(--mono);padding:2px 7px;border-radius:999px;
+  border:1px solid var(--line);background:var(--panel2);color:var(--ink2);text-decoration:none}
+.lst-bdg.offer{background:#FBF3E3;border-color:#EBD9B4;color:#7A5410}
+.lst-bdg.queue{background:#EFF1EE;border-color:#D9DDD6;color:#45483F}
+.lst-bdg.also{background:#E9F1EF;border-color:#C9DCD7;color:#14544A}
+.lst-bdg.pos{background:var(--panel2);color:var(--muted)}
+.lst-card .text{font-size:12px;color:var(--ink2);line-height:1.45;margin-bottom:9px}
+.lst-card .text.muted{color:var(--dim);font-style:italic}
+.lst-card .open{display:block;text-align:center;padding:8px;border-radius:var(--r);
+  background:var(--side);color:var(--side-ink);text-decoration:none;font-weight:500;font-size:12.5px}
+.lst-card .open:hover{background:var(--side2)}
+
+/* the section on Test property */
+.lst-sum{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:baseline;font-family:var(--mono);font-size:12px;color:var(--ink2)}
+.lst-sum b{font-size:14px;color:var(--ink)}
+.lst-sum .st{color:var(--muted)}
+.lst-med{display:flex;flex-wrap:wrap;gap:10px;margin:10px 0 0}
+.lst-med .m{border:1px solid var(--line);border-radius:var(--r);padding:8px 12px;min-width:118px;background:var(--panel2)}
+.lst-med .m b{display:block;font-family:var(--mono);font-size:17px;font-weight:600}
+.lst-med .m span{font-size:11px;color:var(--muted)}
+.lst-med .m.sup b{color:var(--dim);font-size:14px}
+.lst-caveat{font-family:var(--mono);font-size:11px;line-height:1.55;color:var(--muted);
+  border-top:1px solid var(--line2);padding-top:9px;margin-top:12px}
+.lst-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;margin:12px 0}
+.lst-cards .lst-card{border:1px solid var(--line);border-radius:var(--r);background:var(--panel);overflow:hidden}
+.lst-filters{display:flex;flex-wrap:wrap;gap:12px 20px;padding:10px 12px;margin:10px 0;
+  background:var(--panel2);border:1px solid var(--line2);border-radius:var(--r)}
+.lst-fgroup{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.lst-fgroup>span{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.lst-tog{display:inline-flex;align-items:center;gap:6px;padding:3px 9px;cursor:pointer;
+  border:1px solid var(--line);border-radius:999px;background:var(--panel);font-size:11.5px;color:var(--ink2)}
+.lst-tog[aria-pressed=true]{background:var(--side);border-color:var(--side);color:var(--side-ink)}
+.lst-tog .swatch{width:9px;height:9px;border-radius:2px;flex:none}
+.lst-tbl{width:100%;border-collapse:collapse;font-size:12px;font-family:var(--mono)}
+.lst-tbl th,.lst-tbl td{padding:5px 8px;text-align:left;border-bottom:1px solid var(--line2);white-space:nowrap}
+.lst-tbl th{cursor:pointer;user-select:none;color:var(--muted);font-weight:500;position:sticky;top:0;background:var(--panel)}
+.lst-tbl th:hover{color:var(--ink)}
+.lst-tbl td.num,.lst-tbl th.num{text-align:right}
+.lst-tbl tbody tr:hover{background:var(--panel2)}
+.lst-tbl .srcdot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}
+.lst-scroll{max-height:440px;overflow:auto}
+.lst-chip{display:inline-flex;align-items:baseline;gap:6px;padding:3px 9px;border:1px solid var(--line);
+  border-radius:999px;background:var(--panel);font-size:11px;font-family:var(--mono);color:var(--ink2);white-space:nowrap}
+.lst-chip .dot{width:7px;height:7px;border-radius:50%;background:var(--green);flex:none}
+.lst-chip.warn .dot{background:var(--amber)}
+.lst-chip.bad .dot{background:var(--red)}
+.lgb{background:var(--panel2);border:1px solid var(--line);border-radius:5px;font-family:var(--mono);
+  font-size:10.5px;padding:1px 6px;cursor:pointer;color:var(--ink2)}
+.lgb:hover{border-color:var(--ink);color:var(--ink)}
+.lgrow b{margin-left:auto;font-family:var(--mono);font-size:10.5px}
+@media (max-width:600px){.lst-cards{grid-template-columns:1fr}.lst-card .facts{grid-template-columns:1fr}}
+
+/* ---- the indicator picker ---- */
+.indbtn{display:inline-flex;align-items:baseline;gap:6px;max-width:52ch;white-space:nowrap;overflow:hidden}
+.indbtn b{flex:1 1 auto;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:8ch}
+.indbtn i{font-style:normal;font-family:var(--mono);font-size:10.5px;color:var(--muted);white-space:nowrap;flex:0 0 auto}
+.indbtn i.u{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.indbtn i.tag-muni{color:var(--ink2);background:var(--panel2);border:1px solid var(--line);border-radius:4px;padding:0 4px}
+.pickerpop{width:min(440px,92vw);max-height:70vh;padding:8px}
+.pickerpop #indsearch{width:100%;margin-bottom:6px}
+.pkbody{overflow:auto;max-height:58vh;display:flex;flex-direction:column;gap:2px}
+.pkglab{font-family:var(--mono);font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--muted);padding:9px 8px 3px;display:flex;gap:8px;align-items:baseline}
+.pkglab em{font-style:normal;letter-spacing:0;text-transform:none;font-size:10px;color:var(--dim)}
+.pkrow{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:baseline;width:100%;
+  text-align:left;background:none;border:0;border-radius:7px;padding:5px 8px;cursor:pointer;font:inherit;font-size:13px}
+.pkrow:hover{background:var(--panel2)}
+.pkrow.on{background:#EAF2EF}
+.pkrow .pkl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pkrow .lb{font-style:normal;font-family:var(--mono);font-size:10px;color:var(--muted);cursor:help}
+.pkrow .pku{font-family:var(--mono);font-size:10.5px;color:var(--muted);white-space:nowrap;max-width:18ch;overflow:hidden;text-overflow:ellipsis}
+.pkrow .pkt{font-family:var(--mono);font-size:9.5px;color:var(--dim);white-space:nowrap;min-width:5.5em;text-align:right}
+.pkrow .pkt.tag-muni{color:var(--ink2)}
+.pkrow .pkt.tag-proj{color:#5B4A9C}
+.pkrow .pkt.tag-clim{color:#2F4E8C}
+/* the period control */
+.period{display:inline-flex;align-items:center;gap:6px}
+.fclab.clim{border-color:#C7D2E6;background:#EDF1F8;color:#2F4E8C}
+.qseg .sg{font-size:11px}
+.pkrow .sh{font-style:normal;font-family:var(--mono);font-size:10px;color:var(--dim)}
+
+/* ---- the map's area card ---- */
+.acard{background:var(--panel2);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;margin:8px 0 0}
+.acard-id{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.acard-id b{font-family:var(--disp);font-size:16px;font-weight:600;letter-spacing:-.01em}
+.acard-id .dim{font-family:var(--mono);font-size:10.5px}
+.acard-fold{margin-left:auto;width:20px;height:20px;line-height:1;background:var(--panel);
+  border:1px solid var(--line);border-radius:5px;color:var(--muted);font-family:var(--mono);font-size:12px;cursor:pointer;padding:0}
+.acard-fold:hover{color:var(--ink);border-color:var(--ink)}
+.acard .hl{margin:9px 0 0}
+.acard .hlc{padding:8px 11px 7px}
+.acard .hlc b{font-size:21px}
+.acard-act{display:flex;gap:8px;flex-wrap:wrap;margin-top:9px}
+.acard-sec{margin-top:8px;border-top:1px solid var(--line2);padding-top:6px}
+.acard-sec>summary{cursor:pointer;font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--muted);list-style:none;display:flex;align-items:center;gap:6px}
+.acard-sec>summary::-webkit-details-marker{display:none}
+.acard-sec>summary::before{content:"";width:0;height:0;border:4px solid transparent;border-left-color:currentColor}
+.acard-sec[open]>summary::before{transform:rotate(90deg)}
+.acard-sec>summary:hover{color:var(--ink)}
+.acard-sec .secbody{padding:8px 0 2px}
+/* an inherited or projected tile says which it is, in words */
+.hlc.inh b{color:var(--ink2)}
+.hlc em i.inh{font-style:normal;color:var(--muted)}
+.hlc em i.projpill{font-style:normal;color:#5B4A9C;background:#F1EEF8;border:1px solid #DCD5EE;border-radius:4px;padding:0 5px}
+
+/* ---- the study row: chart panel | mini-map, equal height ---- */
+.studyrow{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:16px;margin:0 0 12px;--studyh:380px}
+.studyrow>*{height:var(--studyh);margin:0;min-width:0}
+.chartpanel{display:flex;flex-direction:column;overflow:hidden}
+.chartpanel .pnbody{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;justify-content:center;overflow:auto}
+.chartpanel .pnbody .chart{width:100%;height:auto;max-height:100%}
+.chartpanel .pnfoot{margin:6px 0 0;max-height:4.6em;overflow:auto}
+.pnhead{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin:2px 0 8px}
+.pnhead b{font-family:var(--disp);font-size:30px;font-weight:700;letter-spacing:-.03em;line-height:1}
+.pnhead span{font-family:var(--mono);font-size:11.5px;color:var(--ink2)}
+.pnhead span i{font-style:normal;font-weight:600}
+.pnhead .up{color:var(--good)}.pnhead .dn{color:var(--bad)}
+.pnhead .inh{color:var(--muted)}
+.minicard{padding:0;overflow:hidden;position:relative}
+.minicard>div:first-child{height:100%;width:100%}
+.diststrip{max-height:110px}
+.tag-muni{font-family:var(--mono);font-size:9.5px;color:var(--ink2);background:var(--panel2);
+  border:1px solid var(--line);border-radius:4px;padding:0 5px}
+tr.inh td.num{color:var(--ink2)}
+.tools-card{padding:10px 12px;margin-bottom:12px}
+.tools-card .iq{margin-top:8px}
+@media (max-width:1440px){.studyrow{--studyh:340px}}
+@media (max-width:1024px){
+  .studyrow{grid-template-columns:1fr;--studyh:320px}
+}
+@media (max-width:600px){.studyrow{--studyh:300px}}
+/* the mini-map in full screen keeps its own height rather than the row's */
+.studyrow>.mapwrap.is-full{height:100vh}
+
+/* one-line status after an export, gone in four seconds */
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%) translateY(8px);z-index:400;
+  background:var(--side);color:var(--side-ink);border-radius:var(--r);padding:9px 14px;
+  font-family:var(--mono);font-size:11.5px;box-shadow:0 10px 30px rgba(20,28,24,.24);
+  opacity:0;pointer-events:none;transition:opacity .16s,transform .16s;max-width:min(560px,92vw)}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ============================================================================
+   v2.0 — the responsive overrides that must come last
+   The map toolbar's one-row rule and the tile grid are defined above; these
+   undo them for narrow screens, so they have to win on source order.
+   ==========================================================================*/
+@media (max-width:1024px){
+  /* one row is a desktop affordance. Here the controls wrap and the map moves
+     down, rather than the controls being clipped at the card's edge. */
+  [data-testid=map-toolbar]{flex-wrap:wrap;gap:8px}
+  [data-testid=map-toolbar] .asrch{flex:1 1 100%;max-width:none;min-width:0}
+  [data-testid=map-toolbar] .indbtn{max-width:none;height:auto}
+  [data-testid=map-toolbar] .indsel{max-width:none}
+  [data-testid=map-toolbar]>*{min-width:0}
+  .menu{max-width:100%}
+}
+/* Five tiles never divide evenly into two or three columns, and the leftover
+   cell reads as a missing figure rather than as a gap in the grid. The last tile
+   takes the rest of its row — which of the two rules applies depends on how many
+   columns that width has, so both are spelled out. `auto / -1` looks like it
+   would cover both and does not: an auto start with a definite end resolves to a
+   span of one, which pushes the tile to the last column and leaves the hole
+   exactly where it was. */
+@media (min-width:821px) and (max-width:1180px){
+  .hl .hlc:last-child:nth-child(3n+2){grid-column:span 2}
+}
+@media (max-width:820px){
+  .hl .hlc:last-child:nth-child(odd){grid-column:1/-1}
+}
+@media (max-width:600px){
+  /* The legend stack would cover the map at this width, so it folds behind one
+     pill and the map gets the screen it came for. Last in the file on purpose:
+     the base rule that hides the pill is declared further up. */
+  .maplegs{display:none}
+  body.legopen .maplegs{display:flex;max-height:70%}
+  .legpill{display:inline-flex}
+}

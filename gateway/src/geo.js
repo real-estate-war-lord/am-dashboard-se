@@ -42,3 +42,30 @@ export function haversine(lat1, lon1, lat2, lon2) {
     Math.cos(lat1 * DEG) * Math.cos(lat2 * DEG) * Math.sin(dLon / 2) ** 2;
   return 2 * EARTH_RADIUS_M * Math.asin(Math.min(1, Math.sqrt(a)));
 }
+
+/* --- the viewport box (the /bbox endpoint) ---
+ *
+ * A map viewport is a rectangle, and answering it with a radius around its
+ * centre either misses the corners or over-fetches: the circumscribed circle of
+ * a rectangle is 4/pi = 27 % larger in area than the box at the equator, and the
+ * inscribed circle misses 21 % of it. So /bbox does both halves properly — it
+ * covers the box with the smallest circle that contains it, runs the existing
+ * radius machinery, and then trims the answer back to the rectangle. Nothing
+ * outside the reader's view comes back, and nothing inside it is missed.
+ */
+
+/* Half-diagonal of the box, in metres: the radius of the smallest circle that
+ * contains it, measured from its centre. */
+export function boxCover(box) {
+  const lat = (box.s + box.n) / 2;
+  const lon = (box.w + box.e) / 2;
+  const halfLat = haversine(box.s, lon, box.n, lon) / 2;
+  const halfLon = haversine(lat, box.w, lat, box.e) / 2;
+  return { lat, lon, r: Math.sqrt(halfLat * halfLat + halfLon * halfLon) };
+}
+
+/* Is the point inside the box? Inclusive on every edge, so a listing sitting
+ * exactly on the boundary is returned rather than silently dropped. */
+export function inBox(lat, lon, box) {
+  return lat >= box.s && lat <= box.n && lon >= box.w && lon <= box.e;
+}

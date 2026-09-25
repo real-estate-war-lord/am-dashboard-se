@@ -31,6 +31,12 @@ const appJs = fs.readFileSync(path.join(ROOT, "src", "app.js"), "utf8");
 /* testprop.js is inlined ahead of app.js in the built page, so the sandbox has
    to load it in the same order — app.js calls parseLocation. */
 const tpJs = fs.readFileSync(path.join(ROOT, "src", "testprop.js"), "utf8");
+/* route_core.js and listings/view.js are inlined ahead of app.js in the built
+   page, in that order, and app.js reads window.ROUTE_CORE at module scope — so
+   the sandbox has to load them in the same order. */
+const routeJs = fs.readFileSync(path.join(ROOT, "src", "route_core.js"), "utf8");
+const viewJs = fs.readFileSync(path.join(ROOT, "src", "listings", "view.js"), "utf8");
+const exportJs = fs.readFileSync(path.join(ROOT, "src", "export_core.js"), "utf8");
 
 /* ---- the smallest DOM that lets app.js boot ---- */
 function el(id) {
@@ -105,9 +111,12 @@ function check(name, fn) {
 /* app.js declares everything with const/let, which are lexical bindings and do
    not become properties of globalThis — so the test appends one line, inside the
    same scope, handing out exactly what it needs to drive. */
-const EXPORTS = "\n;globalThis.__app = { D, S, MK, AR, T, CH, vMakro, vTable, vArea, vCharts, vMarket, exportCsv, byCode, byRegso, distValues, pageOf };\n";
+const EXPORTS = "\n;globalThis.__app = { D, S, MK, AR, T, CH, PROP, LAY, DT, vMakro, vData, vTable, vArea, vCharts, vMarket, vSources, vPipeline, vProperty, exportRows, exportItems, exportUnitProblems, byCode, byRegso, distValues, pageOf, hashFor };\n";
 try {
   vm.runInContext(tpJs, sandbox, { filename: "testprop.js" });
+  vm.runInContext(routeJs, sandbox, { filename: "route_core.js" });
+  vm.runInContext(viewJs, sandbox, { filename: "listings/view.js" });
+  vm.runInContext(exportJs, sandbox, { filename: "export_core.js" });
   vm.runInContext(appJs + EXPORTS, sandbox, { filename: "app.js" });
 } catch (e) {
   console.error("app.js threw while loading:", e.message);
@@ -156,17 +165,56 @@ check(`area page, RegSO ${someRegso.name}`, () => A.vArea());
 AR.tab = "dist";
 check("area page, RegSO (structure)", () => A.vArea());
 
-console.log("\nexports:");
-S.view = "table"; T.level = "kommun";
-check("CSV of the table view", () => { A.exportCsv(); return "ok"; });
-
-/* ---- data assertions the dashboard is supposed to honour ---- */
-console.log("\ndata contract:");
-const byCode = A.byCode;
+/* ---- v2.0 the export model ----
+   The schema is the contract: a consumer joins on it, so a column that quietly
+   moves or disappears breaks somebody's spreadsheet. The unit check is here
+   because a kSEK column holding SEK is a thousandfold error that nothing else in
+   the pipeline would notice. */
 function assert(name, cond, detail) {
   if (cond) console.log(`  ✓ ${name}${detail ? ` — ${detail}` : ""}`);
   else { console.log(`  ✗ ${name}${detail ? ` — ${detail}` : ""}`); failures++; }
 }
+console.log("\nexports:");
+S.view = "table"; T.level = "kommun";
+const LONG = ["level", "code", "name", "parent_code", "parent_name", "lan", "population",
+  "indicator", "label", "unit", "period", "period_type", "value", "margin_of_error",
+  "value_type", "inherited_from", "direction", "source", "table_id", "source_url",
+  "as_of", "fetched", "licence"].join(";");
+const viewCsv = A.exportRows("view");
+assert("This view exports the long schema", viewCsv[0] === LONG, viewCsv[0].slice(0, 70) + "…");
+assert("and has a row per area and indicator", viewCsv.length > 1000, `${viewCsv.length - 1} rows`);
+const areasCsv = A.exportRows("areas");
+assert("All area data uses the same schema", areasCsv[0] === LONG);
+assert("and covers the inline levels", ["kommun", "regso"].every(l =>
+  areasCsv.some(r => r.startsWith(l + ";"))), "kommun and regso present");
+const projCsv = A.exportRows("projects");
+assert("Projects are their own file, with no indicator column",
+  !projCsv[0].split(";").includes("indicator"), projCsv[0]);
+const natCsv = A.exportRows("national");
+assert("National series use the long schema too", natCsv[0] === LONG);
+assert("and are marked as Sweden-level", natCsv.slice(1).every(r => r.startsWith("sweden;SE;")));
+const srcCsv = A.exportRows("sources");
+assert("the sources catalogue names its columns",
+  srcCsv[0] === "key;label;publisher;tables;as_of;fetched;url;licence;used_for", srcCsv[0]);
+assert("every export item that is offered can be built",
+  A.exportItems().filter(i => !i.off).every(i => Array.isArray(A.exportRows(i.id))),
+  A.exportItems().map(i => i.id + (i.off ? " (off)" : "")).join(", "));
+const bad = A.exportUnitProblems();
+assert("unit and magnitude agree in every exported row", bad.length === 0,
+  bad.slice(0, 3).map(b => `${b.indicator} ${b.value} ${b.unit}`).join("; "));
+/* the two rules a suppressed value must survive */
+const rows = areasCsv.slice(1);
+assert("a suppressed value is an empty cell, never a zero",
+  !rows.some(r => { const c = r.split(";"); return c[12] === "" && c[13] === "0"; }), "no 0 where – belongs");
+assert("every row carries a source and an as-of",
+  rows.every(r => { const c = r.split(";"); return c[17] && c[20]; }),
+  (rows.find(r => { const c = r.split(";"); return !c[17] || !c[20]; }) || "").slice(0, 90));
+assert("a projected value is labelled as one",
+  rows.some(r => r.split(";")[14] === "projection"), "value_type=projection present");
+
+/* ---- data assertions the dashboard is supposed to honour ---- */
+console.log("\ndata contract:");
+const byCode = A.byCode;
 const sthlm = byCode["0180"], mala = byCode["2418"];
 assert("Stockholm rent 1710", sthlm.rent === 1710, `got ${sthlm.rent}`);
 assert("Stockholm rent margin ±28", sthlm.rent_moe === 28, `got ±${sthlm.rent_moe}`);
@@ -219,6 +267,12 @@ if (fs.existsSync(desoFile)) {
   check(`area page, DeSO ${d.areas[0].code.split("_")[0]}`, () => A.vArea());
   AR.tab = "dist";
   check("area page, DeSO (structure)", () => A.vArea());
+  /* and a kommun whose DeSO file has landed reaches the export */
+  const desoCsv = A.exportRows("areas");
+  assert("a loaded DeSO kommun reaches All area data",
+    desoCsv.some(r => r.startsWith("deso;")), `${desoCsv.filter(r => r.startsWith("deso;")).length} DeSO rows`);
+  assert("and its rows name their RegSO as the parent",
+    desoCsv.filter(r => r.startsWith("deso;")).every(r => r.split(";")[3]), "parent_code filled");
   S.view = "table"; T.level = "deso";
   check("table / deso", () => A.vTable());
   MK.sub = "regso"; MK.kommun = null;
@@ -500,13 +554,15 @@ assert("a signed format is not signed twice in the compare column",
 assert("and a magnitude is used, not the raw value",
   fmtAbsFn(signedInd, -6.8) === fmtAbsFn(signedInd, 6.8), "magnitude");
 
-/* the Analysis view renders with and without a pin */
-S.view = "analysis";
-const AN_ = vm.runInContext("AN", sandbox);
-AN_.a = null; AN_.b = null;
-let anHtml = vm.runInContext("vAnalysis()", sandbox);
-assert("the Analysis view renders empty", /Paste a Google Maps link/.test(anHtml), "prompt shown");
+/* Test property renders with and without a pin, and one pin is all it takes */
+S.view = "property";
+const PROP_ = A.PROP;
+PROP_.lat = null; PROP_.lon = null; PROP_.res = null;
+let anHtml = A.vProperty();
+assert("Test property renders empty", /Paste a Google Maps link/.test(anHtml), "prompt shown");
 assert("and states the privacy position", /never sent to a server/.test(anHtml), "privacy line");
+assert("and offers one example rather than a blank box", /59\.31972, 18\.07194/.test(anHtml), "example link");
+assert("no second pin anywhere", !/Pin B/.test(anHtml), "one property at a time");
 
 /* ---- v1.2 Climate ----
    The one thing that must never break here: "not mapped" and 0 % are different
@@ -793,14 +849,51 @@ assert("the archipelago survived the skerry filter", byCode["0120"].rings.length
        `Värmdö ${byCode["0120"].rings.length} parts`);
 assert("inland kommuner stay single-part", byCode["2418"].rings.length === 1, `Malå ${byCode["2418"].rings.length}`);
 
-console.log("\nmarket cards:");
+/* ---- v2.0 Data > National series ----
+   The four big charts became one table: the series are the national context, and
+   "where is it now and which way" is a row with a sparkline, with its source on
+   the same row. Anyone who wants the curve opens it in Charts. */
+console.log("\nData \u203a National series:");
 const mk = (S.view = "market", A.vMarket());
 for (const gone of ["DST HUS1", "DST EJ56", "Finans Danmark", "Nationalbank", "Homes for sale"])
   assert(`"${gone}" is gone`, !mk.includes(gone));
-for (const want of ["Rent index (CPI 04.1)", "Property price index (FASTPI)", "Interest rates"])
-  assert(`"${want}" is present`, mk.includes(want));
-assert("the rate card draws three series", /Policy rate/.test(mk) && /10-yr government bond/.test(mk) && /Mortgage, new agreements/.test(mk));
-assert("no empty-series placeholder on the cards", !/no series for/.test(mk));
+const natRows = (mk.match(/<tr>/g) || []).length;
+assert("every series is a row in one table", /data-testid="national-table"/.test(mk) && natRows >= 11,
+  `${natRows} rows`);
+/* the series the four charts used to carry are all still on the page, by their
+   registry labels rather than by a card heading */
+for (const want of ["CPI, actual rents paid", "Property price index", "Policy rate",
+                    "Government bond, 10 yr", "Mortgage rate, new agreements"])
+  assert(`"${want}" is still reachable`, mk.includes(want));
+assert("every row carries a source", !/<td class="dim"><\/td>\s*<td><button class="tch"/.test(mk));
+assert("the breakdowns survive as folds", /New-build rent by rent-setting model/.test(mk) &&
+  /Vacant dwellings by owner category/.test(mk));
+assert("the vacancy staleness is still stated", /Stale\./.test(mk));
+assert("and the K\/T-tal caveat is on the page rather than a price per m\u00b2",
+  /K\/T-tal/.test(mk) && /no open realised price per m\u00b2/.test(mk));
+assert("the Sources list is no longer folded inside it", !/srcfold/.test(mk));
+
+/* ---- v2.0 navigation and routes ---- */
+console.log("\nv2.0 routes:");
+const R2 = sandbox.window.ROUTE_CORE;
+assert("four destinations, no more", vm.runInContext("VIEWS.length", sandbox) === 4,
+  vm.runInContext("VIEWS.map(v=>v[1]).join(', ')", sandbox));
+assert("and none of them is Compare",
+  !/Compare/.test(vm.runInContext("VIEWS.map(v=>v[1]).join(',')", sandbox)), "no Compare");
+const navHtml = vm.runInContext("navHtml()", sandbox);
+assert("the nav renders four items", (navHtml.match(/data-testid="nav-item"/g) || []).length === 4);
+assert("Data has four tabs", vm.runInContext("DATA_TABS.length", sandbox) === 4,
+  vm.runInContext("DATA_TABS.map(t=>t[1]).join(', ')", sandbox));
+const dataHtml = (S.view = "table", A.vData());
+assert("the Data shell renders the tab bar and the Export menu",
+  /data-testid="data-tabs"/.test(dataHtml) && /data-testid="export-btn"/.test(dataHtml));
+for (const [hash, want] of [["#table/regso", "data/areas/regso"], ["#pipeline", "data/projects"],
+                            ["#market", "data/national"], ["#sources", "data/sources"],
+                            ["#analysis?a=59.3,18.0&la=X", "property?p=59.3,18:X"],
+                            ["#compare?a=kommun:0180&b=kommun:1480", "area/kommun/0180"]])
+  assert(`${hash} -> #${want}`, R2.toV2(hash) === want, R2.toV2(hash));
+assert("the Leaflet teardown registry is exposed for the tests",
+  Array.isArray(sandbox.window.__maps), "window.__maps");
 
 console.log(failures ? `\n${failures} check(s) failed` : "\nall smoke checks passed");
 process.exit(failures ? 1 : 0);

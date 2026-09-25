@@ -11,23 +11,38 @@
 <style>{{APP_CSS}}</style>
 </head>
 <body>
+<!-- The mobile chrome and the desktop sidebar are two elements, not one that
+     changes shape: at 390 px the sidebar is display:none and the bar plus its
+     drawer are what navigates, which is also what the tests assert. renderNav()
+     writes the same list into #nav and #navdrawer. -->
 <div class="app">
-  <aside>
+  <div class="mtop" data-testid="topbar-mobile">
+    <button class="navtog" data-testid="nav-toggle" aria-expanded="false" aria-controls="navdrawer" aria-label="Menu">☰</button>
+    <span class="mbrand">Macro Dashboard</span>
+    <span class="mview" id="mview"></span>
+  </div>
+  <aside data-testid="sidebar">
     <div class="brand"><h2>Macro Dashboard</h2></div>
     <div id="nav"></div>
-    <div class="side-foot">
-      <button class="xbtn" data-xall>⤓ Export data</button>
-      <div class="xcap">Everything in one CSV (long format: level; code; name; parent; year; indicator; value) — open in Excel or hand to an LLM.</div>
-    </div>
+    <div class="side-foot" id="sidefoot"></div>
   </aside>
+  <div class="scrim" id="scrim" hidden></div>
+  <nav class="drawer" id="drawer" data-testid="nav-drawer" hidden>
+    <div class="brand"><h2>Macro Dashboard</h2><button class="drawerx" data-navclose aria-label="Close">✕</button></div>
+    <div id="navdrawer"></div>
+    <div class="side-foot" id="drawerfoot"></div>
+  </nav>
   <main id="main">
-    <div class="topbar"><div id="hd"></div></div>
+    <div class="topbar"><div id="hd"></div><div id="pageact" class="pageact"></div></div>
     <div id="body"></div>
   </main>
 </div>
 <script>{{LEAFLET_JS}}</script>
 <script>window.DATA = {{DATA}};</script>
 <script>{{TESTPROP_JS}}</script>
+<script>{{ROUTE_JS}}</script>
+<script>{{LISTINGS_VIEW_JS}}</script>
+<script>{{EXPORT_JS}}</script>
 <script>{{APP_JS}}</script>
 </body>
 </html>

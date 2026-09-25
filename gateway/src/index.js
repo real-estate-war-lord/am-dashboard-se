@@ -5,6 +5,7 @@
  * call them directly. This Worker is the smallest thing that fixes that.
  *
  *   GET /nearby?lat=&lon=&r=   listings within r metres, nearest first
+ *   GET /bbox?s=&w=&n=&e=      listings inside a map viewport, nearest first
  *   GET /text?src=&id=         the description excerpt for one listing
  *   GET /health                liveness, no upstream call
  *   POST-like /admin/refresh   rebuild the portal snapshots (bearer secret)
@@ -26,6 +27,7 @@
 import * as homeq from "./sources/homeq.js";
 import { SNAPSHOT_SOURCES, bySrc, isStale } from "./snapshots.js";
 import { dedupe } from "./dedupe.js";
+import { boxCover, inBox } from "./geo.js";
 
 const ALLOWED_ORIGINS = new Set([
   "https://real-estate-war-lord.github.io",
@@ -104,6 +106,30 @@ function parseNearbyParams(params) {
   return { lat, lon, r };
 }
 
+/* A viewport, as four edges. The same Sweden bounds as /nearby catch a swapped
+ * pair, and an inverted or empty box is a client bug rather than a query. The
+ * covering circle is capped at R_MAX exactly as `r` is, and the effective
+ * coverage comes back in the answer so a client can tell it zoomed out too far. */
+function parseBboxParams(params) {
+  const need = ["s", "w", "n", "e"];
+  for (const k of need) if (!params.has(k)) throw new Error("s, w, n and e are all required");
+  const [s, w, n, e] = need.map((k) => Number(params.get(k)));
+  for (const [k, v] of [["s", s], ["n", n]]) {
+    if (!Number.isFinite(v) || v < LAT_MIN || v > LAT_MAX) {
+      throw new Error(`${k} must be a latitude between ${LAT_MIN} and ${LAT_MAX}`);
+    }
+  }
+  for (const [k, v] of [["w", w], ["e", e]]) {
+    if (!Number.isFinite(v) || v < LON_MIN || v > LON_MAX) {
+      throw new Error(`${k} must be a longitude between ${LON_MIN} and ${LON_MAX}`);
+    }
+  }
+  if (n <= s || e <= w) throw new Error("the box is empty or inverted: expected s < n and w < e");
+  const box = { s, w, n, e };
+  const cover = boxCover(box);
+  return { box, lat: cover.lat, lon: cover.lon, r: Math.min(cover.r, R_MAX), cover: cover.r };
+}
+
 /* --- the snapshots --- */
 
 async function readSnapshot(env, source) {
@@ -153,15 +179,14 @@ export async function refreshAll(env) {
 
 /* --- routes --- */
 
-async function handleNearby(request, url, env) {
-  let q;
-  try { q = parseNearbyParams(url.searchParams); }
-  catch (err) { return fail(400, err.message, request); }
-
+/* Every source, asked once for one circle. Shared by /nearby and /bbox: a second
+ * copy of this fan-out is a second place for "a failing source is never an empty
+ * success" to be got wrong. */
+async function collect(lat, lon, r, env) {
   /* HomeQ live, both portals from KV, all at once. */
   const homeqAttempt = (async () => {
     try {
-      const listings = await homeq.fetchNearby(q.lat, q.lon, q.r, {
+      const listings = await homeq.fetchNearby(lat, lon, r, {
         signal: AbortSignal.timeout(SOURCE_TIMEOUT_MS),
       });
       return { status: { src: homeq.SRC, ok: true, count: listings.length }, listings };
@@ -176,7 +201,7 @@ async function handleNearby(request, url, env) {
   const portalAttempts = SNAPSHOT_SOURCES.map(async (portal) => {
     try {
       const snap = await readSnapshot(env, portal);
-      const listings = portal.selectNearby(snap, q.lat, q.lon, q.r);
+      const listings = portal.selectNearby(snap, lat, lon, r);
       return {
         status: { src: portal.src, ok: true, count: listings.length, fetchedAt: snap.fetchedAt },
         listings,
@@ -193,29 +218,73 @@ async function handleNearby(request, url, env) {
 
   const portalListings = portalResults.flatMap((p) => p.listings);
   const { listings, merged } = dedupe(portalListings, homeqResult.listings);
+  return { sources: [homeqResult.status, ...portalResults.map((p) => p.status)], deduped: merged, listings };
+}
 
-  /* How the surviving listings are allocated. A queue flat is real supply but
-   * is not open to whoever applies first, so a consumer that shows one total
-   * would be mixing two different things. */
+/* How a set of listings is allocated. A queue flat is real supply but is not open
+ * to whoever applies first, so a consumer that shows one total would be mixing
+ * two different things. */
+function allocationOf(listings) {
   const allocation = { direct: 0, queue: 0 };
   for (const l of listings) {
     if (l.allocation === "queue") allocation.queue++; else allocation.direct++;
   }
+  return allocation;
+}
 
-  const body = {
-    fetchedAt: new Date().toISOString(),
-    radius: q.r,
-    sources: [homeqResult.status, ...portalResults.map((p) => p.status)],
-    deduped: merged,
-    allocation,
-    listings,
-  };
+/* The source counts describe what came back, so trimming the listings without
+ * recounting would leave a source claiming more than the answer contains. */
+function recount(sources, listings) {
+  const seen = new Map();
+  for (const l of listings) seen.set(l.src, (seen.get(l.src) || 0) + 1);
+  return sources.map((s) => (s.ok ? { ...s, count: seen.get(s.src) || 0 } : s));
+}
 
+function answer(request, body) {
   const allFailed = body.sources.every((s) => !s.ok);
   return json(body, {
     status: allFailed ? 502 : 200,
     request,
     cache: allFailed ? 0 : NEARBY_CACHE_SECONDS,
+  });
+}
+
+async function handleNearby(request, url, env) {
+  let q;
+  try { q = parseNearbyParams(url.searchParams); }
+  catch (err) { return fail(400, err.message, request); }
+
+  const got = await collect(q.lat, q.lon, q.r, env);
+  return answer(request, {
+    fetchedAt: new Date().toISOString(),
+    radius: q.r,
+    sources: got.sources,
+    deduped: got.deduped,
+    allocation: allocationOf(got.listings),
+    listings: got.listings,
+  });
+}
+
+/* A map viewport. The covering circle is fetched and the answer is then trimmed
+ * to the rectangle, so a marker layer gets exactly what is on screen. */
+async function handleBbox(request, url, env) {
+  let q;
+  try { q = parseBboxParams(url.searchParams); }
+  catch (err) { return fail(400, err.message, request); }
+
+  const got = await collect(q.lat, q.lon, q.r, env);
+  const listings = got.listings.filter((l) =>
+    Number.isFinite(l.lat) && Number.isFinite(l.lon) && inBox(l.lat, l.lon, q.box));
+  return answer(request, {
+    fetchedAt: new Date().toISOString(),
+    bbox: q.box,
+    /* what was actually searched: the covering circle, and whether R_MAX clipped it */
+    radius: q.r,
+    covered: q.cover <= R_MAX,
+    sources: recount(got.sources, listings),
+    deduped: got.deduped,
+    allocation: allocationOf(listings),
+    listings,
   });
 }
 
@@ -305,12 +374,15 @@ export default {
     if (url.pathname === "/health") {
       return json({
         ok: true,
+        endpoints: ["/nearby", "/bbox", "/text"],
         sources: [homeq.SRC, ...SNAPSHOT_SOURCES.map((p) => p.src)],
       }, { request });
     }
 
-    if (url.pathname !== "/nearby" && url.pathname !== "/text") {
-      return fail(404, "no such endpoint — try /nearby or /text", request);
+    const HANDLERS = { "/nearby": handleNearby, "/bbox": handleBbox, "/text": handleText };
+    const handler = HANDLERS[url.pathname];
+    if (!handler) {
+      return fail(404, `no such endpoint — try ${Object.keys(HANDLERS).join(", ")}`, request);
     }
 
     const cacheKey = new Request(url.toString(), { method: "GET" });
@@ -323,9 +395,7 @@ export default {
       return new Response(hit.body, { status: hit.status, headers });
     }
 
-    const response = url.pathname === "/nearby"
-      ? await handleNearby(request, url, env)
-      : await handleText(request, url, env);
+    const response = await handler(request, url, env);
 
     if (response.status === 200 && response.headers.get("cache-control")?.includes("max-age")) {
       ctx.waitUntil(cache.put(cacheKey, response.clone()));

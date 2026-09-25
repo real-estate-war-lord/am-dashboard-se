@@ -7,6 +7,13 @@
    listings.js does the rendering.
 */
 "use strict";
+/* Wrapped in an IIFE because v2.0 inlines this file into dist/index.html as a
+   classic <script> beside app.js, in one global lexical scope: a top-level
+   `const median` here and a top-level `const median` there is a SyntaxError that
+   blanks the page. Nothing but window.LISTINGS_VIEW (and module.exports, for
+   node --test) escapes.
+*/
+(function () {
 
 /* The three groups a reader actually distinguishes. Queue supply is the one
    that changes how a listing should be read, so it is decided by `allocation`
@@ -237,3 +244,5 @@ const LISTINGS_VIEW = {
 /* Same reason as parse.js: attach explicitly rather than rely on scoping. */
 if (typeof module !== "undefined" && module.exports) module.exports = LISTINGS_VIEW;
 if (typeof window !== "undefined") window.LISTINGS_VIEW = LISTINGS_VIEW;
+
+})();

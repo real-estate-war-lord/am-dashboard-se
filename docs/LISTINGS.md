@@ -1,7 +1,21 @@
 # Listings gateway
 
 A Cloudflare Worker that answers "what is for rent near this point?" for the
-dashboard's area pages, from three sources under one schema.
+dashboard, from three kinds of source under one schema.
+
+> **Where this appears in the UI (v2.0).** The standalone Listings page is gone.
+> Its logic lives in `src/listings/view.js`, which the dashboard inlines, and its
+> interface is now two things: the **Rental listings** section of **Test
+> property**, and the **Rental listings** layer in the map's **Layers ▾** menu.
+> `dist/listings.html` is a four-line redirect that resolves an old
+> `#at=lat,lon&r=` link through the same codec the app uses, so a shared link
+> cannot land on a different pin than it was copied from.
+>
+> Folding the two together was the point: a reader now sees an advertised rent
+> and SCB's rent statistic for the same ground on one screen — which makes the
+> sentence that keeps them apart ("an advertised rent is not a contract rent")
+> load-bearing rather than decorative. It is printed under every summary, and
+> the two are never drawn as one series.
 
 **No third-party listing data is committed to this repository.** The gateway
 does hold one thing at runtime: the latest hourly snapshot of each Arena
@@ -75,6 +89,44 @@ the status cannot mistake an outage for a quiet neighbourhood.
 A portal whose snapshot is missing, or **older than 3 hours**, is `ok:false` with
 a `stale` error and contributes no listings. Stale data is not served as though
 it were current: a flat let three days ago should not appear as available.
+
+### `GET /bbox?s=&w=&n=&e=`
+
+The same answer for a **map viewport** rather than a circle. Added in v2.0, when
+the listings became a layer on the dashboard's map: a viewport is a rectangle,
+and answering one with `/nearby` around its centre either misses the corners —
+the inscribed circle leaves 21 % of the box out — or over-fetches, since the
+circumscribed circle is 27 % larger in area than the box it covers.
+
+| Parameter | Required | Rule |
+|---|---|---|
+| `s`, `n` | yes | latitudes, 55–70, `s < n` |
+| `w`, `e` | yes | longitudes, 10–25, `w < e` |
+
+An empty or inverted box is a `400` rather than an empty answer, and the same
+Sweden bounds catch a swapped lat/lon pair.
+
+```json
+{
+  "fetchedAt": "2026-09-25T06:10:03.918Z",
+  "bbox": { "s": 59.31, "w": 18.04, "n": 59.33, "e": 18.08 },
+  "radius": 1589,
+  "covered": true,
+  "sources": [ /* … as /nearby … */ ],
+  "deduped": 0,
+  "allocation": { "direct": 4, "queue": 1 },
+  "listings": [ /* … inside the rectangle, nearest first … */ ]
+}
+```
+
+It covers the box with the smallest circle that contains it, runs exactly the
+same per-source fan-out as `/nearby` — the same code, not a copy, so "a failing
+source is never an empty success" cannot drift between the two — and then trims
+the answer back to the rectangle. `radius` is what was actually searched and
+`covered` says whether the 3 km cap clipped it; a client that zooms out past
+that is told rather than quietly given the middle of its view. The per-source
+`count` is recomputed after the trim, so a source never claims more than the
+answer contains.
 
 ### `GET /text?src=&id=…`
 
