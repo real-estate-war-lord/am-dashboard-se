@@ -40,7 +40,6 @@ const LOCALE = "sv-SE";
 
 /* ---------- helpers ---------- */
 const nf = (n, d = 1) => (n == null || isNaN(n)) ? "–" : Number(n).toLocaleString(LOCALE, { minimumFractionDigits: d, maximumFractionDigits: d });
-const sign = (n, f) => n == null || isNaN(n) ? "–" : (n > 0 ? "+" : "") + f(n);
 /* One signed-change path. A change is ALWAYS signed, the sign is added exactly
    once (so a format that prints its own sign cannot produce "++6,8 %"), and the
    unit comes after it: `+0,4 pp`, `−5,9 %`. `pp` for a change in a share, `%`
@@ -52,7 +51,9 @@ const deltaUnit = i => (isPct(i) ? "pp" : "%");
 const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const FMT = {
   pct0: v => nf(v, 0) + " %", pct1: v => nf(v, 1) + " %", pct2: v => nf(v, 2) + " %",
-  signpct1: v => sign(v, x => nf(x, 1) + " %"),
+  /* An indicator whose VALUE is a signed change — projected population change,
+     the crime trend — prints its own sign through the one signed() path. */
+  signpct1: v => signed(v, 1, "%"),
   ksek: v => nf(v, 0) + " kSEK", sek0: v => nf(v, 0) + " SEK",
   int: v => nf(v, 0), m2: v => nf(v, 0) + " m²", per1000: v => nf(v, 1) + " ‰",
   idx: v => nf(v, 1), idx1: v => nf(v, 1), ratio2: v => nf(v, 2), per10k: v => nf(v, 1) + " / 10k",
@@ -1146,7 +1147,7 @@ function srcNote(extra = "") {
   const s = (D.meta && D.meta.sources) || [];
   const list = s.map(x => `${esc(x.label)}${x.asof ? " (" + esc(x.asof) + ")" : ""}`).join(" · ");
   return `<details class="dinfo"><summary>Data information</summary><div class="note"><b>Open data.</b> ${list || "no sources recorded"}.
-    Municipality-level indicators are shown on postal-code polygons with the municipality value (marked °) when no finer statistic exists.
+    A kommun-level indicator is drawn on RegSO and DeSO polygons with the kommun's own value, marked ° on the map and "muni" in every table.
     ${esc((D.meta && D.meta.note) || "")}</div>${extra}<p class="cap">Full definitions and table stamps under <button class="lk mini" data-go="data/sources">Market › Sources</button>. Built ${esc((D.meta && D.meta.built) || "–")}.</p></details>`;
 }
 function rankOf(o, key, peers) {
@@ -1307,13 +1308,13 @@ function moeSpan(i, v, m) {
 function fmtCell(i, v, fallback, o, y) {
   if (v == null || isNaN(v)) return `<td class="num">–</td>`;
   const m = moeOf(i, o, y);
-  return `<td class="num${moeWide(i, v, m) ? " dim" : ""}" data-v="${v}">${fmtOf(i)(v)}${fallback ? " °" : ""}${moeSpan(i, v, m)}</td>`;
+  return `<td class="num${moeWide(i, v, m) ? " dim" : ""}${fallback ? " inh" : ""}" data-v="${v}">${fmtOf(i)(v)}${fallback ? ` <span class="tag-muni" title="the kommun's figure — no finer statistic is published">muni</span>` : ""}${moeSpan(i, v, m)}</td>`;
 }
 function deltaCell(o, i, pool) {
   const y0 = yearsForPool(i.key, pool || curPool())[0]; if (!y0 || y0 === MK.year) return `<td class="num dim">–</td>`;
   const a = V(o, i.key, y0), b = V(o, i.key); if (a == null || b == null) return `<td class="num dim">–</td>`;
   const d = isPct(i) ? b - a : (a ? (b / a - 1) * 100 : null); if (d == null) return `<td class="num dim">–</td>`;
-  return `<td class="num ${d > 0 ? "good" : d < 0 ? "bad" : ""}" data-v="${d}">${sign(d, x => nf(x, 1))}${isPct(i) ? " pp" : " %"}</td>`;
+  return `<td class="num ${cls(d, i.key)}" data-v="${d}">${signed(d, 1, deltaUnit(i))}</td>`;
 }
 function tableRows() {
   const q = T.q;
@@ -1378,7 +1379,7 @@ function vTable() {
       <th class="num hi">${esc(ind.label)}<br><span class="dim">${esc(ind.unit || "")}</span></th>${y0 && y0 !== MK.year ? `<th class="num">Δ since ${y0}<br><span class="dim">${isPct(ind) ? "pp" : "%"}</span></th>` : ""}
       ${cols.filter(i => i.key !== ind.key).map(i => `<th class="num">${esc(i.label)}<br><span class="dim">${esc(i.unit || "")}</span></th>`).join("")}</tr></thead>
       <tbody id="tbody">${tableBodyHtml()}</tbody></table></div>
-    <p class="cap">Sorted by the selected indicator; click a column header to re-sort, a row to open the area's page, ↗ to chart it. ° = the kommun's figure, shown on a sub-area that publishes none. Rows: ${T.level === "regso" ? `${AREAS.length} RegSO — SCB's named neighbourhoods, 2025 division` : T.level === "deso" ? `${allDeso().length} DeSO in the kommuner opened so far — codes only, no names` : `${MUNI.length} kommuner`}. <b>Export writes every indicator</b> whichever column set is on screen.</p>
+    <p class="cap">Sorted by the selected indicator; click a column header to re-sort, a row to open the area's page, ↗ to chart it. A cell tagged <span class="tag-muni">muni</span> is the kommun's figure, shown where the sub-area publishes none. Rows: ${T.level === "regso" ? `${AREAS.length} RegSO — SCB's named neighbourhoods, 2025 division` : T.level === "deso" ? `${allDeso().length} DeSO in the kommuner opened so far — codes only, no names` : `${MUNI.length} kommuner`}. <b>Export writes every indicator</b> whichever column set is on screen.</p>
     ${srcNote()}
   </div>`;
 }
@@ -2216,7 +2217,7 @@ function arMapInit() {
 /* ---------- Leaflet layers (macro map) ---------- */
 function lfPopup(a, muni) {
   /* two levels: the selected indicator big + four headline figures and the ways onward; every value behind "all values" */
-  const row = (i, v, own, o) => `<span class="lfrow"><span>${esc(i.short || i.label)}</span><b>${fmtOf(i)(v)}${own ? "" : " °"}${moeSpan(i, v, moeOf(i, o))}</b></span>`;
+  const row = (i, v, own, o) => `<span class="lfrow"><span>${esc(i.short || i.label)}</span><b>${fmtOf(i)(v)}${own ? "" : ` <span class="tag-muni">muni</span>`}${moeSpan(i, v, moeOf(i, o))}</b></span>`;
   const LI = curInds(); const ind = curInd(); const isQ = a.regso != null;
   const val = i => { const v = V(a, i.key); if (v != null) return { v, own: true }; if (!noInherit(i) && muni && V(muni, i.key) != null) return { v: V(muni, i.key), own: false }; return null; };
   const peers = isQ ? desoAreas(a.kommun) : AREAS; const sel = val(ind);
@@ -2227,13 +2228,13 @@ function lfPopup(a, muni) {
   const n = LI.filter(i => val(i)).length; const type = isQ ? "deso" : "regso", code = a.code;
   return `<div class="lfpop"><b>${esc(a.name)}</b>${MK.year !== LATEST ? ` <span class="tag">${MK.year}</span>` : ""}
     <span class="dim">${a.regso && byRegso[a.regso] ? esc(byRegso[a.regso].name) + " · " : ""}${muni ? esc(muni.name) : ""}${a.pop != null ? " · " + nf(a.pop, 0) + " inhabitants" : ""}</span>
-    ${sel ? `<div class="lfbig"><span>${esc(ind.label)}${sel.own ? "" : " °"}</span><b>${fmtOf(ind)(sel.v)}${moeSpan(ind, sel.v, moeOf(ind, sel.own ? a : muni))}</b><em>${rk ? `#${rk.r} of ${rk.n} ${sel.own ? (isQ ? "DeSO" : "RegSO") : "kommuner"}` : ""}</em></div>` : `<div class="lfbig dim"><span>${esc(ind.label)}</span><b>–</b></div>`}
-    ${keys.length ? `<div class="lfkey">${keys.map(({ i, x }) => `<div><span>${esc(i.short || i.label)}${x.own ? "" : " °"}</span><b>${fmtOf(i)(x.v)}${moeSpan(i, x.v, moeOf(i, x.own ? a : muni))}</b></div>`).join("")}</div>` : ""}
+    ${sel ? `<div class="lfbig"><span>${esc(ind.label)}${sel.own ? "" : ` <span class="tag-muni">muni</span>`}</span><b>${fmtOf(ind)(sel.v)}${moeSpan(ind, sel.v, moeOf(ind, sel.own ? a : muni))}</b><em title="among the ${rk ? rk.n : 0} with a figure">${rk ? `#${rk.r} of ${rk.n} ${sel.own ? (isQ ? "DeSO" : "RegSO") : "kommuner"}` : ""}</em></div>` : `<div class="lfbig dim"><span>${esc(ind.label)}</span><b>–</b></div>`}
+    ${keys.length ? `<div class="lfkey">${keys.map(({ i, x }) => `<div><span>${esc(i.short || i.label)}${x.own ? "" : ` <span class="tag-muni">muni</span>`}</span><b>${fmtOf(i)(x.v)}${moeSpan(i, x.v, moeOf(i, x.own ? a : muni))}</b></div>`).join("")}</div>` : ""}
     ${usoLine(a)}${outlookLine(muni, true)}
     <span class="lfact"><button class="lk mini primary" data-go="${withQ(pageOf(a))}">Open page ›</button>${muni && !MK.kommun ? `<button class="lk mini" data-go="map/${muni.code}?ind=${MK.ind}">Zoom to ${esc(muni.name)}</button>` : ""}${muni && desoAvail(muni.code) && !desoMode() ? `<button class="lk mini" data-go="map/${muni.code}/deso?ind=${MK.ind}">DeSO ›</button>` : ""}<button class="lk mini" data-go="${chartLink(ind.key, type, code)}">↗ Chart</button></span>
     <details class="lfmore"><summary>All ${n} values</summary>
     ${native ? `<span class="lfsec">${isQ ? "DeSO" : "RegSO"}</span><div class="lfrows">${native}</div>` : ""}
-    ${inherited ? `<span class="lfsec">Kommun °</span><div class="lfrows">${inherited}</div>` : ""}</details></div>`;
+    ${inherited ? `<span class="lfsec">The kommun's figure</span><div class="lfrows">${inherited}</div>` : ""}</details></div>`;
 }
 /* which sub-area (RegSO / DeSO) of the drilled kommun a point lies in — ray casting on the rings */
 function pip(pt, ring) { let ins = false; for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) { const yi = ring[i][0], xi = ring[i][1], yj = ring[j][0], xj = ring[j][1]; if ((yi > pt[0]) !== (yj > pt[0]) && pt[1] < (xj - xi) * (pt[0] - yi) / (yj - yi) + xi) ins = !ins; } return ins; }
@@ -2381,7 +2382,7 @@ function lfKommunPopup(m) {
   const n = (DESO_IDX[m.code] || {}).n || 0;
   return `<div class="lfpop"><b>${esc(m.name)}</b>${MK.year !== LATEST ? ` <span class="tag">${MK.year}</span>` : ""}
     <span class="dim">${esc(lanName(m.lan))}${m.pop != null ? " · " + nf(m.pop, 0) + " inhabitants" : ""} · ${AREAS.filter(a => a.kommun === m.code).length} RegSO${n ? ` · ${n} DeSO` : ""}</span>
-    ${sel != null ? `<div class="lfbig"><span>${esc(ind.label)}</span><b>${fmtOf(ind)(sel)}${moeSpan(ind, sel, moeOf(ind, m))}</b><em>${rk ? `#${rk.r} of ${rk.n} kommuner` : ""}</em></div>`
+    ${sel != null ? `<div class="lfbig"><span>${esc(ind.label)}</span><b>${fmtOf(ind)(sel)}${moeSpan(ind, sel, moeOf(ind, m))}</b><em title="among the ${rk ? rk.n : 0} kommuner with a figure">${rk ? `#${rk.r} of ${rk.n} kommuner` : ""}</em></div>`
                   : `<div class="lfbig dim"><span>${esc(ind.label)}</span><b>–</b></div>`}
     ${keys.length ? `<div class="lfkey">${keys.map(i => `<div><span>${esc(i.short || i.label)}</span><b>${fmtOf(i)(V(m, i.key))}${moeSpan(i, V(m, i.key), moeOf(i, m))}</b></div>`).join("")}</div>` : ""}
     ${usoLine(m)}${outlookLine(m, false)}
@@ -2626,7 +2627,7 @@ function schPopup(s) {
   const iM = indOf("school_merit");
   const f1 = v => nf(v, 1);
   const cmp = (v, areaV, lab) => (v == null || areaV == null) ? "" :
-    `<span class="lfrow"><span>vs ${esc(lab)}</span><b class="${cls(v - areaV, "school_merit")}">${sign(v - areaV, x => nf(x, 1))}</b></span>`;
+    `<span class="lfrow"><span>vs ${esc(lab)}</span><b class="${cls(v - areaV, "school_merit")}">${signed(v - areaV, 1)}</b></span>`;
   const nat = SCH_META.national_merit;
   const why = s.merit == null ? (s.merit_why === "OMITTED_DUE_TO_BASED_ON_FEW_PUPILS"
       ? "not published — too few pupils" : "not published") : "";
