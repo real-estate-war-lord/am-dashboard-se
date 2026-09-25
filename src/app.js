@@ -130,7 +130,7 @@ const PROP = { lat: null, lon: null, label: "", rad: PROP_RAD_DEFAULT,
 const UI = { indxOpen: false, menu: null, cardFold: false, legFold: {} };           /* fold states that survive a re-render */
 const MKT = { src: false };                                                        /* market: sources panel open */
 const CH = { ind: (IND[0] || {}).key, areas: [], y0: "", y1: "", median: true, title: "", mode: "auto", dist: "age", fq: "year" };   /* chart generator; fq = yearly | quarterly */
-const T = { q: "", level: "kommun", lan: "", minPop: 0 };                           /* table view filters */
+const T = { q: "", level: "kommun", lan: "", minPop: 0, cols: "headline" };                           /* table view filters */
 const LAN = { "01": "Stockholm", "03": "Uppsala", "04": "Södermanland", "05": "Östergötland", "06": "Jönköping",
   "07": "Kronoberg", "08": "Kalmar", "09": "Gotland", "10": "Blekinge", "12": "Skåne", "13": "Halland",
   "14": "Västra Götaland", "17": "Värmland", "18": "Örebro", "19": "Västmanland", "20": "Dalarna",
@@ -214,7 +214,7 @@ function hashFor() {
     p = `area/${AR.type}/${AR.code}`; withInd();
     if (AR.sub !== "regso") q.sub = AR.sub;
     q.show = showValue(AR.show, areaShowDefaults());
-  } else if (S.view === "table") { p = `data/areas/${T.level}`; withInd(); }
+  } else if (S.view === "table") { p = `data/areas/${T.level}`; withInd(); if (T.cols === "all") q.cols = "all"; }
   else if (S.view === "market") { p = MKT.src ? "data/sources" : "data/national"; }
   else if (S.view === "pipeline") { p = "data/projects"; if (PIPE.type) q.t = PIPE.type; if (PIPE.status) q.s = PIPE.status; }
   else if (S.view === "charts") {
@@ -275,7 +275,8 @@ function parseHash() {
     setShow(AR.show, q.show, areaShowDefaults());
     if (AR.type === "deso") loadDeso(desoKomOf(AR.code));
     else if (AR.type === "kommun") loadDeso(AR.code);
-  } else if (v === "table") { S.view = "table"; if (RC.LEVELS.includes(parts[1])) T.level = parts[1]; DT.tab = "areas"; }
+  } else if (v === "table") { S.view = "table"; if (RC.LEVELS.includes(parts[1])) T.level = parts[1];
+    T.cols = q.cols === "all" ? "all" : "headline"; DT.tab = "areas"; }
   else if (v === "market") { S.view = "market"; MKT.src = q.src === "1"; DT.tab = MKT.src ? "sources" : "national"; }
   else if (v === "pipeline") { S.view = "pipeline"; PIPE.type = q.t || ""; PIPE.status = q.s || ""; DT.tab = "projects"; }
   else if (v === "property") {
@@ -319,7 +320,12 @@ function go(hash) { if ("#" + hash === location.hash) { parseHash(); render(); }
 function syncHash() { history.replaceState(null, "", "#" + hashFor()); }
 /* A handle on the live page: the Leaflet instance is a lexical const, so without
    this neither the console nor a screenshot script can set a precise view. */
-window.AM = { get map() { return LF.map; }, get area() { return LF.amap; }, go, D, MK, S, LF, LAY, PROP };
+window.AM = { get map() { return LF.map; }, get area() { return LF.amap; },
+  go, D, MK, S, LF, LAY, PROP,
+  /* LST is declared further down the file, so it is read lazily */
+  get LST() { return LST; },
+  /* the export model, readable without downloading a file */
+  exportRows: id => exportRows(id), exportUnitProblems: () => exportUnitProblems() };
 window.addEventListener("hashchange", () => {
   /* a popover belongs to the screen it was opened on */
   UI.menu = null; SR.open = false;
@@ -491,8 +497,8 @@ document.addEventListener("click", e => {
   if (UI.menu && !g(".menupop")) { UI.menu = null; renderKeep(); }
   if ((el = g("[data-go]"))) { navClose(); go(el.dataset.go); return; }
   if ((el = g("[data-searchgo]"))) { searchGo(el.dataset.searchgo); return; }
+  if ((el = g("[data-tcols]"))) { T.cols = el.dataset.tcols; syncHash(); renderKeep(); return; }
   if ((el = g("[data-tlevel]"))) { T.level = el.dataset.tlevel; if (!curInds().some(i => i.key === MK.ind)) MK.ind = curInds()[0].key; syncHash(); renderKeep(); return; }
-  if (g("[data-csv]")) { exportCsv(); return; }
   if ((el = g("[data-export]"))) { UI.menu = null; runExport(el.dataset.export); renderKeep(); return; }
   if (g("[data-navtoggle], [data-testid=nav-toggle]")) { navToggle(); return; }
   if (g("[data-navclose]") || g("#scrim")) { navClose(); return; }
@@ -531,7 +537,6 @@ document.addEventListener("click", e => {
   /* a jump moves the camera and returns — no selection change, so no re-render */
   if ((el = g("[data-pipetype]"))) { PIPE.type = el.dataset.pipetype; syncHash(); renderKeep(); return; }
   if ((el = g("[data-pipestatus]"))) { PIPE.status = el.dataset.pipestatus; syncHash(); renderKeep(); return; }
-  if (g("[data-csv-pipe]")) { exportPipelineCsv(); return; }
   if ((el = g("[data-srvcat]"))) { const [w, c] = el.dataset.srvcat.split(":");
     const set = w === "srv" ? SF.srv : SF.pub;
     if (set.has(c)) set.delete(c); else set.add(c);
@@ -1272,10 +1277,7 @@ function vData() {
   </div>${body}`;
 }
 
-/* ---------- Export ▾ ----------
-   One menu, in the sidebar footer and in the Data header, so there is one answer
-   to "how do I get this out" wherever the reader is. Every item downloads
-   immediately; the schema and the unit assertions live in src/export_core.js. */
+/* ---------- Export ▾ — the menu ---------- */
 function exportBtnHtml(cls) {
   return `<span class="menu ${UI.menu === "export" ? "open" : ""}">
     <button class="lk ${cls || ""}" data-testid="export-btn" data-menu="export" aria-haspopup="true" aria-expanded="${UI.menu === "export"}">Export ▾</button>
@@ -1283,27 +1285,12 @@ function exportBtnHtml(cls) {
 }
 function exportFootHtml() {
   return exportBtnHtml("wide") +
-    `<div class="xcap">CSV, semicolon-separated, UTF-8 with a BOM — opens in a Swedish Excel and reads cleanly into a script. Every row carries its source, period and as-of.</div>`;
+    `<div class="xcap">CSV, semicolon-separated, UTF-8 with a BOM — opens in a Swedish Excel and reads cleanly into a script. Every row carries its source, table id, period and as-of.</div>`;
 }
 function exportMenuHtml() {
   const items = exportItems();
   return `<div class="menupop" role="dialog" aria-label="Export" data-testid="export-menu">${items.map(it =>
-    it.off ? `<span class="mi off" title="${esc(it.off)}">${esc(it.label)}</span>`
-           : `<button class="mi" data-export="${it.id}">${esc(it.label)}</button>`).join("")}</div>`;
-}
-/* Only what this build can actually write is offered — an item that would
-   download an empty file is worse than an item that is not there. */
-function exportItems() {
-  const items = [];
-  if (S.view === "table" || S.view === "pipeline") items.push({ id: "view", label: "This view (CSV)" });
-  items.push({ id: "areas", label: "All area data (long)" });
-  if ((INFRA.projects || []).length) items.push({ id: "projects", label: "Projects" });
-  return items;
-}
-function runExport(id) {
-  if (id === "view") return S.view === "pipeline" ? exportPipelineCsv() : exportCsv();
-  if (id === "areas") return exportAll();
-  if (id === "projects") return exportPipelineCsv();
+    `<button class="mi ${it.off ? "off" : ""}" data-export="${it.id}"${it.off ? ` disabled title="${esc(it.off)}"` : ""}>${esc(it.label)}${it.off ? `<em>${esc(it.off)}</em>` : ""}</button>`).join("")}</div>`;
 }
 
 /* ---------- Table view ---------- */
@@ -1334,7 +1321,22 @@ function tableRows() {
   if (T.level === "kommun") return MUNI.filter(m => (!T.lan || m.lan === T.lan) && (m.pop || 0) >= T.minPop && (!q || m.name.toLowerCase().includes(q) || m.code.includes(q)));
   return AREAS.filter(a => { const m = byCode[a.kommun] || {}; return (!T.lan || m.lan === T.lan) && (a.pop || 0) >= T.minPop && (!q || (a.name || "").toLowerCase().includes(q) || a.code.includes(q) || (m.name || "").toLowerCase().includes(q)); });
 }
-function tableCols() { return T.level === "deso" ? IND_DESO : T.level === "regso" ? IND.filter(i => i.level === "regso").concat(IND.filter(i => i.level !== "regso")) : IND; }
+/* Every indicator, in the order this level publishes them. */
+function tableColsAll() {
+  return T.level === "deso" ? IND_DESO
+    : T.level === "regso" ? IND.filter(i => i.level === "regso").concat(IND.filter(i => i.level !== "regso"))
+    : IND;
+}
+/* What the table actually draws. 3 363 RegSO × 67 indicators is 225 000 cells and
+   11 MB of DOM, which is slow to build, slow to scroll and not what anyone came
+   for: the default is the active indicator plus the headline set, and `Columns`
+   opens the rest. The export is unaffected — it always writes every indicator. */
+function tableCols() {
+  const all = tableColsAll();
+  if (T.cols === "all") return all;
+  const want = new Set([MK.ind].concat(HL_KEYS).concat(QUICK_KEYS));
+  return all.filter(i => want.has(i.key));
+}
 function tableBodyHtml() {
   const cols = tableCols(), ind = curInd(), pool = curPool(), y0 = yearsForPool(ind.key, pool)[0];
   const rows = tableRows().slice().sort((a, b) => ((V(b, ind.key) ?? V(byCode[b.kommun], ind.key)) ?? -1e9) - ((V(a, ind.key) ?? V(byCode[a.kommun], ind.key)) ?? -1e9));
@@ -1366,49 +1368,23 @@ function vTable() {
       ${T.level !== "deso" ? `<select id="tregion" class="indsel"><option value="">All regions</option>${REGIONS.map(r => `<option value="${r}" ${T.lan === r ? "selected" : ""}>${r}</option>`).join("")}</select>` : ""}
       <label class="hint">min. population <input id="tminpop" type="number" min="0" step="1000" value="${T.minPop}" style="width:90px"></label>
       <span class="hint" id="tcount">${tableRows().length} rows</span>
-      <button class="lk mini" data-csv>⤓ Export CSV</button>
+      <div class="seg" role="group" aria-label="Columns">
+        <button class="sg ${T.cols === "all" ? "" : "on"}" data-tcols="headline">Headline columns (${tableCols().length})</button>
+        <button class="sg ${T.cols === "all" ? "on" : ""}" data-tcols="all">All ${tableColsAll().length}</button>
+      </div>
     </div>
     <div class="scrollx"><table class="tbl compact wraphead" data-sortable><thead><tr>
       <th>${T.level === "deso" ? "DeSO" : T.level === "regso" ? "RegSO" : "Kommun"}</th><th>Code</th><th>${T.level === "deso" ? "RegSO" : T.level === "regso" ? "Municipality" : "Region"}</th><th class="num">Population</th>
       <th class="num hi">${esc(ind.label)}<br><span class="dim">${esc(ind.unit || "")}</span></th>${y0 && y0 !== MK.year ? `<th class="num">Δ since ${y0}<br><span class="dim">${isPct(ind) ? "pp" : "%"}</span></th>` : ""}
       ${cols.filter(i => i.key !== ind.key).map(i => `<th class="num">${esc(i.label)}<br><span class="dim">${esc(i.unit || "")}</span></th>`).join("")}</tr></thead>
       <tbody id="tbody">${tableBodyHtml()}</tbody></table></div>
-    <p class="cap">Sorted by the selected indicator; click a column header to re-sort, a row to open the area's page, ↗ to chart it. ° = kommun value shown on a sub-area. Rows: ${T.level === "regso" ? "postal codes (street-level codes in central Copenhagen merged by name)" : T.level === "deso" ? "Copenhagen quarters (DeSO areas), source Københavns Kommune statbank" : "municipalities"}.</p>
+    <p class="cap">Sorted by the selected indicator; click a column header to re-sort, a row to open the area's page, ↗ to chart it. ° = the kommun's figure, shown on a sub-area that publishes none. Rows: ${T.level === "regso" ? `${AREAS.length} RegSO — SCB's named neighbourhoods, 2025 division` : T.level === "deso" ? `${allDeso().length} DeSO in the kommuner opened so far — codes only, no names` : `${MUNI.length} kommuner`}. <b>Export writes every indicator</b> whichever column set is on screen.</p>
     ${srcNote()}
   </div>`;
 }
-function exportCsv() {
-  const cols = tableCols(), rows = tableRows();
-  const head = [T.level === "deso" ? "deso" : T.level === "regso" ? "regso" : "kommun", "code", T.level === "deso" ? "regso" : T.level === "regso" ? "municipality" : "region", "population"].concat(cols.map(i => i.key));
-  const lines = [head.join(";")].concat(rows.map(r => { const m = T.level === "regso" ? (byCode[r.kommun] || {}) : r;
-    return [r.name, r.code, T.level === "deso" ? ((byRegso[r.regso] || {}).name || "") : T.level === "regso" ? (m.name || "") : lanName(r.lan), r.pop ?? ""].concat(cols.map(i => V(r, i.key) ?? (T.level === "regso" ? (V(m, i.key) ?? "") : ""))).map(v => String(v).replace(/;/g, ",")).join(";"); }));
-  const blob = new Blob(["﻿" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
-  const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
-  a.download = `am-dashboard-se_${T.level}_${MK.year}_${(D.meta && D.meta.built) || "data"}.csv`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-}
-
 function downloadCsv(lines, name) {
   const blob = new Blob(["\ufeff" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
   const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-}
-function exportAll() {
-  /* one long-format CSV of everything the dashboard holds: every level, every indicator, every year, plus the macro series */
-  const cl = v => String(v == null ? "" : v).replace(/;/g, ",").replace(/\r?\n/g, " ");
-  const out = ["level;code;name;parent;region;population;year;indicator;label;unit;value;as_of"];
-  const emit = (level, o, code, name, parent, region, inds, asofOf) => {
-    inds.forEach(i => {
-      const yrs = new Set(Object.keys((o.hist && o.hist[i.key]) || {})); if (o[i.key] != null) yrs.add(LATEST);
-      [...yrs].sort().forEach(y => { const v = y === LATEST ? o[i.key] : o.hist[i.key][y]; if (v == null) return;
-        out.push([level, code, name, parent, region, o.pop ?? "", y, i.key, i.label, i.unit || "", v, asofOf(i, y)].map(cl).join(";")); });
-    });
-  };
-  const asofNat = lvl => (i, y) => { const src = (y !== LATEST && i.hist_asof && i.hist_asof[y]) || i.asof || {}; return src[lvl] || src.kommun || ""; };
-  MUNI.forEach(m => emit("municipality", m, m.code, m.name, "Sweden", m.lan || "", IND, asofNat("kommun")));
-  AREAS.forEach(a => { const m = byCode[a.kommun] || {}; emit("postal_code", a, a.code, a.name, m.name || "", m.lan || "", IND.filter(i => i.level === "regso"), asofNat("regso")); });
-  allDeso().forEach(q => emit("deso", q, q.code, q.name, byCode[q.kommun] ? byCode[q.kommun].name : "", lanName(q.lan), IND, (i, y) => (y !== LATEST && i.hist_asof && i.hist_asof[y]) || (i.asof && i.asof.deso) || ""));
-  const mac = D.macro || {}; Object.entries(mac.series || {}).forEach(([k, ser]) => { const lt = (mac.latest || {})[k] || {};
-    ser.forEach(pt => { if (pt.v != null) out.push(["macro", k, lt.label || k, "Sweden", "", "", pt.t, k, lt.label || k, lt.unit || "", pt.v, lt.src || ""].map(cl).join(";")); }); });
-  downloadCsv(out, `macro-dashboard-se_all_${(D.meta && D.meta.built) || "data"}.csv`);
 }
 
 /* ---------- Area page (kommun · RegSO · DeSO) ---------- */
@@ -2951,7 +2927,7 @@ function vPipeline() {
         ${types.map(t => `<button class="sg ${PIPE.type === t ? "on" : ""}" data-pipetype="${esc(t)}">${esc(t)}</button>`).join("")}</div>
       <div class="seg"><button class="sg ${!PIPE.status ? "on" : ""}" data-pipestatus="">All</button>
         ${sts.map(t => `<button class="sg ${PIPE.status === t ? "on" : ""}" data-pipestatus="${esc(t)}">${esc(t)}</button>`).join("")}</div>
-      <button class="lk" data-csv-pipe>↓ Pipeline CSV</button></div>
+</div>
   </div>
   <div class="card">
     <div class="scrollx"><table class="tbl" data-sortable><thead><tr>
@@ -2972,18 +2948,6 @@ function vPipeline() {
       Sources: Trafikverket, Region Stockholm, Västtrafik and the project bodies themselves —
       each row links to the page it came from.</p>
   </div>`;
-}
-function exportPipelineCsv() {
-  /* The arguments used to be the other way round and the rows were arrays, so
-     this wrote a file named "[object Array]" with comma-separated cells. */
-  const head = ["id", "name", "type", "status", "open_year", "open_window",
-                "budget_msek", "price_base", "agency", "kommuner", "source_url", "notes"];
-  const cl = v => String(v == null ? "" : v).replace(/;/g, ",").replace(/\r?\n/g, " ");
-  const rows = pipeRows().map(p => [p.id, p.name, p.type, p.status, p.open_year || "",
-    p.open_window || "", p.budget_msek != null ? p.budget_msek : "", p.price_base || "",
-    p.agency || "", kNames(p.kommuner).join("|"), p.source_url || "", p.notes || ""]
-    .map(cl).join(";"));
-  downloadCsv([head.join(";")].concat(rows), `projects_se_${(D.meta && D.meta.built) || "data"}.csv`);
 }
 SHEETS.project = {
   label: "Infrastructure project",
@@ -4132,6 +4096,288 @@ function vSources() {
     <tbody>${s.map(x => `<tr><th>${x.url ? `<a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.label)}</a>` : esc(x.label)}</th><td class="dim">${esc(x.tables || "")}</td><td>${esc(x.asof || "")}</td><td class="dim">${esc(x.fetched || "")}</td><td class="dim">${esc(x.licence || "")}</td></tr>`).join("") || `<tr><td colspan="5" class="empty">no sources recorded</td></tr>`}</tbody></table>
     <p class="cap">${((D.meta && D.meta.attribution) || []).map(esc).join(" · ")}</p></div>
   ${defs(IND, "Indicator definitions")}`;
+}
+
+/* ---------- Export ▾ ----------
+   One menu, in the sidebar footer and in the Data header, so there is one answer
+   to "how do I get this out" wherever the reader is. src/export_core.js owns the
+   schema, the CSV rules and the unit check; this file knows where the values are.
+
+   Every row carries its provenance — source, table id, the URL that reproduces
+   the publisher's own query, their as-of and this build's date — because a figure
+   without those is not evidence of anything. A suppressed value is an empty cell
+   and never a zero. */
+const XC = window.EXPORT_CORE;
+const BUILT = (D.meta && D.meta.built) || "data";
+const FETCHED = BUILT;
+const SRC_META = {};
+((D.meta && D.meta.sources) || []).forEach(x => { SRC_META[x.key] = x; });
+
+/* the catalogue entry behind an indicator, for the table id, the URL and the licence */
+function indSource(i, level) {
+  const e = pickSrc(i, level || "kommun");
+  const tid = e ? e.table : "";
+  const cat = SRC_META[tid] || {};
+  return {
+    table_id: tid || "n/a (curated or register)",
+    source: i.source || cat.label || "",
+    source_url: (e ? srcUrl(e, level, null, null) : "") || cat.url || (e && e.table_url) || "",
+    licence: cat.licence || "",
+    publisher: (e && e.publisher) || "",
+  };
+}
+const asofOf = (i, level, period) => {
+  const src = (period && period !== LATEST && i.hist_asof && i.hist_asof[period]) || i.asof || {};
+  return src[level] || src.kommun || src.regso || src.deso || "";
+};
+
+/* one long-schema row */
+function longRow(o, i, level, period, value, opts) {
+  const x = opts || {};
+  const src = indSource(i, level);
+  return {
+    level, code: o.code, name: o.name || o.code,
+    parent_code: x.parent_code || "", parent_name: x.parent_name || "",
+    lan: lanName(x.lan || o.lan) || "",
+    population: o.pop != null ? o.pop : "",
+    indicator: i.key, label: i.label, unit: i.unit || "",
+    period, period_type: XC.periodType(period, { projection: isOutlook(i), scenario: isClimKey(i.key) }),
+    value, margin_of_error: x.moe != null ? x.moe : "",
+    value_type: x.value_type || (isOutlook(i) ? "projection" : "actual"),
+    inherited_from: x.inherited_from || "",
+    direction: dirOf(i),
+    source: src.source, table_id: src.table_id, source_url: src.source_url,
+    as_of: asofOf(i, level, period), fetched: FETCHED, licence: src.licence,
+  };
+}
+/* every published figure at every level, for every period the build holds */
+function rowsAreas() {
+  const out = [];
+  const emit = (o, level, inds, extra) => {
+    for (const i of inds) {
+      const periods = new Set(Object.keys((o.hist && o.hist[i.key]) || {}));
+      if (o[i.key] != null) periods.add(LATEST);
+      for (const t of [...periods].sort()) {
+        const v = t === LATEST ? o[i.key] : o.hist[i.key][t];
+        if (v == null) continue;
+        const m = t === LATEST ? (o[i.key + "_moe"] ?? null) : ((o.hist && o.hist[i.key + "_moe"] && o.hist[i.key + "_moe"][t]) ?? null);
+        out.push(longRow(o, i, level, t, v, Object.assign({ moe: m }, extra)));
+      }
+      /* the quarterly series is a period type of its own, not a year */
+      const q = o.q && o.q[i.key];
+      if (q) for (const t of Object.keys(q).sort()) { if (q[t] != null) out.push(longRow(o, i, level, t, q[t], extra)); }
+      /* and the projected path is labelled as projected, every point of it */
+      const f = o.fc && o.fc[i.key];
+      if (f) for (const t of Object.keys(f).sort()) {
+        if (f[t] == null) continue;
+        out.push(longRow(o, i, level, t, f[t], Object.assign({ value_type: "projection" }, extra)));
+      }
+    }
+  };
+  MUNI.forEach(m => emit(m, "kommun", IND, { parent_code: "SE", parent_name: "Sweden", lan: m.lan }));
+  AREAS.forEach(a => { const m = byCode[a.kommun] || {};
+    emit(a, "regso", IND, { parent_code: a.kommun, parent_name: m.name || "", lan: m.lan }); });
+  allDeso().forEach(d => { const m = byCode[d.kommun] || {};
+    emit(d, "deso", IND, { parent_code: d.regso || d.kommun, parent_name: (byRegso[d.regso] || {}).name || m.name || "", lan: m.lan }); });
+  return out;
+}
+/* what is on this screen, in the same schema */
+function rowsView() {
+  if (S.view === "pipeline") return rowsProjects();
+  if (S.view === "market") return rowsNational();
+  if (S.view === "property") return rowsProperty();
+  const level = S.view === "table" ? T.level : S.view === "area" ? AR.type : (MK.kommun ? (desoMode() ? "deso" : "regso") : "kommun");
+  const list = S.view === "table" ? tableRows() : S.view === "area" ? [(areaEntity() || {}).o].filter(Boolean) : curPool();
+  const inds = curInds();
+  const out = [];
+  for (const o of list) {
+    if (!o) continue;
+    const m = o.kommun ? byCode[o.kommun] : null;
+    for (const i of inds) {
+      let v = V(o, i.key), inherited = false, src = o;
+      /* the table shows the kommun's figure where a sub-area has none, so the
+         export says that in `value_type` rather than repeating it as the area's own */
+      if (v == null && m && canInherit(i.key)) { v = V(m, i.key); inherited = v != null; src = m; }
+      if (v == null) continue;
+      out.push(longRow(o, i, level, MK.year, v, {
+        parent_code: o.kommun || "SE", parent_name: m ? m.name : "Sweden",
+        lan: m ? m.lan : o.lan, moe: MOE(src, i.key),
+        value_type: inherited ? "inherited" : (isOutlook(i) ? "projection" : "actual"),
+        inherited_from: inherited ? m.code : "",
+      }));
+    }
+  }
+  return out;
+}
+function rowsProjects() {
+  return pipeRows().map(p => ({
+    id: p.id, name: p.name, type: p.type, status: p.status,
+    open_year: p.open_year || "", open_window: p.open_window || "",
+    budget_msek: p.budget_msek != null ? p.budget_msek : "",
+    price_base: p.price_base || "", agency: p.agency || "",
+    kommuner: kNames(p.kommuner).join("|"), source_url: p.source_url || "", notes: p.notes || "",
+  }));
+}
+/* the national series in the same long schema, at level `sweden` */
+function rowsNational() {
+  const mac = D.macro || {}, lt = mac.latest || {};
+  const out = [];
+  for (const [k, ser] of Object.entries(mac.series || {})) {
+    const meta = lt[k] || {};
+    for (const pt of ser) {
+      if (pt.v == null) continue;
+      out.push({
+        level: "sweden", code: "SE", name: "Sweden", parent_code: "", parent_name: "", lan: "",
+        population: "", indicator: k, label: meta.label || k, unit: meta.unit || "",
+        period: pt.t, period_type: XC.periodType(pt.t), value: pt.v, margin_of_error: "",
+        value_type: "actual", inherited_from: "", direction: "", source: meta.src || "",
+        table_id: meta.src || "n/a", source_url: "", as_of: meta.t || "", fetched: FETCHED,
+        licence: "CC0",
+      });
+    }
+  }
+  return out;
+}
+function rowsSources() {
+  return ((D.meta && D.meta.sources) || []).map(x => ({
+    key: x.key, label: x.label, publisher: String(x.label || "").split(" ")[0],
+    tables: x.tables || "", as_of: x.asof || "", fetched: x.fetched || FETCHED,
+    url: x.url || "", licence: x.licence || "",
+    used_for: IND.filter(i => (i.src_verify || []).some(e => e.table === x.key)).map(i => i.key).join("|"),
+  }));
+}
+/* the pin: every figure for its finest area, with the property's own columns in
+   front so a spreadsheet of several exports sorts by property */
+function rowsProperty() {
+  const e = PROP.lat != null ? propArea() : null;
+  if (!e) return [];
+  const label = propName() || "Test property";
+  const pe = propEntity() || {};
+  const out = [];
+  for (const i of e.inds) {
+    const got = propVal(i.key);
+    if (!got) continue;
+    const own = got.own;
+    const row = longRow(got.o, i, own ? e.type : "kommun", MK.year, got.v, {
+      parent_code: e.kommun ? e.kommun.code : "SE", parent_name: e.kommun ? e.kommun.name : "Sweden",
+      lan: e.lan, moe: MOE(got.o, i.key),
+      value_type: own ? (isOutlook(i) ? "projection" : "actual") : "inherited",
+      inherited_from: own ? "" : (pe.kommun ? pe.kommun.code : ""),
+    });
+    out.push(Object.assign({ property_label: label, lat: PROP.lat, lon: PROP.lon }, row));
+  }
+  return out;
+}
+/* everything the pin can see around it, one row per thing, with its distance */
+function rowsNearby() {
+  if (PROP.lat == null) return [];
+  const out = [];
+  for (const p of pointsNear(SRV_SET)) out.push({ kind: "service", name: p.name || SRV_CATS[p.cat][0],
+    type: SRV_CATS[p.cat][0], status: "", distance_m: p.m, rent: "", m2: "", rooms: "",
+    source: `OpenStreetMap (${p.tag})`, source_url: "https://www.openstreetmap.org/copyright" });
+  for (const p of pointsNear(PUB_SET)) out.push({ kind: "public", name: p.name || SRV_CATS[p.cat][0],
+    type: SRV_CATS[p.cat][0], status: "", distance_m: p.m, rent: "", m2: "", rooms: "",
+    source: `OpenStreetMap (${p.tag})`, source_url: "https://www.openstreetmap.org/copyright" });
+  for (const { s, m } of propSchoolsNear(10)) out.push({ kind: "school", name: s.name, type: "year 9",
+    status: s.merit != null ? `merit ${nf(s.merit, 1)}` : "merit not published", distance_m: Math.round(m),
+    rent: "", m2: "", rooms: "", source: "Skolverket", source_url: "https://www.skolverket.se/" });
+  infraLoad();
+  for (const f of (INFRA_GEO.data ? INFRA_GEO.data.features || [] : [])) {
+    if (!f.geometry) continue;
+    let best = Infinity;
+    const scan = pts => { for (const [lon, lat] of pts) { const d = havM(PROP.lat, PROP.lon, lat, lon); if (d < best) best = d; } };
+    if (f.geometry.type === "MultiLineString") f.geometry.coordinates.forEach(scan);
+    else if (f.geometry.type === "Point") scan([f.geometry.coordinates]);
+    else scan(f.geometry.coordinates);
+    if (best > Math.max(PROP.rad, 2000)) continue;
+    out.push({ kind: "infra", name: f.properties.name, type: f.properties.type || "", status: f.properties.status || "",
+      distance_m: Math.round(best), rent: "", m2: "", rooms: "", source: f.properties.agency || "curated",
+      source_url: f.properties.source_url || "" });
+  }
+  /* the advertised rent, never an own rent: this dashboard has no business
+     knowing what anybody pays */
+  for (const l of lstNearPin(LST.rows)) out.push({ kind: "listing", name: l.address || "", type: l.src_label || l.src,
+    status: l.allocation === "queue" ? "queue" : "direct", distance_m: l.dist_m != null ? l.dist_m : "",
+    rent: l.rent_sek_mo != null ? l.rent_sek_mo : "", m2: l.size_m2 != null ? l.size_m2 : "",
+    rooms: l.rooms != null ? l.rooms : "", source: `advertised, ${l.src_label || l.src}`, source_url: l.url || "" });
+  out.sort((a, b) => (a.distance_m || 0) - (b.distance_m || 0));
+  return out;
+}
+
+const EXPORTS = {
+  view:     { label: "This view (CSV)", rows: rowsView, cols: () => (S.view === "pipeline" ? XC.PROJECT_COLUMNS : S.view === "property" ? XC.PROPERTY_LEAD.concat(XC.LONG_COLUMNS) : XC.LONG_COLUMNS), file: () => `view_${S.view}` },
+  areas:    { label: "All area data (long)", rows: rowsAreas, cols: () => XC.LONG_COLUMNS, file: () => "areas_long" },
+  projects: { label: "Projects", rows: rowsProjects, cols: () => XC.PROJECT_COLUMNS, file: () => "projects", when: () => (INFRA.projects || []).length > 0 },
+  national: { label: "National series", rows: rowsNational, cols: () => XC.LONG_COLUMNS, file: () => "national_series" },
+  property: { label: "Test property", rows: rowsProperty, cols: () => XC.PROPERTY_LEAD.concat(XC.LONG_COLUMNS), file: () => "test_property", when: () => PROP.lat != null },
+  nearby:   { label: "Nearby", rows: rowsNearby, cols: () => XC.NEARBY_COLUMNS, file: () => "test_property_nearby", when: () => PROP.lat != null },
+  sources:  { label: "Sources catalogue", rows: rowsSources, cols: () => XC.SOURCES_COLUMNS, file: () => "sources" },
+};
+const EXPORT_ORDER = ["view", "areas", "projects", "national", "property", "nearby", "sources"];
+/* An item the reader would get an empty file from is offered but disabled, with
+   the reason on it, rather than hidden — "where did Test property go" is a worse
+   question than "why is it greyed out". */
+function exportItems() {
+  return EXPORT_ORDER.map(id => {
+    const x = EXPORTS[id];
+    const off = x.when && !x.when()
+      ? (id === "property" || id === "nearby" ? "drop a pin on Test property first" : "nothing to export in this build")
+      : null;
+    return { id, label: x.label, off };
+  });
+}
+/* the rows a test can read without downloading a file */
+function exportRows(id) {
+  const x = EXPORTS[id]; if (!x) return null;
+  return XC.toCsv(x.rows(), x.cols());
+}
+/* DeSO ships as one file per kommun and is fetched when a kommun is opened, so
+   "All area data" would otherwise mean "all of it that happens to be in memory".
+   The export fetches the rest first and says that it is doing so. */
+function loadAllDeso() {
+  const missing = Object.keys(DESO_IDX).filter(c => !DESO[c]);
+  if (!missing.length) return Promise.resolve(0);
+  toast(`Fetching ${missing.length} DeSO files so the export is complete…`);
+  return Promise.all(missing.map(c => fetch(DESO_IDX[c].file)
+    .then(r => (r.ok ? r.json() : null))
+    .then(j => { if (!j) return; DESO[c] = j.areas || []; DESO[c].forEach(a => byDeso[a.code] = a); })
+    .catch(() => {}))).then(() => missing.length);
+}
+function runExport(id) {
+  const x = EXPORTS[id]; if (!x) return;
+  if (id === "areas") { loadAllDeso().then(() => writeExport(id)); return; }
+  writeExport(id);
+}
+function writeExport(id) {
+  const x = EXPORTS[id]; if (!x) return;
+  const rows = x.rows();
+  const bad = XC.unitProblems(rows);
+  if (bad.length) {
+    /* Loud, and the file is still written: refusing to export would hide the
+       problem, and writing it silently would publish it. */
+    console.warn(`export ${id}: ${bad.length} row(s) whose unit and magnitude disagree`, bad.slice(0, 5));
+    toast(`${x.label}: ${bad.length} row(s) flagged — unit and magnitude disagree (see the console)`);
+  }
+  downloadCsv(XC.toCsv(rows, x.cols()), XC.fileName(x.file(), BUILT));
+  if (!bad.length) toast(`${XC.fileName(x.file(), BUILT)} · ${nf(rows.length, 0)} rows`);
+}
+/* every unit/magnitude disagreement in everything this build can export */
+function exportUnitProblems() {
+  const out = [];
+  for (const id of EXPORT_ORDER) {
+    const x = EXPORTS[id];
+    if (x.when && !x.when()) continue;
+    for (const p of XC.unitProblems(x.rows())) out.push(Object.assign({ file: id }, p));
+  }
+  return out;
+}
+let TOAST_T = null;
+function toast(msg) {
+  let el = document.getElementById("toast");
+  if (!el) { el = document.createElement("div"); el.id = "toast"; el.className = "toast"; document.body.appendChild(el); }
+  el.textContent = msg; el.classList.add("on");
+  if (TOAST_T) clearTimeout(TOAST_T);
+  TOAST_T = setTimeout(() => el.classList.remove("on"), 4000);
 }
 
 parseHash();

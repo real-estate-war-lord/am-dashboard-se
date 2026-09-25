@@ -36,6 +36,7 @@ const tpJs = fs.readFileSync(path.join(ROOT, "src", "testprop.js"), "utf8");
    the sandbox has to load them in the same order. */
 const routeJs = fs.readFileSync(path.join(ROOT, "src", "route_core.js"), "utf8");
 const viewJs = fs.readFileSync(path.join(ROOT, "src", "listings", "view.js"), "utf8");
+const exportJs = fs.readFileSync(path.join(ROOT, "src", "export_core.js"), "utf8");
 
 /* ---- the smallest DOM that lets app.js boot ---- */
 function el(id) {
@@ -110,11 +111,12 @@ function check(name, fn) {
 /* app.js declares everything with const/let, which are lexical bindings and do
    not become properties of globalThis — so the test appends one line, inside the
    same scope, handing out exactly what it needs to drive. */
-const EXPORTS = "\n;globalThis.__app = { D, S, MK, AR, T, CH, PROP, LAY, DT, vMakro, vData, vTable, vArea, vCharts, vMarket, vSources, vPipeline, vProperty, exportCsv, byCode, byRegso, distValues, pageOf, hashFor };\n";
+const EXPORTS = "\n;globalThis.__app = { D, S, MK, AR, T, CH, PROP, LAY, DT, vMakro, vData, vTable, vArea, vCharts, vMarket, vSources, vPipeline, vProperty, exportRows, exportItems, exportUnitProblems, byCode, byRegso, distValues, pageOf, hashFor };\n";
 try {
   vm.runInContext(tpJs, sandbox, { filename: "testprop.js" });
   vm.runInContext(routeJs, sandbox, { filename: "route_core.js" });
   vm.runInContext(viewJs, sandbox, { filename: "listings/view.js" });
+  vm.runInContext(exportJs, sandbox, { filename: "export_core.js" });
   vm.runInContext(appJs + EXPORTS, sandbox, { filename: "app.js" });
 } catch (e) {
   console.error("app.js threw while loading:", e.message);
@@ -163,17 +165,56 @@ check(`area page, RegSO ${someRegso.name}`, () => A.vArea());
 AR.tab = "dist";
 check("area page, RegSO (structure)", () => A.vArea());
 
-console.log("\nexports:");
-S.view = "table"; T.level = "kommun";
-check("CSV of the table view", () => { A.exportCsv(); return "ok"; });
-
-/* ---- data assertions the dashboard is supposed to honour ---- */
-console.log("\ndata contract:");
-const byCode = A.byCode;
+/* ---- v2.0 the export model ----
+   The schema is the contract: a consumer joins on it, so a column that quietly
+   moves or disappears breaks somebody's spreadsheet. The unit check is here
+   because a kSEK column holding SEK is a thousandfold error that nothing else in
+   the pipeline would notice. */
 function assert(name, cond, detail) {
   if (cond) console.log(`  ✓ ${name}${detail ? ` — ${detail}` : ""}`);
   else { console.log(`  ✗ ${name}${detail ? ` — ${detail}` : ""}`); failures++; }
 }
+console.log("\nexports:");
+S.view = "table"; T.level = "kommun";
+const LONG = ["level", "code", "name", "parent_code", "parent_name", "lan", "population",
+  "indicator", "label", "unit", "period", "period_type", "value", "margin_of_error",
+  "value_type", "inherited_from", "direction", "source", "table_id", "source_url",
+  "as_of", "fetched", "licence"].join(";");
+const viewCsv = A.exportRows("view");
+assert("This view exports the long schema", viewCsv[0] === LONG, viewCsv[0].slice(0, 70) + "…");
+assert("and has a row per area and indicator", viewCsv.length > 1000, `${viewCsv.length - 1} rows`);
+const areasCsv = A.exportRows("areas");
+assert("All area data uses the same schema", areasCsv[0] === LONG);
+assert("and covers the inline levels", ["kommun", "regso"].every(l =>
+  areasCsv.some(r => r.startsWith(l + ";"))), "kommun and regso present");
+const projCsv = A.exportRows("projects");
+assert("Projects are their own file, with no indicator column",
+  !projCsv[0].split(";").includes("indicator"), projCsv[0]);
+const natCsv = A.exportRows("national");
+assert("National series use the long schema too", natCsv[0] === LONG);
+assert("and are marked as Sweden-level", natCsv.slice(1).every(r => r.startsWith("sweden;SE;")));
+const srcCsv = A.exportRows("sources");
+assert("the sources catalogue names its columns",
+  srcCsv[0] === "key;label;publisher;tables;as_of;fetched;url;licence;used_for", srcCsv[0]);
+assert("every export item that is offered can be built",
+  A.exportItems().filter(i => !i.off).every(i => Array.isArray(A.exportRows(i.id))),
+  A.exportItems().map(i => i.id + (i.off ? " (off)" : "")).join(", "));
+const bad = A.exportUnitProblems();
+assert("unit and magnitude agree in every exported row", bad.length === 0,
+  bad.slice(0, 3).map(b => `${b.indicator} ${b.value} ${b.unit}`).join("; "));
+/* the two rules a suppressed value must survive */
+const rows = areasCsv.slice(1);
+assert("a suppressed value is an empty cell, never a zero",
+  !rows.some(r => { const c = r.split(";"); return c[12] === "" && c[13] === "0"; }), "no 0 where – belongs");
+assert("every row carries a source and an as-of",
+  rows.every(r => { const c = r.split(";"); return c[17] && c[20]; }),
+  (rows.find(r => { const c = r.split(";"); return !c[17] || !c[20]; }) || "").slice(0, 90));
+assert("a projected value is labelled as one",
+  rows.some(r => r.split(";")[14] === "projection"), "value_type=projection present");
+
+/* ---- data assertions the dashboard is supposed to honour ---- */
+console.log("\ndata contract:");
+const byCode = A.byCode;
 const sthlm = byCode["0180"], mala = byCode["2418"];
 assert("Stockholm rent 1710", sthlm.rent === 1710, `got ${sthlm.rent}`);
 assert("Stockholm rent margin ±28", sthlm.rent_moe === 28, `got ±${sthlm.rent_moe}`);
@@ -226,6 +267,12 @@ if (fs.existsSync(desoFile)) {
   check(`area page, DeSO ${d.areas[0].code.split("_")[0]}`, () => A.vArea());
   AR.tab = "dist";
   check("area page, DeSO (structure)", () => A.vArea());
+  /* and a kommun whose DeSO file has landed reaches the export */
+  const desoCsv = A.exportRows("areas");
+  assert("a loaded DeSO kommun reaches All area data",
+    desoCsv.some(r => r.startsWith("deso;")), `${desoCsv.filter(r => r.startsWith("deso;")).length} DeSO rows`);
+  assert("and its rows name their RegSO as the parent",
+    desoCsv.filter(r => r.startsWith("deso;")).every(r => r.split(";")[3]), "parent_code filled");
   S.view = "table"; T.level = "deso";
   check("table / deso", () => A.vTable());
   MK.sub = "regso"; MK.kommun = null;

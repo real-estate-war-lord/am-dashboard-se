@@ -126,7 +126,9 @@ def open_menu(page, testid: str) -> None:
     pop = {"layers-btn": "layers-pop", "export-btn": "export-menu",
            "ind-picker-btn": "ind-picker-pop"}[testid]
     if page.eval_on_selector_all(f"[data-testid={pop}]", "e => e.length") == 0:
-        page.click(f"[data-testid={testid}]")
+        # the Export trigger is in two places at once (sidebar footer and Data
+        # header); either opens the same menu
+        page.locator(f"[data-testid={testid}]").first.click()
         page.wait_for_timeout(250)
 
 

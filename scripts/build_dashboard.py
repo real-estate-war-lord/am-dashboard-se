@@ -30,11 +30,11 @@ def load(p: pathlib.Path):
     return json.loads(p.read_text(encoding="utf-8")) if p.exists() else None
 
 
-# The four JS files are inlined as classic <script> blocks in ONE global lexical
+# The five JS files are inlined as classic <script> blocks in ONE global lexical
 # scope, so a top-level `const` in two of them is a SyntaxError that blanks the
 # page with nothing in the build log. `node --check` per file costs 0.2 s and
 # turns that into a build failure. Skipped silently where node is absent.
-JS_FILES = ("testprop.js", "route_core.js", "listings/view.js", "app.js")
+JS_FILES = ("testprop.js", "route_core.js", "listings/view.js", "export_core.js", "app.js")
 
 
 def check_js() -> None:
@@ -90,6 +90,7 @@ def main() -> int:
                 .replace("{{TESTPROP_JS}}", (SRC / "testprop.js").read_text(encoding="utf-8"))
                 .replace("{{ROUTE_JS}}", (SRC / "route_core.js").read_text(encoding="utf-8"))
                 .replace("{{LISTINGS_VIEW_JS}}", (SRC / "listings" / "view.js").read_text(encoding="utf-8"))
+                .replace("{{EXPORT_JS}}", (SRC / "export_core.js").read_text(encoding="utf-8"))
                 .replace("{{APP_JS}}", (SRC / "app.js").read_text(encoding="utf-8"))
                 .replace("{{DATA}}", payload)
                 .replace("{{BUILT}}", built))
