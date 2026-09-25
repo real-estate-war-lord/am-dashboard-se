@@ -12,12 +12,12 @@ A new session continues from here: read §Status, then the phase that is `TODO`.
 |---|---|---|---|
 | P0 | This plan | done | — |
 | P1 | Navigation and routes | **done** | b6c914f |
-| P2 | One toolbar on the Map | TODO | |
-| P3 | Layers ▾ including Rental listings | TODO | |
-| P4 | Indicator picker + period control | TODO | |
-| P5 | Map area card | TODO | |
-| P6 | Area page | TODO | |
-| P7 | Test property with Listings built in | TODO | |
+| P2 | One toolbar on the Map | **done** | 12ef3a3 |
+| P3 | Layers ▾ including Rental listings | **done** | d23651a |
+| P4 | Indicator picker + period control | **done** | 79dd55e |
+| P5 | Map area card | **done** | f81658e |
+| P6 | Area page | **done** | 94154eb |
+| P7 | Test property with Listings built in | **done** | bfe1383 |
 | P8 | Export ▾ | TODO | |
 | P9 | Number and label consistency | TODO | |
 | P10 | Responsive | TODO | |
@@ -59,7 +59,8 @@ Open ⚠:
 - **Compare never existed in the Swedish edition**, so "remove Compare" is: accept
   `#compare` as an alias, never emit it, and collapse the two-pin Test property
   (`#analysis?a=…&b=…`) to one pin (`b` is dropped, `a` wins).
-- **Listings bbox endpoint: to be added in P3, additively.** `npx wrangler whoami` is
+- **Listings bbox endpoint: added and deployed in P3.** `GET /bbox?s=&w=&n=&e=` is live
+  (version 8bc4fb4f). 16 new tests; `/nearby` is byte-for-byte unchanged and a test asserts it. `npx wrangler whoami` is
   authenticated (OAuth token, this account), so the task's condition is met. A viewport
   is a rectangle and a radius around its centre either misses the corners or over-fetches
   by 50 %, and HomeQ upstream already takes a bounding box — so `GET /bbox?s=&w=&n=&e=`
@@ -67,6 +68,19 @@ Open ⚠:
   the deployed Listings behaviour cannot regress. Deploy only after `gateway/` tests pass.
   The radius fallback stays in the client for the case where `/bbox` answers 404 (an older
   deployment), radius = half the viewport diagonal capped at 2 000 m.
+- **Two bugs found by the browser, not by the unit tests.** `dropMaps()` called `map.stop()`
+  before `map.off()`; Leaflet's `stop()` completes a pan animation, completing one fires
+  `moveend`, and that handler writes the camera into `LF` — so a fresh `#map/0180?c=…&z=14`
+  landed at the zoom of the map it had just replaced. And the area page's mini-map built its
+  colour scale from the areas' own values while filling the polygons from the inherited ones,
+  so a RegSO page showing a kommun-level indicator drew one flat colour under a legend that
+  said "no data".
+- **The fixture is recorded around two dense centres and re-anchored on the task's pin.**
+  Live supply at 59.31972, 18.07194 was ten adverts, none within a kilometre, so the median
+  rule, the group split and the markers all had nothing to act on. Recording around Västerås
+  (general supply) and central Stockholm (the municipal queue) and moving each listing by the
+  same offset gives 12 within 1 km, a 1-room bucket of nine and a 2-room bucket of two.
+  `tests/fixtures/record_listings.py` states this at the top of the file.
 - **dist/ and the `built` stamps are committed once, at the end.** `dist/index.html`
   is 17 MB and is tracked; committing it in each of eleven phase commits would roughly
   double a repository that is already 263 MB. The phase commits carry source, tests and
