@@ -30,6 +30,25 @@ def load(p: pathlib.Path):
     return json.loads(p.read_text(encoding="utf-8")) if p.exists() else None
 
 
+# The four JS files are inlined as classic <script> blocks in ONE global lexical
+# scope, so a top-level `const` in two of them is a SyntaxError that blanks the
+# page with nothing in the build log. `node --check` per file costs 0.2 s and
+# turns that into a build failure. Skipped silently where node is absent.
+JS_FILES = ("testprop.js", "route_core.js", "listings/view.js", "app.js")
+
+
+def check_js() -> None:
+    import subprocess
+    if shutil.which("node") is None:
+        print("note: node not on PATH — skipped the JavaScript syntax check")
+        return
+    for name in JS_FILES:
+        p = SRC / name
+        r = subprocess.run(["node", "--check", str(p)], capture_output=True, text=True)
+        if r.returncode != 0:
+            sys.exit(f"{name} does not parse:\n{r.stderr.strip()}")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--data", default=str(PROC / "makro.json"))
@@ -37,6 +56,7 @@ def main() -> int:
     ap.add_argument("--out", default=str(ROOT / "dist" / "index.html"))
     args = ap.parse_args()
 
+    check_js()
     makro = load(pathlib.Path(args.data))
     if not makro:
         print(f"{args.data} missing — run scripts/build_makro.py first", file=sys.stderr)
@@ -64,8 +84,12 @@ def main() -> int:
                 .replace("{{APP_CSS}}", (SRC / "style.css").read_text(encoding="utf-8"))
                 .replace("{{LEAFLET_JS}}", (SRC / "vendor" / "leaflet.js").read_text(encoding="utf-8"))
                 # testprop.js goes in FIRST: app.js calls parseLocation, and the
-                # module is kept separate so `node --test` can load it without a DOM
+                # module is kept separate so `node --test` can load it without a DOM.
+                # route_core.js and listings/view.js are the same arrangement — pure
+                # logic in an IIFE exposing one window global, unit-tested offline.
                 .replace("{{TESTPROP_JS}}", (SRC / "testprop.js").read_text(encoding="utf-8"))
+                .replace("{{ROUTE_JS}}", (SRC / "route_core.js").read_text(encoding="utf-8"))
+                .replace("{{LISTINGS_VIEW_JS}}", (SRC / "listings" / "view.js").read_text(encoding="utf-8"))
                 .replace("{{APP_JS}}", (SRC / "app.js").read_text(encoding="utf-8"))
                 .replace("{{DATA}}", payload)
                 .replace("{{BUILT}}", built))

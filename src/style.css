@@ -1495,3 +1495,135 @@ th .thn{display:inline}
 .moe.wide{color:#B0331B}
 .moe.wide::after{content:"!";margin-left:.15em;font-weight:600}
 td.dim .moe{color:inherit}
+
+
+/* ============================================================================
+   v2.0 — the shell, the menus and the shared components
+   ==========================================================================*/
+
+/* 240 px rather than 268 recovers 28 px of content width, which is what makes the
+   study row fit at 1366 without the mini-map going square. */
+.app{grid-template-columns:240px 1fr}
+
+/* the mobile top bar and its drawer exist at every width but are hidden on the
+   desktop, so "is the sidebar visible" and "is the drawer open" stay two
+   separate questions */
+.mtop{display:none}
+.drawer{display:none}
+.scrim{display:none}
+
+.pageact{display:flex;gap:8px;align-items:center;margin-left:auto}
+#hd{flex:1 1 auto}
+.topbar{display:flex;align-items:flex-start;gap:16px}
+
+/* ---- popover menus: Export ▾, Layers ▾, the indicator picker ---- */
+.menu{position:relative;display:inline-flex}
+.menupop{position:absolute;top:calc(100% + 6px);right:0;z-index:60;min-width:220px;max-width:min(420px,92vw);
+  background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
+  box-shadow:0 14px 40px rgba(20,28,24,.16);padding:6px;display:flex;flex-direction:column;gap:1px}
+.menupop.wide{min-width:300px}
+.menupop .mlab{font-family:var(--mono);font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;
+  color:var(--muted);padding:8px 9px 4px}
+.menupop .mi{display:block;width:100%;text-align:left;background:none;border:0;border-radius:7px;
+  padding:8px 9px;font:inherit;font-size:13px;color:var(--ink);cursor:pointer}
+.menupop .mi:hover{background:var(--panel2)}
+.menupop .mi.off{color:var(--dim);cursor:default}
+.menupop .mi.row{display:grid;grid-template-columns:18px 1fr;gap:8px;align-items:start}
+.menupop .mi.row span{display:block}
+.menupop .mi.row b{font-weight:600;font-size:13px;font-family:var(--body);display:block}
+.menupop .mi.row em{font-style:normal;display:block;font-family:var(--mono);font-size:10.5px;color:var(--muted);margin-top:2px}
+.menupop .tick{font-style:normal;display:inline-flex;align-items:center;justify-content:center;
+  width:16px;height:16px;border:1px solid var(--line);border-radius:4px;font-size:11px;color:var(--good);
+  background:var(--panel2);margin-top:1px}
+.menupop .mi.row.on .tick{border-color:var(--good);background:#EAF2EF}
+.msubs{display:flex;flex-wrap:wrap;gap:4px;padding:2px 9px 8px 35px}
+.mchip{display:inline-flex;align-items:center;gap:5px;background:var(--panel2);border:1px solid var(--line);
+  border-radius:999px;padding:3px 9px;font-family:var(--mono);font-size:10.5px;color:var(--ink2);cursor:pointer}
+.mchip.on{border-color:var(--ink);color:var(--ink)}
+.mchip i{width:8px;height:8px;border-radius:50%;border:1.2px solid var(--line);display:inline-block}
+.side-foot .menu{width:100%}
+.side-foot .lk.wide{width:100%;justify-content:center}
+.side-foot .menupop{right:auto;left:0;bottom:calc(100% + 6px);top:auto}
+.xcap{margin-top:8px;font-size:10.5px;line-height:1.5;color:var(--side-muted)}
+
+/* ---- the Data section header ---- */
+.dhead{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:0 0 12px}
+.dhead .seg{flex:0 1 auto}
+.dhead .menu{margin-left:auto}
+
+/* ---- shareable <details> sections ---- */
+.sec{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);margin:0 0 12px}
+.sec>summary{cursor:pointer;padding:13px 16px;display:flex;align-items:baseline;gap:10px;list-style:none}
+.sec>summary::-webkit-details-marker{display:none}
+.sec>summary::before{content:"▸";font-size:11px;color:var(--muted);transform:translateY(-1px)}
+.sec[open]>summary::before{content:"▾"}
+.sec>summary b{font-family:var(--disp);font-size:15px;font-weight:600;letter-spacing:-.01em}
+.sec>summary .dim{font-family:var(--mono);font-size:10.5px}
+.secbody{padding:0 16px 16px}
+
+/* ---- legends: keys only, stacked, collapsible, never overlapping ---- */
+.maplegs{display:flex;flex-direction:column;align-items:flex-end;gap:8px;
+  max-height:62%;overflow:auto;pointer-events:none}
+.maplegs>*{pointer-events:auto}
+.maplegend:empty{display:none}
+.lgc{position:relative}
+.lgfold{position:absolute;top:4px;right:4px;z-index:2;width:18px;height:18px;line-height:1;
+  background:var(--panel);border:1px solid var(--line);border-radius:5px;color:var(--muted);
+  font-family:var(--mono);font-size:12px;cursor:pointer;padding:0}
+.lgfold:hover{color:var(--ink);border-color:var(--ink)}
+.lgc.folded .lgtitle{margin:0;padding-right:22px}
+
+/* ---- mini-map: draggable, with its own full screen ---- */
+.mapwrap{position:relative}
+.mfull{position:absolute;top:8px;right:8px;z-index:500;width:26px;height:26px;line-height:1;
+  background:var(--panel);border:1px solid var(--line);border-radius:6px;cursor:pointer;
+  font-size:13px;color:var(--ink2);padding:0}
+.mfull:hover{color:var(--ink);border-color:var(--ink)}
+.mapwrap.is-full{position:fixed;inset:0;z-index:300;margin:0;background:var(--panel)}
+.mapwrap.is-full>div:first-child{height:100vh !important}
+.mapwrap.is-full .maplegend{bottom:16px;right:16px}
+
+/* ---- Test property ---- */
+.inh{color:var(--muted)}
+.anpin{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:10px 0 0}
+.anpin .anin{flex:1 1 320px;min-width:220px}
+.anpin .anlab{flex:0 1 160px}
+.anerr{font-family:var(--mono);font-size:11px;color:var(--bad)}
+.sparkcell{width:130px;color:var(--ink2)}
+
+/* ============================================================================
+   v2.0 — responsive: one column, a top bar and a drawer at 1024 px and below
+   ==========================================================================*/
+@media (max-width:1024px){
+  body{overflow:auto}
+  .app{grid-template-columns:1fr;height:auto}
+  main{overflow:visible}
+  aside{display:none}
+  .mtop{display:flex;align-items:center;gap:10px;height:52px;padding:0 14px;position:sticky;top:0;z-index:40;
+    background:var(--side);color:var(--side-ink)}
+  .navtog{background:none;border:0;color:var(--side-ink);font-size:20px;line-height:1;cursor:pointer;padding:4px 6px}
+  .mbrand{font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:#F2F3EE}
+  .mview{margin-left:auto;font-family:var(--mono);font-size:10.5px;color:var(--side-muted)}
+  .scrim{display:block;position:fixed;inset:0;z-index:45;background:rgba(20,23,15,.42)}
+  .scrim[hidden]{display:none}
+  .drawer{display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:50;width:280px;
+    max-width:86vw;background:var(--side);color:var(--side-ink);overflow-y:auto}
+  .drawer[hidden]{display:none}
+  .drawer .brand{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+  .drawerx{background:none;border:0;color:var(--side-muted);font-size:15px;cursor:pointer;padding:0 2px}
+  .drawer #navdrawer{display:flex;flex-direction:column;padding:0 12px 14px}
+  .topbar{position:static;padding:14px 16px 10px;flex-wrap:wrap}
+  #body{padding:12px 16px}
+  .grid-2,.grid-23{grid-template-columns:1fr}
+  .card{padding:12px}
+  .scrollx{overflow-x:auto}
+  .tools{gap:6px}
+  #lfmap{height:60vh}
+}
+@media (max-width:600px){
+  .hero{grid-template-columns:1fr 1fr}
+  .anpin .anin,.anpin .anlab{flex:1 1 100%}
+  .menupop{position:fixed;left:8px;right:8px;top:auto;bottom:8px;max-width:none;min-width:0}
+  .side-foot .menupop{left:8px;right:8px;bottom:8px}
+  #lfmap{height:55vh}
+}

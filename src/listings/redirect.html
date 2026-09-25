@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Listings moved · Macro Dashboard Sweden</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font: 15px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif;
+         margin: 0; min-height: 100vh; display: grid; place-items: center;
+         background: #F6F6F3; color: #16170F; padding: 24px; }
+  @media (prefers-color-scheme: dark) { body { background: #16170F; color: #F6F6F3; } }
+  .box { max-width: 46ch; }
+  h1 { font-size: 19px; margin: 0 0 8px; }
+  p { margin: 0 0 10px; }
+  a { color: #1C6B5C; }
+  @media (prefers-color-scheme: dark) { a { color: #7FB0A4; } }
+  code { font-family: ui-monospace, "IBM Plex Mono", Menlo, monospace; font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="box">
+  <h1>Listings moved into Test property</h1>
+  <p>What is advertised for rent near a point is now a section of the
+     <b>Test property</b> page, so the pin, the area statistics and the live adverts
+     are read in one place — with the caveat that matters kept next to them: an
+     advertised rent is not a contract rent.</p>
+  <p id="go">Taking you there…</p>
+  <p><a id="link" href="index.html#property?show=listings">Open Test property ›</a></p>
+</div>
+<!-- route_core.js owns the codec, so this page and the app cannot disagree about
+     what "#at=59.3,18.0&r=1000" means. -->
+<script>{{ROUTE_JS}}</script>
+<script>
+(function () {
+  var target = "index.html#" + window.ROUTE_CORE.fromListingsHash(location.hash);
+  document.getElementById("link").href = target;
+  /* replace(), not assign(): the old URL should not sit in the history for Back
+     to bounce off. */
+  location.replace(target);
+}());
+</script>
+</body>
+</html>

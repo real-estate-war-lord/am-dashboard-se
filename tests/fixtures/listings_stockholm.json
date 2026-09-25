@@ -1,0 +1,361 @@
+{
+ "fetchedAt": "2026-09-25T06:00:00.000Z",
+ "radius": 3000,
+ "sources": [
+  {
+   "src": "homeq",
+   "ok": true,
+   "count": 6
+  },
+  {
+   "src": "heimstaden",
+   "ok": true,
+   "count": 0,
+   "fetchedAt": "2026-09-25T05:30:00.000Z"
+  },
+  {
+   "src": "victoriahem",
+   "ok": true,
+   "count": 0,
+   "fetchedAt": "2026-09-25T05:30:00.000Z"
+  },
+  {
+   "src": "lkf",
+   "ok": false,
+   "count": 0,
+   "error": "LKF: stale — snapshot is from 2026-09-24T13:05:34.974Z, older than 3 h"
+  },
+  {
+   "src": "uddevallahem",
+   "ok": false,
+   "count": 0,
+   "error": "Uddevallahem: stale — snapshot is from 2026-09-24T13:05:34.957Z, older than 3 h"
+  },
+  {
+   "src": "helsingborgshem",
+   "ok": true,
+   "count": 0,
+   "fetchedAt": "2026-09-25T05:30:00.000Z"
+  },
+  {
+   "src": "dios",
+   "ok": false,
+   "count": 0,
+   "error": "Diös: stale — snapshot is from 2026-09-24T13:05:35.104Z, older than 3 h"
+  },
+  {
+   "src": "trianon",
+   "ok": true,
+   "count": 0,
+   "fetchedAt": "2026-09-25T05:30:00.000Z"
+  },
+  {
+   "src": "nykopingshem",
+   "ok": false,
+   "count": 0,
+   "error": "Nyköpingshem: stale — snapshot is from 2026-09-24T13:05:35.268Z, older than 3 h"
+  },
+  {
+   "src": "skovdebostader",
+   "ok": true,
+   "count": 0,
+   "fetchedAt": "2026-09-25T05:30:00.000Z"
+  },
+  {
+   "src": "mitthem",
+   "ok": false,
+   "count": 0,
+   "error": "Mitthem: stale — snapshot is from 2026-09-24T13:05:35.431Z, older than 3 h"
+  },
+  {
+   "src": "botkyrkabyggen",
+   "ok": false,
+   "count": 0,
+   "error": "Botkyrkabyggen: stale — snapshot is from 2026-09-24T13:05:35.432Z, older than 3 h"
+  },
+  {
+   "src": "vasbyhem",
+   "ok": true,
+   "count": 0,
+   "fetchedAt": "2026-09-25T05:30:00.000Z"
+  },
+  {
+   "src": "kalmarhem",
+   "ok": true,
+   "count": 0,
+   "fetchedAt": "2026-09-25T05:30:00.000Z"
+  },
+  {
+   "src": "sollentunahem",
+   "ok": true,
+   "count": 0,
+   "fetchedAt": "2026-09-25T05:30:00.000Z"
+  },
+  {
+   "src": "lulebo",
+   "ok": true,
+   "count": 0,
+   "fetchedAt": "2026-09-25T05:30:00.000Z"
+  },
+  {
+   "src": "haningebostader",
+   "ok": true,
+   "count": 0,
+   "fetchedAt": "2026-09-25T05:30:00.000Z"
+  },
+  {
+   "src": "vatterhem",
+   "ok": false,
+   "count": 0,
+   "error": "Vätterhem: stale — snapshot is from 2026-09-24T13:05:35.723Z, older than 3 h"
+  },
+  {
+   "src": "tyresobostader",
+   "ok": false,
+   "count": 0,
+   "error": "Tyresö Bostäder: stale — snapshot is from 2026-09-24T13:05:35.725Z, older than 3 h"
+  },
+  {
+   "src": "signalisten",
+   "ok": true,
+   "count": 0,
+   "fetchedAt": "2026-09-25T05:30:00.000Z"
+  },
+  {
+   "src": "willhem",
+   "ok": true,
+   "count": 0,
+   "fetchedAt": "2026-09-25T05:30:00.000Z"
+  },
+  {
+   "src": "bostadsformedlingen",
+   "ok": true,
+   "count": 4,
+   "fetchedAt": "2026-09-25T05:30:00.000Z"
+  },
+  {
+   "src": "boplatsvast",
+   "ok": true,
+   "count": 0,
+   "fetchedAt": "2026-09-25T05:30:00.000Z"
+  }
+ ],
+ "deduped": 0,
+ "listings": [
+  {
+   "src": "homeq",
+   "src_label": "HomeQ",
+   "id": "fx001",
+   "url": "https://example.invalid/listing/fx001",
+   "address": "Provgatan 1",
+   "area_name": null,
+   "landlord": null,
+   "lat": 59.3092,
+   "lon": 18.0653,
+   "rent_sek_mo": 9004,
+   "size_m2": 57,
+   "rooms": 2,
+   "floor": null,
+   "available_from": "2026-10-01",
+   "dist_m": 1233,
+   "allocation": "direct",
+   "audience": null,
+   "geo_source": "source",
+   "image": "https://example.invalid/photo/fx001.jpg"
+  },
+  {
+   "src": "homeq",
+   "src_label": "HomeQ",
+   "id": "fx002",
+   "url": "https://example.invalid/listing/fx002",
+   "address": "Testvägen 4",
+   "area_name": null,
+   "landlord": null,
+   "lat": 59.308,
+   "lon": 18.0898,
+   "rent_sek_mo": 18173,
+   "size_m2": 64,
+   "rooms": 2,
+   "floor": null,
+   "available_from": "2026-12-01",
+   "dist_m": 1654,
+   "allocation": "direct",
+   "audience": null,
+   "geo_source": "source",
+   "image": "https://example.invalid/photo/fx002.jpg"
+  },
+  {
+   "src": "homeq",
+   "src_label": "HomeQ",
+   "id": "fx003",
+   "url": "https://example.invalid/listing/fx003",
+   "address": "Fixturgränd 7",
+   "area_name": null,
+   "landlord": null,
+   "lat": 59.3376,
+   "lon": 18.052,
+   "rent_sek_mo": 5190,
+   "size_m2": 20,
+   "rooms": 1,
+   "floor": null,
+   "available_from": "2026-12-01",
+   "dist_m": 2286,
+   "allocation": "direct",
+   "audience": null,
+   "geo_source": "source",
+   "image": "https://example.invalid/photo/fx003.jpg"
+  },
+  {
+   "src": "homeq",
+   "src_label": "HomeQ",
+   "id": "fx004",
+   "url": "https://example.invalid/listing/fx004",
+   "address": "Exempelgatan 10",
+   "area_name": null,
+   "landlord": null,
+   "lat": 59.3376,
+   "lon": 18.052,
+   "rent_sek_mo": 5190,
+   "size_m2": 20,
+   "rooms": 1,
+   "floor": null,
+   "available_from": "2026-12-01",
+   "dist_m": 2286,
+   "allocation": "direct",
+   "audience": null,
+   "geo_source": "source",
+   "image": "https://example.invalid/photo/fx004.jpg"
+  },
+  {
+   "src": "bostadsformedlingen",
+   "src_label": "Bostadsförmedlingen (kö)",
+   "id": "fx005",
+   "url": "https://example.invalid/listing/fx005",
+   "address": "Mätargatan 13",
+   "area_name": "Provområdet",
+   "landlord": null,
+   "lat": 59.337,
+   "lon": 18.0481,
+   "rent_sek_mo": 4754,
+   "size_m2": 24,
+   "rooms": 1,
+   "floor": 6,
+   "available_from": null,
+   "dist_m": 2347,
+   "allocation": "queue",
+   "audience": "youth",
+   "geo_source": "source",
+   "queue_years_q1": 7,
+   "queue_years_q3": 9
+  },
+  {
+   "src": "bostadsformedlingen",
+   "src_label": "Bostadsförmedlingen (kö)",
+   "id": "fx006",
+   "url": "https://example.invalid/listing/fx006",
+   "address": "Referensvägen 16",
+   "area_name": "Testkvarteret",
+   "landlord": null,
+   "lat": 59.298,
+   "lon": 18.0839,
+   "rent_sek_mo": 10792,
+   "size_m2": 57,
+   "rooms": 3,
+   "floor": 4,
+   "available_from": null,
+   "dist_m": 2505,
+   "allocation": "queue",
+   "audience": "short_term",
+   "geo_source": "source",
+   "queue_years_q1": 17,
+   "queue_years_q3": 20
+  },
+  {
+   "src": "homeq",
+   "src_label": "HomeQ",
+   "id": "fx007",
+   "url": "https://example.invalid/listing/fx007",
+   "address": "Attrappgatan 19",
+   "area_name": null,
+   "landlord": null,
+   "lat": 59.3164,
+   "lon": 18.0279,
+   "rent_sek_mo": 7318,
+   "size_m2": 36,
+   "rooms": 1,
+   "floor": null,
+   "available_from": "2026-11-02",
+   "dist_m": 2529,
+   "allocation": "direct",
+   "audience": null,
+   "geo_source": "source",
+   "image": "https://example.invalid/photo/fx007.jpg"
+  },
+  {
+   "src": "homeq",
+   "src_label": "HomeQ",
+   "id": "fx008",
+   "url": "https://example.invalid/listing/fx008",
+   "address": "Skissgränd 22",
+   "area_name": null,
+   "landlord": null,
+   "lat": 59.3178,
+   "lon": 18.0265,
+   "rent_sek_mo": 14950,
+   "size_m2": 24,
+   "rooms": 1,
+   "floor": null,
+   "available_from": "2026-10-01",
+   "dist_m": 2587,
+   "allocation": "direct",
+   "audience": null,
+   "geo_source": "source",
+   "image": "https://example.invalid/photo/fx008.jpg"
+  },
+  {
+   "src": "bostadsformedlingen",
+   "src_label": "Bostadsförmedlingen (kö)",
+   "id": "fx009",
+   "url": "https://example.invalid/listing/fx009",
+   "address": "Utkastvägen 25",
+   "area_name": "Provområdet",
+   "landlord": null,
+   "lat": 59.3436,
+   "lon": 18.0928,
+   "rent_sek_mo": 7730,
+   "size_m2": 44,
+   "rooms": 1,
+   "floor": 1,
+   "available_from": null,
+   "dist_m": 2902,
+   "allocation": "queue",
+   "audience": "youth",
+   "geo_source": "source",
+   "queue_years_q1": 7,
+   "queue_years_q3": 9
+  },
+  {
+   "src": "bostadsformedlingen",
+   "src_label": "Bostadsförmedlingen (kö)",
+   "id": "fx010",
+   "url": "https://example.invalid/listing/fx010",
+   "address": "Modellgatan 28",
+   "area_name": "Testkvarteret",
+   "landlord": null,
+   "lat": 59.3461,
+   "lon": 18.0707,
+   "rent_sek_mo": 6438,
+   "size_m2": 28,
+   "rooms": 1,
+   "floor": 4,
+   "available_from": null,
+   "dist_m": 2930,
+   "allocation": "queue",
+   "audience": null,
+   "geo_source": "source",
+   "queue_years_q1": 15,
+   "queue_years_q3": 20
+  }
+ ],
+ "_fixture": "Synthetic stand-ins for every third-party string; the source mix, the allocation, audience, rooms, size, rent and coordinates are as recorded. Regenerate with tests/fixtures/record_listings.py."
+}
