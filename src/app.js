@@ -274,7 +274,7 @@ function parseHash() {
     AR.sub = q.sub === "deso" ? "deso" : "regso";
     setShow(AR.show, q.show, areaShowDefaults());
     if (AR.type === "deso") loadDeso(desoKomOf(AR.code));
-    else if (AR.type === "kommun") loadDeso(AR.code, () => {});
+    else if (AR.type === "kommun") loadDeso(AR.code);
   } else if (v === "table") { S.view = "table"; if (RC.LEVELS.includes(parts[1])) T.level = parts[1]; DT.tab = "areas"; }
   else if (v === "market") { S.view = "market"; MKT.src = q.src === "1"; DT.tab = MKT.src ? "sources" : "national"; }
   else if (v === "pipeline") { S.view = "pipeline"; PIPE.type = q.t || ""; PIPE.status = q.s || ""; DT.tab = "projects"; }
@@ -400,6 +400,8 @@ function render() {
   body.innerHTML = (RENDER[S.view] || vMakro)();
   enableSort(body);
   if (UI.menu === "picker") { const f = document.getElementById("indsearch"); if (f) { f.focus(); f.select(); } }
+  /* with no pin there is exactly one thing to do on the page, so the caret goes there */
+  else if (S.view === "property" && PROP.lat == null) { const f = document.getElementById("propin"); if (f) f.focus(); }
 }
 function renderKeep() { const m = document.getElementById("main"), y = m.scrollTop; render(); m.scrollTop = y; }
 
@@ -506,10 +508,25 @@ document.addEventListener("click", e => {
     if (LAY.has(k)) LAY.delete(k); else LAY.add(k);
     LF[layKey(k) + "Drawn"] = false; syncHash(); renderKeep(); return; }
   if ((el = g("[data-zones]"))) { ZN.off = !ZN.off; LF.climDrawn = false; syncHash(); renderKeep(); return; }
-  if ((el = g("[data-lstgroup]"))) { const k = el.dataset.lstgroup, f = LST.filters;
-    const i = f.groups.indexOf(k); if (i < 0) f.groups.push(k); else f.groups.splice(i, 1);
-    syncHash(); renderKeep(); return; }
+  if ((el = g("[data-lstgroup]"))) { lstToggle(LST.filters.groups, el.dataset.lstgroup); return; }
   if (g("[data-lstretry]")) { lstRetry(); return; }
+  if (g("[data-lstretrypin]")) { LST.error = null; LST.pins.clear(); lstSectionRefresh(); return; }
+  if (g("[data-lstshow]")) { LST.open = !LST.open; syncHash(); lstSectionRefresh(); return; }
+  if (g("[data-lstcsv]")) { lstCsv(); return; }
+  if ((el = g("[data-lstalloc]"))) { lstToggle(LST.filters.allocation, el.dataset.lstalloc); return; }
+  if ((el = g("[data-lstroom]"))) { lstToggle(LST.filters.rooms, el.dataset.lstroom); return; }
+  if (g("[data-lstoffer]")) { LST.filters.offerOnly = !LST.filters.offerOnly; lstAfterFilter(); return; }
+  if (g("[data-lstres]")) { LST.filters.showReserved = !LST.filters.showReserved; lstAfterFilter(); return; }
+  if ((el = g("[data-lstsrc]"))) { const f = LST.filters;
+    const all = [...new Set(LST.rows.map(l => l.src))];
+    if (!f.sources) f.sources = all.slice();
+    lstToggle(f.sources, el.dataset.lstsrc);
+    if (f.sources.length === all.length) { f.sources = null; lstAfterFilter(); }
+    return; }
+  if ((el = g("[data-lstsort]"))) { const k = el.dataset.lstsort;
+    if (LST.sort === k) LST.desc = !LST.desc; else { LST.sort = k; LST.desc = false; }
+    syncHash(); lstSectionRefresh(); return; }
+  if ((el = g("[data-lstrow]"))) { lstFocus(el.dataset.lstrow); return; }
   if ((el = g("[data-legfold]"))) { const k = el.dataset.legfold; UI.legFold[k] = !UI.legFold[k]; ovLegends(); return; }
   /* a jump moves the camera and returns — no selection change, so no re-render */
   if ((el = g("[data-pipetype]"))) { PIPE.type = el.dataset.pipetype; syncHash(); renderKeep(); return; }
@@ -1672,7 +1689,7 @@ async function propResolve() {
   /* the reader may have moved the pin while the rings were in flight */
   if (PROP.resKey !== key) return;
   PROP.res = r;
-  if (PROP.lat != null) loadDeso(r && r.kommun ? r.kommun.code : null, () => {});
+  if (PROP.lat != null) loadDeso(r && r.kommun ? r.kommun.code : null);
   if (S.view === "property") renderKeep();
 }
 /* the finest entity we actually hold figures for */
@@ -1773,89 +1790,256 @@ function secHtml(id, title, right, body, opts) {
     <div class="secbody">${body}</div></details>`;
 }
 
+/* The pin's finest area, in the shape areaEntity() returns, so the study row,
+   the tiles and the All-figures table are the SAME components as the area page's
+   rather than a second implementation. DeSO where the statistic exists at that
+   level, otherwise RegSO, otherwise the kommun — and the level is on the page. */
+function propArea() {
+  const e = propEntity(); if (!e) return null;
+  if (e.deso) {
+    const sibs = desoAreas(e.deso.kommun);
+    return { type: "deso", typeLabel: "DeSO", o: e.deso, name: e.deso.code.split("_")[0], code: e.deso.code,
+             kommun: e.kommun, lan: e.kommun && e.kommun.lan, inds: IND,
+             peers: sibs.length ? sibs : [e.deso], peerLabel: "DeSO areas", ctx: sibs, own: [e.deso], subs: null };
+  }
+  if (e.regso) {
+    return { type: "regso", typeLabel: "RegSO", o: e.regso, name: e.regso.name, code: e.regso.code,
+             kommun: e.kommun, lan: e.kommun && e.kommun.lan, inds: IND, peers: AREAS, peerLabel: "RegSO areas",
+             ctx: AREAS.filter(x => x.kommun === e.regso.kommun), own: [e.regso], subs: null };
+  }
+  if (e.kommun) return kommunEntity(e.kommun);
+  return null;
+}
+const radTxt = r => (r < 1000 ? `${r} m` : `${r / 1000} km`);
+
+/* --- what is within the radius --- */
+/* The pin's own kommun is not enough: a pin 300 m from a boundary has half its
+   neighbourhood in the next kommun, and the files are per kommun. */
+function nearKommuner(extraM) {
+  const out = [];
+  if (PROP.lat == null) return out;
+  const reach = PROP.rad + (extraM || 0);
+  for (const code in SRV_IDX) {
+    const bb = SRV_IDX[code].bbox; if (!bb) continue;
+    const dLat = Math.max(0, Math.max(bb[0] - PROP.lat, PROP.lat - bb[2]));
+    const dLon = Math.max(0, Math.max(bb[1] - PROP.lon, PROP.lon - bb[3]));
+    if (havM(PROP.lat, PROP.lon, PROP.lat + dLat, PROP.lon + dLon) < reach) out.push(code);
+  }
+  return out;
+}
+/* every OSM point within the radius, with its distance */
+function pointsNear(cats) {
+  if (PROP.lat == null) return [];
+  const codes = nearKommuner(500);
+  codes.forEach(srvLoad);
+  const out = [];
+  for (const code of codes) {
+    if (!Array.isArray(SRV[code])) continue;
+    for (const [cat, lat, lon, nm, tag] of SRV[code]) {
+      if (!cats.includes(cat)) continue;
+      const m = havM(PROP.lat, PROP.lon, lat, lon);
+      if (m > PROP.rad) continue;
+      out.push({ cat, lat, lon, name: nm, tag, m: Math.round(m) });
+    }
+  }
+  out.sort((a, b) => a.m - b.m);
+  return out;
+}
+function nearCard(cats, testid) {
+  const pts = pointsNear(cats);
+  if (!Object.keys(SRV_IDX).length) return `<p class="empty">Not covered yet — no OpenStreetMap point files in this build.</p>`;
+  const rows = cats.map(c => {
+    const mine = pts.filter(p => p.cat === c);
+    const d = SRV_CATS[c];
+    const nearest = mine[0];
+    return `<tr><th><span class="pipdot" style="background:${d[1]}"></span>${esc(d[0])}</th>
+      <td class="num">${mine.length}</td>
+      <td>${nearest ? `${esc(nearest.name || d[0])} <span class="dim">${distTxt(nearest.m)}</span>` : `<span class="dim">none within ${radTxt(PROP.rad)}</span>`}</td></tr>`;
+  }).join("");
+  return `<table class="tbl compact" data-testid="${esc(testid)}"><thead><tr><th>Category</th><th class="num">Within ${radTxt(PROP.rad)}</th><th>Nearest</th></tr></thead><tbody>${rows}</tbody></table>
+    <p class="cap">© OpenStreetMap contributors (ODbL). Points only, straight-line distance. <b>A count is coverage as much as provision</b> — it measures how thoroughly volunteers have mapped this place as well as what is there — which is why there is no per-inhabitant rate here.</p>`;
+}
+/* Public buildings repeat: one school is tagged once as a building and once as
+   an amenity, a few metres apart. Rows with the same name, the same use and a
+   distance within 20 m are one row with a count. */
+function publicNear() {
+  const pts = pointsNear(PUB_SET);
+  if (!pts.length) return `<p class="empty">Nothing within ${radTxt(PROP.rad)} in this build.</p>`;
+  const groups = [];
+  for (const p of pts) {
+    const hit = groups.find(g => g.name === (p.name || "") && g.cat === p.cat && Math.abs(g.m - p.m) <= 20);
+    if (hit) { hit.n++; continue; }
+    groups.push({ name: p.name || "", cat: p.cat, m: p.m, tag: p.tag, n: 1 });
+  }
+  return `<table class="tbl compact" data-testid="public-near"><thead><tr><th>Building</th><th>Use</th><th class="num">Distance</th></tr></thead>
+    <tbody>${groups.map(g => { const d = SRV_CATS[g.cat];
+      return `<tr><th>${esc(g.name || d[0])}${g.n > 1 ? ` <span class="tag-muni" title="${g.n} OpenStreetMap objects with the same name and use within 20 m of each other">×${g.n}</span>` : ""}</th>
+        <td><span class="pipdot" style="background:${d[1]}"></span>${esc(d[0])} <span class="dim">${esc(g.tag)}</span></td>
+        <td class="num">${distTxt(g.m)}</td></tr>`; }).join("")}</tbody></table>
+    <p class="cap">Grouped where the name, the use and the distance (±20 m) match, because one building is often tagged more than once in OpenStreetMap. © OpenStreetMap contributors (ODbL).</p>`;
+}
+function infraNear() {
+  infraLoad();
+  if (!INFRA_GEO.data) return `<p class="empty">Loading the project geometry…</p>`;
+  const hits = [];
+  for (const f of INFRA_GEO.data.features || []) {
+    if (!f.geometry) continue;
+    let best = Infinity;
+    const scan = pts => { for (const [lon, lat] of pts) { const m = havM(PROP.lat, PROP.lon, lat, lon); if (m < best) best = m; } };
+    if (f.geometry.type === "MultiLineString") f.geometry.coordinates.forEach(scan);
+    else if (f.geometry.type === "Point") scan([f.geometry.coordinates]);
+    else scan(f.geometry.coordinates);
+    if (best <= Math.max(PROP.rad, 2000)) hits.push({ p: f.properties, m: Math.round(best) });
+  }
+  hits.sort((a, b) => a.m - b.m);
+  if (!hits.length) return `<p class="empty">No mapped project within ${radTxt(Math.max(PROP.rad, 2000))}. A project whose stations could not be found in OpenStreetMap is in <b>Data › Projects</b> but is not drawn, and so cannot be measured from here.</p>`;
+  return `<table class="tbl compact" data-testid="infra-near"><thead><tr><th>Project</th><th>Status</th><th class="num">Opening</th><th class="num">Distance</th></tr></thead>
+    <tbody>${hits.map(h => `<tr><th><button class="lk mini" data-go="project/${esc(h.p.id)}">${esc(h.p.name)}</button></th>
+      <td><span class="pipdot" style="background:${INFRA_TONE[h.p.status] || "#8A8C81"}"></span>${esc(h.p.status)}</td>
+      <td class="num">${h.p.open_year || esc(h.p.open_window || "–")}</td>
+      <td class="num">${distTxt(h.m)}</td></tr>`).join("")}</tbody></table>
+    <p class="cap">Distance to the nearest drawn point of the alignment or of a located station, not to a platform entrance. Shown out to ${radTxt(Math.max(PROP.rad, 2000))} because a transport project matters further away than a grocer does.</p>`;
+}
+function safetyNear() {
+  const e = propEntity(); if (!e || !e.kommun) return "";
+  const keys = IND.filter(i => i.group === "Safety" && i.key !== "vulnerable_area_share");
+  const uso = (e.deso && e.deso.vulnerable_area_share != null) ? e.deso
+    : (e.regso && e.regso.vulnerable_area_share != null) ? e.regso : null;
+  return `<table class="tbl compact"><thead><tr><th>Indicator</th><th class="num">${esc(e.kommun.name)}</th><th class="num">SE median</th></tr></thead>
+    <tbody>${keys.map(i => { const v = V(e.kommun, i.key); if (v == null) return "";
+      return `<tr><th>${esc(i.label)} <span class="dim">${esc(i.unit || "")}</span></th>${fmtCell(i, v, false, e.kommun)}${fmtCell(i, median(MUNI.map(m => V(m, i.key))), false)}</tr>`; }).join("")}</tbody></table>
+    ${uso ? usoLine(uso) : `<p class="cap">The police have designated no part of this pin's ${e.deso ? "DeSO" : "RegSO"} area.</p>`}
+    <p class="cap">Reported offences are counted where the offence was reported, not where the offender or the victim lives, and a kommun with a shopping centre or a station counts offences committed against people who do not live there. Källa: Brå. The police designation is an assessment of an area's conditions, not a rating of its residents.</p>`;
+}
+function schoolsNear() {
+  const sch = propSchoolsNear(6);
+  if (!sch.length) return `<p class="empty">Loading schools near the pin…</p>`;
+  const e = propEntity();
+  const km = e && e.kommun;
+  const nat = SCH_META.national_merit;
+  return `<table class="tbl compact" data-testid="schools-near"><thead><tr><th>School</th><th class="num">Distance</th><th class="num">Merit</th><th class="num">vs ${esc(km ? km.name : "kommun")}</th><th class="num">vs Sweden</th></tr></thead>
+    <tbody>${sch.map(({ s, m }) => `<tr><th><button class="lk mini" data-go="school/${esc(s.code)}">${esc(s.name)}</button></th>
+      <td class="num">${distTxt(m)}</td>
+      <td class="num">${s.merit != null ? nf(s.merit, 1) : `–<span class="dim"> ${esc(s.merit_why === "OMITTED_DUE_TO_BASED_ON_FEW_PUPILS" ? "too few pupils" : "not published")}</span>`}</td>
+      <td class="num ${s.merit != null && km && km.school_merit != null ? cls(s.merit - km.school_merit, "school_merit") : ""}">${s.merit != null && km && km.school_merit != null ? signed(s.merit - km.school_merit, 1) : "–"}</td>
+      <td class="num ${s.merit != null && nat != null ? cls(s.merit - nat, "school_merit") : ""}">${s.merit != null && nat != null ? signed(s.merit - nat, 1) : "–"}</td></tr>`).join("")}</tbody></table>
+    <p class="cap">Straight-line distance, not walking distance, and neighbouring kommuner are included — the nearest school to a pin near a boundary is often across it. <b>Raw merit value, not SALSA-adjusted</b>: it tracks the intake as much as the teaching. Källa: Skolverket.</p>`;
+}
+
 function vProperty() {
   setTimeout(propMapInit, 0);
-  const inds = IND.filter(i => PROP_GROUPS.includes(i.group));
-  const groups = PROP_GROUPS.filter(g => inds.some(i => i.group === g));
   const pinned = PROP.lat != null;
-  const sch = pinned ? propSchoolsNear(5) : [];
   const r = PROP.res || {};
+  const e = pinned ? propArea() : null;
+  const ind = curInd();
   const osm = pinned ? `https://www.openstreetmap.org/?mlat=${PROP.lat}&mlon=${PROP.lon}#map=17/${PROP.lat}/${PROP.lon}` : "";
   const head = `
   <div class="card accent arhead">
     <div class="arid"><h2>${esc(propName() || "Test property")}</h2>
-      <div class="artags"><span class="tag">point-in-polygon on our own boundaries</span>
-      ${pinned ? `<span class="tag">${esc(PROP.lat.toFixed(5))}, ${esc(PROP.lon.toFixed(5))}</span>` : ""}</div>
+      <div class="artags">
+        ${r.kommun ? `<span class="tag">${esc(r.kommun.name)}</span>` : ""}
+        ${r.regso ? `<span class="tag">RegSO ${esc(r.regso.name)}</span>` : ""}
+        ${r.deso ? `<span class="tag">DeSO ${esc(r.deso.code.split("_")[0])}</span>` : ""}
+        ${pinned ? `<span class="tag">${esc(PROP.lat.toFixed(5))}, ${esc(PROP.lon.toFixed(5))}</span>` : ""}
+        ${e ? `<span class="tag">figures read at ${esc(e.typeLabel)} level where published</span>` : ""}</div>
     </div>
     <div class="anpin">
       <input id="propin" class="indsel anin" data-testid="prop-input" placeholder="Paste a Google Maps link or 59.31972, 18.07194"
-        value="${esc(pinned ? PROP.lat + ", " + PROP.lon : "")}" autocomplete="off"${pinned ? "" : " autofocus"}>
+        value="${esc(pinned ? PROP.lat + ", " + PROP.lon : "")}" autocomplete="off">
       <input id="proplab" class="indsel anlab" placeholder="label (optional)" value="${esc(PROP.label)}" autocomplete="off">
       ${pinned ? `<button class="lk mini" data-propclear>clear</button>` : ""}
-      <label class="hint">within <select id="proprad" class="indsel">${RC.RADII.map(x =>
-        `<option value="${x}" ${PROP.rad === x ? "selected" : ""}>${x < 1000 ? x + " m" : (x / 1000) + " km"}</option>`).join("")}</select></label>
+      <label class="hint">within <select id="proprad" class="indsel" data-testid="prop-rad">${RC.RADII.map(x =>
+        `<option value="${x}" ${PROP.rad === x ? "selected" : ""}>${radTxt(x)}</option>`).join("")}</select></label>
       <span class="anerr" id="properr"></span>
     </div>
     ${pinned ? `<div class="tools">
-      ${indPicker("map")}${periodControl()}
       <button class="lk" data-go="${withQ("map/" + (r.kommun ? r.kommun.code : ""))}">Open on map</button>
-      ${r.regso && byRegso[r.regso.code] ? `<button class="lk" data-go="${withQ("area/regso/" + r.regso.code)}">${esc(r.regso.name)} ›</button>` : ""}
-      ${r.kommun ? `<button class="lk" data-go="${withQ("area/kommun/" + r.kommun.code)}">${esc(r.kommun.name)} ›</button>` : ""}
+      ${e ? `<button class="lk" data-go="${withQ(`area/${e.type}/${e.code}`)}">${esc(e.name)} ›</button>` : ""}
+      ${r.kommun && e && e.type !== "kommun" ? `<button class="lk" data-go="${withQ("area/kommun/" + r.kommun.code)}">${esc(r.kommun.name)} ›</button>` : ""}
       <a class="lk" href="${esc(osm)}" target="_blank" rel="noopener">OpenStreetMap ↗</a>
+      <button class="lk" data-copylink>Copy link</button>
     </div>` : ""}
-    <p class="cap anpriv"><b>Nothing leaves your browser.</b> The link is parsed here, the point is tested
-      against boundary files this page already serves, and the coordinate lives only in this page's
-      address bar — the part after the # is never sent to a server. A short goo.gl link cannot be
-      read without following it, so it is refused rather than resolved on your behalf.</p>
+    ${e ? headlineTiles(e) : ""}
+    <p class="cap anpriv"><b>Nothing leaves your browser.</b> The link is parsed here, the point is tested against
+      boundary files this page already serves, and the coordinate lives only in this page's address bar — the part
+      after the # is never sent to a server. A short goo.gl link cannot be read without following it, so it is
+      refused rather than resolved on your behalf. The listings section below is the one thing that does make a
+      request, to this project's own gateway, and it sends the radius and the point and nothing else.</p>
   </div>`;
   if (!pinned) {
     return head + `<div class="card" data-testid="state-empty"><p class="empty">Paste a Google Maps link above — right-click a spot in Google Maps and copy the coordinates it offers, or copy the full URL from the address bar. For example
-      <button class="lk mini" data-go="property?p=59.31972,18.07194:Hornstull">59.31972, 18.07194 — Hornstull, Stockholm</button>.</p></div>`;
+      <button class="lk mini" data-go="property?p=59.31972,18.07194:Södermalm">59.31972, 18.07194 — Södermalm, Stockholm</button>.</p></div>`;
   }
+  if (r.error) return head + `<div class="card"><p class="empty">${esc(r.error)}</p></div>`;
+  if (!e) return head + `<div class="card"><p class="empty">Locating…</p></div>`;
+  const nList = lstNearPin(LST.rows).length;
   return head + `
-  <div class="grid-2">
-    <div class="card"><h3>Where it is</h3>${propWhere()}
-      <div class="mapwrap anmap" data-mini="prop" data-testid="minimap"><div id="propmap"></div>
-        <button class="mfull" data-minifull="prop" data-testid="minimap-full" title="Full screen (Esc closes)">⤢</button></div>
-      <p class="cap">Rings simplified to about 40 m for this lookup — enough to say which RegSO a building is in, not a cadastral boundary. The dashed circles are ${RC.RADII.map(x => x < 1000 ? x + " m" : x / 1000 + " km").join(", ")}.</p></div>
-    <div class="card"><h3>Nearest schools with year 9</h3>
-      ${sch.length ? `<table class="tbl compact"><thead><tr><th>School</th><th class="num">Distance</th><th class="num">Merit</th></tr></thead><tbody>
-      ${sch.map(({ s, m }) => `<tr><th><button class="lk mini" data-go="school/${esc(s.code)}">${esc(s.name)}</button></th>
-        <td class="num">${distTxt(m)}</td>
-        <td class="num">${s.merit != null ? nf(s.merit, 1) : "–"}</td></tr>`).join("")}
-      </tbody></table><p class="cap">Straight-line distance, not walking distance. Neighbouring kommuner are included — the nearest school to a pin near a boundary is often across it.</p>`
-      : `<p class="empty">Loading schools near the pin…</p>`}
-    </div>
+  <div class="card tools-card">
+    <div class="tools">${indPicker("map")}${periodControl()}${layersMenuHtml()}</div>
+    ${indQuick()}
   </div>
+  ${studyRow(e, ind, "prop")}
+  ${secHtml("listings", "Rental listings nearby", `within ${radTxt(PROP.rad)} · live, third-party`,
+    `<div id="lstsec">${lstSectionBody()}</div>`, { render: false })}
+  ${secHtml("services", "Services within the radius", `${radTxt(PROP.rad)} · OpenStreetMap`, nearCard(SRV_SET, "services-near"))}
+  ${secHtml("public", "Public buildings within the radius", `${radTxt(PROP.rad)} · OpenStreetMap`, publicNear())}
+  ${secHtml("schools", "Schools with year 9", "nearest six · Skolverket", schoolsNear())}
+  ${secHtml("infra", "Infrastructure nearby", "Trafikverket and the regions", infraNear())}
+  ${secHtml("safety", "Safety", "Brå and Polismyndigheten", safetyNear())}
   ${secHtml("climate", "Climate", "screening only", propClimate())}
-  ${secHtml("figures", "Area profile — every figure published for this spot", "° = the kommun's figure", `
-    ${groups.map(g => `<h4 class="angrp">${esc(g)}</h4>
-      <table class="tbl compact"><thead><tr><th>Indicator</th><th class="num">Value</th><th>Level</th></tr></thead><tbody>
-      ${inds.filter(i => i.group === g).map(propRow).join("")}</tbody></table>`).join("")}
-    <p class="cap">A dash means the source publishes nothing for that area — never a zero.</p>`)}
-  ${srcNote()}`;
+  ${secHtml("figures", `Area profile — every figure published for this spot`, `read at ${esc(e.typeLabel)} level where published`, areaCompareTable(e))}
+  ${secHtml("sources", "Sources and as-of", "", `${vSources()}`)}`;
 }
 function propMapInit() {
   const el = document.getElementById("propmap");
   if (!el || typeof L === "undefined" || PROP.lat == null) return;
   lfGuardCanvas(); lfGuardMap();
+  const e = propArea();
   const m = regMap(L.map(el, { center: [PROP.lat, PROP.lon], zoom: 14, dragging: true,
-    scrollWheelZoom: true, zoomSnap: 0.5 }));
+    scrollWheelZoom: true, zoomSnap: 0.5, attributionControl: false }));
   LF.pmap = m;
   L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18, detectRetina: true,
     className: "basemap", attribution: '© OpenStreetMap contributors' }).addTo(m);
+  m.createPane("schpane"); m.getPane("schpane").style.zIndex = 450;
+  LF.schCanvas = L.canvas({ pane: "schpane", padding: 0.3 });
+  m.createPane("srvpane"); m.getPane("srvpane").style.zIndex = 440;
+  LF.srvCanvas = L.canvas({ pane: "srvpane", padding: 0.3 });
+  m.createPane("pubpane"); m.getPane("pubpane").style.zIndex = 435;
+  LF.pubCanvas = L.canvas({ pane: "pubpane", padding: 0.3 });
+  /* the pin's own area, coloured by the active indicator, so the mini-map answers
+     the same question the chart panel beside it does */
+  const ind = curInd();
+  if (e && e.ctx && e.ctx.length) {
+    const vk = a => V(a, ind.key) ?? (canInherit(ind.key) && a.kommun ? V(byCode[a.kommun], ind.key) : null);
+    const sc = scaleOf(e.ctx.filter(a => vk(a) != null), vk, null, ind);
+    e.ctx.forEach(a => {
+      const own = e.own.includes(a); const t = sc.t(vk(a));
+      const p = L.polygon(a.rings, { color: own ? "#141C18" : "#FFFFFF", weight: own ? 2.4 : 0.8,
+        fillColor: t == null ? "#C4CBC4" : (sc.color ? sc.color(t) : mkShade(t, ind.key, sc)),
+        fillOpacity: own ? .5 : .42, smoothFactor: .25 });
+      p.bindTooltip(`<b>${esc(a.name || a.code.split("_")[0])}</b>${vk(a) != null ? `<br>${esc(ind.short || ind.label)}: ${fmtOf(ind)(vk(a))}` : ""}`);
+      if (!own) p.on("click", () => go(withQ(pageOf(a))));
+      p.addTo(m);
+    });
+    setLegend("proplegend", sc, ind, ind.key, e.typeLabel);
+  }
   L.circleMarker([PROP.lat, PROP.lon], { radius: 8, color: "#1C6B5C", weight: 3,
-    fillColor: "#fff", fillOpacity: .9 }).addTo(m)
+    fillColor: "#fff", fillOpacity: .95 }).addTo(m)
     .bindPopup(`<b>${esc(propName() || "Test property")}</b><br>${PROP.lat.toFixed(5)}, ${PROP.lon.toFixed(5)}`);
-  /* dashed rings at every offered radius, the selected one solid — a sense of
-     scale, and the one the counts are computed over */
   for (const rad of RC.RADII) {
     L.circle([PROP.lat, PROP.lon], { radius: rad, color: "#1C6B5C",
-      weight: rad === PROP.rad ? 1.8 : 1, opacity: rad === PROP.rad ? .8 : .35,
+      weight: rad === PROP.rad ? 1.8 : 1, opacity: rad === PROP.rad ? .85 : .3,
       dashArray: rad === PROP.rad ? null : "4,4", fill: false, interactive: false }).addTo(m);
   }
-  m.fitBounds(L.latLng(PROP.lat, PROP.lon).toBounds(PROP.rad * 2.6));
+  /* the sections that are open put their own points on this map */
+  if (PROP.show.has("services")) srvDraw("srv", m);
+  if (PROP.show.has("public")) srvDraw("pub", m);
+  if (PROP.show.has("schools")) schBuild(m);
+  if (PROP.show.has("listings") || LAY.has("listings")) lstBuild(m);
+  lfOverlays(m);
+  m.fitBounds(L.latLng(PROP.lat, PROP.lon).toBounds(PROP.rad * 2.4));
 }
+
 /* ---------- the study row ----------
    One indicator at a time, read two ways at once: the chart panel on the left
    says how it has moved and where this area sits among its peers, the mini-map
@@ -1958,7 +2142,7 @@ function panelBody(e, i) {
 function chartPanel(e, i) {
   const lvl = i.level === "deso" ? "DeSO" : i.level === "regso" ? "RegSO" : i.level === "none" ? "national" : "kommun";
   return `<div class="card chartpanel" data-testid="chart-panel">
-    <div class="card-head"><h3>${esc(i.label)}</h3><span class="hint">${esc(i.unit || "")} · ${esc(lvl)} level</span></div>
+    <div class="card-head"><h3>${esc(i.label)}</h3><span class="hint">${esc(i.unit || "")} · published at ${esc(lvl)} level</span></div>
     ${panelHead(e, i)}
     <div class="pnbody">${panelBody(e, i)}</div>
     <p class="cap pnfoot">${esc(i.desc || "")} <span class="dim">${esc(i.source || "")}${asofText(i) ? " · as of " + asofText(i) : ""}</span>
@@ -2283,9 +2467,10 @@ function usoLoad() {
   }).catch(() => { USO.loading = false; USO.data = { features: [] }; });
 }
 const USO_COL = { utsatt: "#C2603F", sarskilt: "#8E2B1B" };
-function usoBuild() {
+function usoBuild(map) {
+  const m = map || LF.map;
   usoLoad();
-  if (!USO.data || LF.usoDrawn) return;
+  if (!m || !USO.data || LF.usoDrawn) return;
   lfDrop("usoLayer");
   const g = L.layerGroup();
   for (const f of USO.data.features || []) {
@@ -2298,7 +2483,7 @@ function usoBuild() {
       interactive: false,
     }).addTo(g);
   }
-  g.addTo(LF.map); LF.usoLayer = g; LF.usoDrawn = true;
+  g.addTo(m); LF.usoLayer = g; LF.usoDrawn = true;
 }
 function usoLegend() {
   if (!USO.data) return `<div class="lgtitle">Vulnerable areas<span>loading…</span></div>`;
@@ -2396,9 +2581,10 @@ function schLoad(code) {
     if (S.view === "analysis") renderKeep(); else { lfOverlays(); ovLegends(); }
   }).catch(() => { SCH[code] = []; delete SCH["_l_" + code]; });
 }
-function schLoadVisible() {
-  if (!LF.map || LF.map.getZoom() < SCH_ZOOM) return;
-  const b = LF.map.getBounds(), c = b.getCenter();
+function schLoadVisible(map) {
+  const m = map || LF.map;
+  if (!m || m.getZoom() < SCH_ZOOM) return;
+  const b = m.getBounds(), c = b.getCenter();
   const want = [];
   for (const code in SCH_IDX) {
     const bb = SCH_IDX[code].bbox;            /* [S, W, N, E] */
@@ -2410,9 +2596,10 @@ function schLoadVisible() {
   want.sort((x, y) => x[1] - y[1]);
   want.slice(0, SCH_MAX_FILES).forEach(([code]) => schLoad(code));
 }
-const schInView = () => {
-  if (!LF.map) return [];
-  const b = LF.map.getBounds(), out = [];
+const schInView = (map) => {
+  const m = map || LF.map;
+  if (!m) return [];
+  const b = m.getBounds(), out = [];
   for (const code in SCH) {
     if (code.startsWith("_l_") || !Array.isArray(SCH[code])) continue;
     for (const s of SCH[code]) if (b.contains([s.lat, s.lon])) out.push(s);
@@ -2436,14 +2623,15 @@ function schColor(v, br) {
   let k = 0; while (k < br.length && v > br[k]) k++;
   return SCH_RAMP[k];
 }
-function schBuild() {
-  schLoadVisible();
-  if (!LF.map) return;
+function schBuild(map) {
+  const m = map || LF.map;
+  schLoadVisible(m);
+  if (!m) return;
   lfDrop("schLayer");
-  if (LF.map.getZoom() < SCH_ZOOM) { LF.schDrawn = false; return; }
+  if (m.getZoom() < SCH_ZOOM) { LF.schDrawn = false; return; }
   const br = schScale();
   const g = L.layerGroup();
-  for (const s of schInView()) {
+  for (const s of schInView(m)) {
     const col = schColor(s.merit, br);
     const m = L.circleMarker([s.lat, s.lon], {
       radius: 5, weight: 1.4,
@@ -2453,7 +2641,7 @@ function schBuild() {
     m.bindPopup(() => schPopup(s), { maxWidth: 320, className: "lfpopw" });
     m.addTo(g);
   }
-  g.addTo(LF.map); LF.schLayer = g; LF.schDrawn = true;
+  g.addTo(m); LF.schLayer = g; LF.schDrawn = true;
 }
 const schAreaRow = (lab, v, f) => v == null ? "" :
   `<span class="lfrow"><span>${esc(lab)}</span><b>${f(v)}</b></span>`;
@@ -2612,9 +2800,10 @@ function srvLoad(code) {
     if (S.view === "analysis") renderKeep(); else { lfOverlays(); ovLegends(); }
   }).catch(() => { SRV[code] = []; delete SRV["_l_" + code]; });
 }
-function srvLoadVisible() {
-  if (!LF.map || LF.map.getZoom() < SRV_ZOOM) return;
-  const b = LF.map.getBounds(), c = b.getCenter(), want = [];
+function srvLoadVisible(map) {
+  const m = map || LF.map;
+  if (!m || m.getZoom() < SRV_ZOOM) return;
+  const b = m.getBounds(), c = b.getCenter(), want = [];
   for (const code in SRV_IDX) {
     const bb = SRV_IDX[code].bbox;
     if (!bb || bb[0] > b.getNorth() || bb[2] < b.getSouth() ||
@@ -2625,15 +2814,16 @@ function srvLoadVisible() {
   want.sort((x, y) => x[1] - y[1]);
   want.slice(0, SRV_MAX_FILES).forEach(([code]) => srvLoad(code));
 }
-function srvDraw(which) {
+function srvDraw(which, map) {
+  const m = map || LF.map;
   const on = which === "srv" ? SF.srv : SF.pub;
   const name = which + "Layer";
   lfDrop(name);
-  if (!LF.map) return;
-  const z = LF.map.getZoom();
-  if (z < SRV_ZOOM) { LF[which + "Drawn"] = false; srvLoadVisible(); return; }
-  srvLoadVisible();
-  const b = LF.map.getBounds();
+  if (!m) return;
+  const z = m.getZoom();
+  if (z < SRV_ZOOM) { LF[which + "Drawn"] = false; srvLoadVisible(m); return; }
+  srvLoadVisible(m);
+  const b = m.getBounds();
   const g = L.layerGroup();
   let n = 0;
   for (const code in SRV) {
@@ -2653,7 +2843,7 @@ function srvDraw(which) {
       m.addTo(g); n++;
     }
   }
-  g.addTo(LF.map); LF[name] = g; LF[which + "Drawn"] = true;
+  g.addTo(m); LF[name] = g; LF[which + "Drawn"] = true;
   LF[which + "Count"] = n;
 }
 function srvLegendFor(which) {
@@ -2687,9 +2877,10 @@ function infraLoad() {
     if (S.view === "analysis") renderKeep(); else { lfOverlays(); ovLegends(); }
   }).catch(() => { INFRA_GEO.loading = false; INFRA_GEO.data = { features: [] }; });
 }
-function infraBuild() {
+function infraBuild(map) {
+  const m = map || LF.map;
   infraLoad();
-  if (!LF.map || !INFRA_GEO.data) return;
+  if (!m || !INFRA_GEO.data) return;
   lfDrop("infLayer");
   const g = L.layerGroup();
   for (const f of INFRA_GEO.data.features || []) {
@@ -2721,7 +2912,7 @@ function infraBuild() {
         .addTo(g);
     }
   }
-  g.addTo(LF.map); LF.infLayer = g; LF.infDrawn = true;
+  g.addTo(m); LF.infLayer = g; LF.infDrawn = true;
 }
 function infraLegend() {
   const ps = INFRA.projects || [];
@@ -2968,6 +3159,7 @@ const LST = {
   timer: null,
   bboxOk: true,
   filters: JSON.parse(JSON.stringify(LV.DEFAULT_FILTERS || {})),
+  pins: new Set(),      /* every (pin, radius) already asked for this session */
   open: false,          /* the Test property section's "show the full module" state */
   sort: "dist",
   desc: false,
@@ -3070,8 +3262,7 @@ function lstRefresh(map) {
   const m = map || LF.map || LF.pmap;
   if (m && LAY.has("listings")) { LF.listDrawn = false; try { lstBuild(m); } catch (e) { console.warn("listings", e); } }
   ovLegends();
-  /* the Test property section redraws itself from here once it exists (phase 7) */
-  if (typeof lstSectionRefresh === "function") lstSectionRefresh();
+  lstSectionRefresh();
 }
 function lstRetry() { LST.error = null; LST.boxes.length = 0; lstWant(LF.map || LF.pmap); }
 
@@ -3225,6 +3416,170 @@ function lstLegend() {
       <b>Advertised</b> rents from third-party adverts, not contract rents, and a count of adverts is not a vacancy rate.</div>`;
 }
 
+
+/* ---------- the Test property section ----------
+   The Listings page used to be a second application at a second address. It is a
+   section here instead, so a reader compares what is advertised now against what
+   SCB publishes for the same ground without changing pages — and so the caveat
+   that keeps those two apart is on the same screen as both of them.
+
+   The pin is a circle, not a viewport, so this asks /nearby with the radius the
+   reader chose. One request per (pin, radius), remembered for the session. */
+const lstPinKey = () => `${PROP.lat},${PROP.lon},${PROP.rad}`;
+function lstWantPin() {
+  if (PROP.lat == null || LST.loading) return;
+  const k = lstPinKey();
+  if (LST.pins.has(k)) return;
+  LST.pins.add(k);
+  lstFetchPin(k);
+}
+async function lstFetchPin(k) {
+  LST.loading = true; LST.error = null; lstSectionRefresh();
+  try {
+    const url = `${GATEWAY}/nearby?lat=${PROP.lat}&lon=${PROP.lon}&r=${PROP.rad}`;
+    const res = await fetch(url, { headers: { accept: "application/json" } });
+    const body = await res.json().catch(() => null);
+    if (!body || !Array.isArray(body.listings)) throw new Error(`the gateway answered HTTP ${res.status}`);
+    LST.sources = body.sources || [];
+    LST.fetchedAt = body.fetchedAt || null;
+    LST.covered = true;
+    for (const l of body.listings) {
+      const key = l.src + ":" + l.id;
+      if (LST.seen.has(key)) continue;
+      LST.seen.add(key); LST.rows.push(l);
+    }
+  } catch (err) {
+    LST.pins.delete(k);
+    LST.error = err && err.message ? err.message : "the gateway did not answer";
+  } finally {
+    LST.loading = false;
+    lstSectionRefresh();
+    if (LF.pmap && (PROP.show.has("listings") || LAY.has("listings"))) { LF.listDrawn = false; try { lstBuild(LF.pmap); } catch (e) {} }
+  }
+}
+/* redraw the section in place: a full re-render would close the popover a reader
+   may have open on the mini-map */
+function lstSectionRefresh() {
+  const el = document.getElementById("lstsec");
+  if (el && S.view === "property") el.innerHTML = lstSectionBody();
+}
+
+const LST_COLS = [["src", "Source", 0], ["address", "Address", 0], ["area_name", "Area", 0],
+                  ["rooms", "Rooms", 1], ["size", "m²", 1], ["rent", "SEK/mån", 1],
+                  ["m2yr", "SEK/m²/yr", 1], ["dist", "m", 1], ["available_from", "From", 0]];
+
+function lstSummary(rows) {
+  const c = lstGroupCounts(rows);
+  const radTxt = PROP.rad < 1000 ? `${PROP.rad} m` : `${PROP.rad / 1000} km`;
+  return `<div class="lst-sum">
+    <b>${nf(rows.length, 0)}</b> live listings within ${radTxt}
+    ${(LV.GROUPS || []).map(g => `<span>${esc(g.label)} <b>${nf(c[g.key] || 0, 0)}</b></span>`).join("")}
+    <span class="st">${esc(lstStatusLine())}</span></div>`;
+}
+/* Medians only where at least three adverts back the figure, and labelled
+   advertised every time: a median of two adverts is not a market rate, and an
+   advertised rent is not a contract rent. */
+function lstMedians(rows) {
+  const med = LV.mediansByRooms ? LV.mediansByRooms(rows) : [];
+  if (!med.length) return `<div class="lst-med"><div class="m sup"><b>–</b><span>nothing to summarise yet</span></div></div>`;
+  return `<div class="lst-med" data-testid="lst-medians">${med.map(m => m.suppressed
+    ? `<div class="m sup"><b>–</b><span>${esc(m.rooms)} rum · n=${m.n}, too few to publish</span></div>`
+    : `<div class="m"><b>${nf(m.median, 0)}</b><span>${esc(m.rooms)} rum · n=${m.n} · advertised SEK/m²/yr</span></div>`).join("")}</div>`;
+}
+function lstFilterBar(all) {
+  const f = LST.filters;
+  const bySrc = {};
+  for (const l of all) bySrc[l.src] = (bySrc[l.src] || 0) + 1;
+  const hidden = LV.hiddenCounts ? LV.hiddenCounts(all, f) : { reserved: 0 };
+  const col = LST_COL();
+  const tog = (on, attr, label) => `<button class="lst-tog" aria-pressed="${on}" ${attr}>${label}</button>`;
+  return `<div class="lst-filters">
+    <div class="lst-fgroup"><span>Group</span>${(LV.GROUPS || []).map(g =>
+      tog(f.groups.includes(g.key), `data-lstgroup="${g.key}"`,
+        `<span class="swatch" style="background:${col[g.key]}"></span>${esc(g.label)} <span style="opacity:.65">${all.filter(l => LV.groupOf(l) === g.key).length}</span>`)).join("")}</div>
+    <div class="lst-fgroup"><span>Allocation</span>
+      ${tog(f.allocation.includes("direct"), 'data-lstalloc="direct"', "Direct")}
+      ${tog(f.allocation.includes("queue"), 'data-lstalloc="queue"', "Queue")}</div>
+    <div class="lst-fgroup"><span>Rooms</span>${["1", "2", "3", "4+"].map(b =>
+      tog(f.rooms.includes(b), `data-lstroom="${b}"`, b + " rum")).join("")}</div>
+    <div class="lst-fgroup"><span>Show</span>
+      ${tog(f.offerOnly, 'data-lstoffer="1"', "Kampanj only")}
+      ${tog(f.showReserved, 'data-lstres="1"', `Reserved (student/ungdom/senior)${hidden.reserved && !f.showReserved ? " · " + hidden.reserved + " hidden" : ""}`)}</div>
+    <div class="lst-fgroup"><span>Sources</span>${Object.keys(bySrc).sort().map(src =>
+      tog(!f.sources || f.sources.includes(src), `data-lstsrc="${esc(src)}"`, `${esc(src)} ${bySrc[src]}`)).join("")}</div>
+  </div>`;
+}
+function lstTable(rows) {
+  const sorted = LV.sortListings ? LV.sortListings(rows, LST.sort, LST.desc) : rows;
+  const col = LST_COL();
+  return `<div class="lst-scroll"><table class="lst-tbl" data-testid="lst-table"><thead><tr>${LST_COLS.map(([k, label, num]) =>
+    `<th class="${num ? "num" : ""}" data-lstsort="${k}">${esc(label)}${LST.sort === k ? (LST.desc ? " ▾" : " ▴") : ""}</th>`).join("")}</tr></thead>
+    <tbody>${sorted.map(l => { const m2 = LV.sekPerM2Year(l);
+      return `<tr data-lstrow="${esc(l.src)}:${esc(l.id)}">
+        <td><span class="srcdot" style="background:${col[LV.groupOf(l)]}"></span>${esc(l.src)}</td>
+        <td>${esc(l.address || "–")}</td><td>${esc(l.area_name || "–")}</td>
+        <td class="num">${l.rooms != null ? nf(l.rooms, l.rooms % 1 ? 1 : 0) : "–"}</td>
+        <td class="num">${l.size_m2 != null ? nf(l.size_m2, 1) : "–"}</td>
+        <td class="num">${l.rent_sek_mo != null ? nf(l.rent_sek_mo, 0) : "–"}</td>
+        <td class="num">${m2 != null ? nf(m2, 0) : "–"}</td>
+        <td class="num">${l.dist_m != null ? nf(l.dist_m, 0) : "–"}</td>
+        <td>${esc(l.available_from || "–")}</td></tr>`; }).join("")}</tbody></table></div>`;
+}
+function lstSectionBody() {
+  if (PROP.lat == null) return `<p class="empty">Drop a pin first.</p>`;
+  lstWantPin();
+  if (LST.error) {
+    return `<div class="lst-msg err">Listings unavailable — gateway error.
+      <button class="lk mini" data-lstretrypin>Retry</button> <span class="dim">${esc(LST.error)}</span></div>
+      ${LST_CAVEAT}`;
+  }
+  const near = lstNearPin(LST.rows);
+  const shown = LV.applyFilters ? LV.applyFilters(near, LST.filters) : near;
+  if (LST.loading && !near.length) return `<p class="empty">Asking the listings gateway…</p>`;
+  return `${lstSummary(shown)}
+    ${lstMedians(shown)}
+    <div class="tools" style="margin-top:10px">
+      <button class="lk ${LST.open ? "primary" : ""}" data-lstshow data-testid="lst-show">${LST.open ? "Hide listings" : `Show listings (${shown.length})`}</button>
+      ${LST.open ? `<button class="lk mini" data-lstcsv>⤓ CSV</button>` : ""}
+    </div>
+    ${LST.open ? `${lstFilterBar(near)}
+      <div class="lst-cards" data-testid="lst-cards">${shown.map(l => lstCard(l)).join("") || `<p class="empty">Nothing matches these filters.</p>`}</div>
+      ${shown.length ? lstTable(shown) : ""}` : ""}
+    ${LST_CAVEAT}`;
+}
+const LST_CAVEAT = `<p class="lst-caveat">Advertised rent ≠ contract rent · a count of adverts ≠ vacancy · queue listings are allocated by queued time, not first come first served · medians only at n ≥ 3 · third-party adverts, read live through the gateway and stored nowhere.</p>`;
+/* One path for every filter change: write the hash, redraw the section in place
+   and redraw whichever map is showing the markers. A full re-render would close
+   a popup the reader has open on the mini-map. */
+function lstToggle(list, value) {
+  const i = list.indexOf(value);
+  if (i < 0) list.push(value); else list.splice(i, 1);
+  lstAfterFilter();
+}
+function lstAfterFilter() {
+  syncHash();
+  lstSectionRefresh();
+  const m = S.view === "property" ? LF.pmap : LF.map;
+  if (m && (LAY.has("listings") || PROP.show.has("listings"))) { LF.listDrawn = false; try { lstBuild(m); } catch (e) {} }
+  ovLegends();
+  if (UI.menu === "layers") renderKeep();
+}
+/* clicking a table row takes the map to that advert and opens its card */
+function lstFocus(key) {
+  const m = S.view === "property" ? LF.pmap : LF.map;
+  const l = LST.rows.find(x => x.src + ":" + x.id === key);
+  if (!m || !l || l.lat == null) return;
+  m.setView([l.lat, l.lon], Math.max(m.getZoom(), 16));
+  L.popup({ maxWidth: 320, minWidth: 300, className: "lstpop" })
+    .setLatLng([l.lat, l.lon]).setContent(lstCard(l)).openOn(m);
+  lstFillText(l);
+}
+function lstCsv() {
+  const near = lstNearPin(LST.rows);
+  const shown = LV.sortListings(LV.applyFilters(near, LST.filters), LST.sort, LST.desc);
+  downloadCsv([LV.toCsv(shown, LST.fetchedAt)], `listings_${PROP.lat.toFixed(4)}_${PROP.lon.toFixed(4)}_r${PROP.rad}.csv`);
+}
+
 /* ---------- the feature layers ----------
    A layer is five hooks and no more: an id (which is what `lay=` carries), a row
    in the Layers ▾ menu, an `lf…Layers()` builder, a legend, and optional
@@ -3239,28 +3594,28 @@ const OV = [
     title: "Major transport projects — status by colour",
     note: () => `${(INFRA.projects || []).length} projects · Trafikverket, regions`,
     avail: () => (INFRA.projects || []).length > 0,
-    build: infraBuild, legend: infraLegend },
+    build: map => infraBuild(map), legend: infraLegend },
   { id: "public", label: "Public buildings",
     title: "Schools, förskolor, health, culture and sports from OpenStreetMap",
     note: () => "OpenStreetMap · zoom 11+",
     avail: () => Object.keys(SRV_IDX).length > 0,
     subs: () => srvSubs("pub"),
-    build: () => srvDraw("pub"), legend: () => srvLegendFor("pub") },
+    build: map => srvDraw("pub", map), legend: () => srvLegendFor("pub") },
   { id: "services", label: "Services",
     title: "Grocery, food, pharmacy and public-transport points from OpenStreetMap",
     note: () => "OpenStreetMap · zoom 11+",
     avail: () => Object.keys(SRV_IDX).length > 0,
     subs: () => srvSubs("srv"),
-    build: () => srvDraw("srv"), legend: () => srvLegendFor("srv") },
+    build: map => srvDraw("srv", map), legend: () => srvLegendFor("srv") },
   { id: "schools", label: "Schools",
     title: "Every school with year 9, coloured by merit value (zoom 9+)",
     note: () => "Skolverket · merit colour · zoom 9+",
     avail: () => Object.keys(SCH_IDX).length > 0,
-    build: schBuild, legend: schLegend },
+    build: map => schBuild(map), legend: schLegend },
   { id: "uso", label: "Police-designated areas",
     title: "The areas the police have designated as utsatt or särskilt utsatt (Dec 2025)",
     note: () => "Polismyndigheten, Dec 2025",
-    build: usoBuild, legend: usoLegend },
+    build: map => usoBuild(map), legend: usoLegend },
   { id: "listings", label: "Rental listings",
     title: "What is advertised for rent in view, live through the listings gateway (zoom 13+)",
     note: () => "live third-party adverts · zoom 13+",

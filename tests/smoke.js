@@ -514,7 +514,7 @@ PROP_.lat = null; PROP_.lon = null; PROP_.res = null;
 let anHtml = A.vProperty();
 assert("Test property renders empty", /Paste a Google Maps link/.test(anHtml), "prompt shown");
 assert("and states the privacy position", /never sent to a server/.test(anHtml), "privacy line");
-assert("and offers one example rather than a blank box", /Hornstull/.test(anHtml), "example link");
+assert("and offers one example rather than a blank box", /59\.31972, 18\.07194/.test(anHtml), "example link");
 assert("no second pin anywhere", !/Pin B/.test(anHtml), "one property at a time");
 
 /* ---- v1.2 Climate ----

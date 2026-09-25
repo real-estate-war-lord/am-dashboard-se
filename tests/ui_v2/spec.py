@@ -258,7 +258,7 @@ def phase2(r: Report, page, errs) -> None:
          page.eval_on_selector_all("[data-testid=search-coord]", "e => e.length") == 1)
     page.click("[data-testid=search-coord]")
     page.wait_for_timeout(600)
-    r.ok("and clicking it opens the pin", f"property?p={STHLM}" in page.evaluate("location.hash"),
+    r.ok("and clicking it opens the pin", hash_has(page.evaluate("location.hash"), f"property?p={STHLM}"),
          page.evaluate("location.hash"))
 
     hop(page, "#map")
@@ -440,7 +440,7 @@ def phase7(r: Report, page, errs, calls) -> None:
     r.ok("the empty state focuses its input",
          page.eval_on_selector_all("[data-testid=state-empty]", "e => e.length") == 1
          and page.evaluate("document.activeElement.getAttribute('data-testid')") == "prop-input")
-    r.ok("and offers one example link", "Hornstull" in text(page))
+    r.ok("and offers one example link", STHLM.replace(",", ", ") in text(page))
 
     hop(page, f"#property?p={STHLM}")
     page.wait_for_timeout(900)
@@ -464,8 +464,10 @@ def phase7(r: Report, page, errs, calls) -> None:
     sec = page.inner_text("[data-testid=sec-listings]")
     r.ok("the summary line counts the groups first",
          re.search(r"\d+\s+live listings", sec) and "HomeQ" in sec, sec.splitlines()[0][:100] if sec else "")
-    r.ok("the caveats are on the section", "advertised rent is not a contract rent" in sec.lower()
-         and "not vacancy" in sec.lower().replace("≠", "not "))
+    low = sec.lower().replace("\u2260", "is not")
+    r.ok("the caveats are on the section",
+         "advertised rent is not contract rent" in low and "adverts is not vacancy" in low,
+         low[-180:].replace("\n", " "))
     med = page.eval_on_selector_all("[data-testid=lst-medians] .m", "e => e.map(x => x.innerText)")
     r.ok("medians are labelled advertised", "advertised" in sec.lower(), f"{len(med)} buckets")
     r.ok("and suppressed where n < 3",
