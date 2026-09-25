@@ -135,6 +135,19 @@ def close_menus(page) -> None:
     page.wait_for_timeout(150)
 
 
+def hash_has(got: str, want: str) -> bool:
+    """The redirect landed where it should. The view may add keys of its own
+    afterwards — an area page writes its indicator into the hash — so this
+    compares the path and requires every key the redirect owed, not equality."""
+    def split(h):
+        h = h.lstrip("#")
+        path, _, qs = h.partition("?")
+        return path, dict(p.split("=", 1) for p in qs.split("&") if "=" in p)
+    gp, gq = split(got)
+    wp, wq = split(want)
+    return gp == wp and all(gq.get(k) == v for k, v in wq.items())
+
+
 def text(page) -> str:
     return page.evaluate("document.body.innerText")
 
@@ -186,7 +199,7 @@ def phase1(r: Report, page, errs) -> None:
                       ("#map/0180?srv=1&pub=1", "#map/0180?lay=public,services"),
                       ("#area/kommun/0180?t=dist&g=Rents", "#area/kommun/0180?show=dist")]:
         got = hop(page, old, 500)
-        r.ok(f"{old} → {want}", got.startswith(want), got)
+        r.ok(f"{old} → {want}", hash_has(got, want), got)
 
     r.ok("no Compare anywhere on the map", "Compare" not in (hop(page, "#map") or "") and
          "Compare" not in text(page))

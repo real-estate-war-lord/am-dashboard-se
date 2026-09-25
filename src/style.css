@@ -1555,8 +1555,9 @@ td.dim .moe{color:inherit}
 .sec{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);margin:0 0 12px}
 .sec>summary{cursor:pointer;padding:13px 16px;display:flex;align-items:baseline;gap:10px;list-style:none}
 .sec>summary::-webkit-details-marker{display:none}
-.sec>summary::before{content:"▸";font-size:11px;color:var(--muted);transform:translateY(-1px)}
-.sec[open]>summary::before{content:"▾"}
+.sec>summary::before{content:"";width:0;height:0;border:5px solid transparent;border-left-color:var(--muted);
+  transform:translateY(1px);transition:transform .12s}
+.sec[open]>summary::before{transform:rotate(90deg) translateX(1px)}
 .sec>summary b{font-family:var(--disp);font-size:15px;font-weight:600;letter-spacing:-.01em}
 .sec>summary .dim{font-family:var(--mono);font-size:10.5px}
 .secbody{padding:0 16px 16px}
@@ -1636,6 +1637,7 @@ td.dim .moe{color:inherit}
 [data-testid=map-toolbar] .asrch{flex:1 1 200px;min-width:130px;max-width:360px}
 [data-testid=map-toolbar] .asrch input{width:100%}
 [data-testid=map-toolbar] .indsel{height:28px;padding-top:0;padding-bottom:0;max-width:22ch}
+[data-testid=map-toolbar] .indbtn{max-width:30ch;height:28px}
 [data-testid=map-toolbar] .lk{height:28px;padding-top:0;padding-bottom:0;display:inline-flex;align-items:center}
 [data-testid=map-toolbar] .seg .sg,[data-testid=map-toolbar] .seg button{padding-top:3px;padding-bottom:3px}
 .card-head.tools-only{gap:6px}
@@ -1740,10 +1742,10 @@ td.dim .moe{color:inherit}
 @media (max-width:600px){.lst-cards{grid-template-columns:1fr}.lst-card .facts{grid-template-columns:1fr}}
 
 /* ---- the indicator picker ---- */
-.indbtn{display:inline-flex;align-items:baseline;gap:6px;max-width:32ch;white-space:nowrap;overflow:hidden}
-.indbtn b{flex:1 1 auto;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:3ch}
+.indbtn{display:inline-flex;align-items:baseline;gap:6px;max-width:52ch;white-space:nowrap;overflow:hidden}
+.indbtn b{flex:1 1 auto;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:8ch}
 .indbtn i{font-style:normal;font-family:var(--mono);font-size:10.5px;color:var(--muted);white-space:nowrap;flex:0 0 auto}
-.indbtn i.u{flex:0 1 auto;min-width:0;max-width:14ch;overflow:hidden;text-overflow:ellipsis}
+.indbtn i.u{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}
 .indbtn i.tag-muni{color:var(--ink2);background:var(--panel2);border:1px solid var(--line);border-radius:4px;padding:0 4px}
 .pickerpop{width:min(440px,92vw);max-height:70vh;padding:8px}
 .pickerpop #indsearch{width:100%;margin-bottom:6px}
@@ -1783,11 +1785,40 @@ td.dim .moe{color:inherit}
 .acard-sec>summary{cursor:pointer;font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;
   text-transform:uppercase;color:var(--muted);list-style:none;display:flex;align-items:center;gap:6px}
 .acard-sec>summary::-webkit-details-marker{display:none}
-.acard-sec>summary::before{content:"▸";font-size:10px}
-.acard-sec[open]>summary::before{content:"▾"}
+.acard-sec>summary::before{content:"";width:0;height:0;border:4px solid transparent;border-left-color:currentColor}
+.acard-sec[open]>summary::before{transform:rotate(90deg)}
 .acard-sec>summary:hover{color:var(--ink)}
 .acard-sec .secbody{padding:8px 0 2px}
 /* an inherited or projected tile says which it is, in words */
 .hlc.inh b{color:var(--ink2)}
 .hlc em i.inh{font-style:normal;color:var(--muted)}
 .hlc em i.projpill{font-style:normal;color:#5B4A9C;background:#F1EEF8;border:1px solid #DCD5EE;border-radius:4px;padding:0 5px}
+
+/* ---- the study row: chart panel | mini-map, equal height ---- */
+.studyrow{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:16px;margin:0 0 12px;--studyh:380px}
+.studyrow>*{height:var(--studyh);margin:0;min-width:0}
+.chartpanel{display:flex;flex-direction:column;overflow:hidden}
+.chartpanel .pnbody{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;justify-content:center;overflow:auto}
+.chartpanel .pnbody .chart{width:100%;height:auto;max-height:100%}
+.chartpanel .pnfoot{margin:6px 0 0;max-height:4.6em;overflow:auto}
+.pnhead{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;margin:2px 0 8px}
+.pnhead b{font-family:var(--disp);font-size:30px;font-weight:700;letter-spacing:-.03em;line-height:1}
+.pnhead span{font-family:var(--mono);font-size:11.5px;color:var(--ink2)}
+.pnhead span i{font-style:normal;font-weight:600}
+.pnhead .up{color:var(--good)}.pnhead .dn{color:var(--bad)}
+.pnhead .inh{color:var(--muted)}
+.minicard{padding:0;overflow:hidden;position:relative}
+.minicard>div:first-child{height:100%;width:100%}
+.diststrip{max-height:110px}
+.tag-muni{font-family:var(--mono);font-size:9.5px;color:var(--ink2);background:var(--panel2);
+  border:1px solid var(--line);border-radius:4px;padding:0 5px}
+tr.inh td.num{color:var(--ink2)}
+.tools-card{padding:10px 12px;margin-bottom:12px}
+.tools-card .iq{margin-top:8px}
+@media (max-width:1440px){.studyrow{--studyh:340px}}
+@media (max-width:1024px){
+  .studyrow{grid-template-columns:1fr;--studyh:320px}
+}
+@media (max-width:600px){.studyrow{--studyh:300px}}
+/* the mini-map in full screen keeps its own height rather than the row's */
+.studyrow>.mapwrap.is-full{height:100vh}

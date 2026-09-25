@@ -528,10 +528,6 @@ document.addEventListener("click", e => {
   if (g("[data-chcsv]")) { chartCsv(); return; }
   if (g("[data-chclear]")) { CH.areas = []; syncHash(); renderKeep(); return; }
   if ((el = g("[data-sub]"))) { MK.sub = el.dataset.sub; if (MK.sub === "deso") loadDeso(MK.kommun); syncHash(); renderKeep(); return; }
-  if ((el = g("[data-argroup]"))) { UI.arGroup = el.dataset.argroup; renderKeep(); return; }
-  if ((el = g("[data-artab]"))) { const k = el.dataset.artab;
-    AR.show.delete("dist"); AR.show.delete("sub"); AR.show.delete("figures");
-    AR.show.add(k === "ind" ? "figures" : k); syncHash(); renderKeep(); return; }
   if ((el = g("[data-arsub]"))) { AR.sub = el.dataset.arsub; syncHash(); renderKeep(); return; }
   if ((el = g("[data-indq]"))) { MK.ind = el.dataset.indq;
     if (MK.fq === "q" && !quarterly(curInd())) MK.fq = "year";
@@ -1432,21 +1428,6 @@ const canInherit = k => !noInherit(indOf(k));
 /* value for the entity: its own figure, or the kommun's (inherited, °) for sub-areas */
 function eVal(e, k, y) { const own = V(e.o, k, y); if (own != null) return { v: own, own: true }; if (canInherit(k) && e.type === "regso" && e.kommun) { const mv = V(e.kommun, k, y); if (mv != null) return { v: mv, own: false }; } return { v: null, own: false }; }
 function eYears(e, k) { return histYears(k, e.type === "regso" && V(e.o, k) == null ? MUNI : e.peers); }
-function tileSpark(ys, own, med, i) {
-  /* area (solid) against the median of its peers (dashed), last point marked, first/last year on the axis */
-  const all = own.concat(med).filter(v => v != null); if (own.filter(v => v != null).length < 2) return "";
-  const W = 220, H = 60, T0 = 6, B = 14, L0 = 4, R = 8;
-  const lo = Math.min(...all), hi = Math.max(...all), sp = hi - lo || 1;
-  const x = k => L0 + k / (ys.length - 1) * (W - L0 - R), y = v => T0 + (1 - (v - lo) / sp) * (H - T0 - B);
-  const path = arr => { let d = "", open = false; arr.forEach((v, k) => { if (v == null) { open = false; return; } d += (open ? "L" : "M") + x(k).toFixed(1) + "," + y(v).toFixed(1); open = true; }); return d; };
-  const li = own.map((v, k) => v == null ? -1 : k).filter(k => k >= 0).pop();
-  return `<svg class="tspark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
-    <path d="${path(med)}" fill="none" stroke="#9A9D92" stroke-width="1.2" stroke-dasharray="3 3"/>
-    <path d="${path(own)}" fill="none" stroke="#1C6B5C" stroke-width="2"/>
-    ${li != null ? `<circle cx="${x(li).toFixed(1)}" cy="${y(own[li]).toFixed(1)}" r="2.8" fill="#1C6B5C"/>` : ""}
-    <text class="ax" x="${L0}" y="${H - 3}">${ys[0]}</text><text class="ax" x="${W - R}" y="${H - 3}" text-anchor="end">${ys[ys.length - 1]}</text>
-    ${own.map((v, k) => v == null ? "" : `<circle cx="${x(k).toFixed(1)}" cy="${y(v).toFixed(1)}" r="6" fill="transparent"><title>${ys[k]}: ${fmtOf(i)(v)}${med[k] != null ? " · median " + fmtOf(i)(med[k]) : ""}</title></circle>`).join("")}</svg>`;
-}
 /* everything a tile, headline cell or popup needs about one indicator for one area */
 function tileStats(e, i) {
   const cur = eVal(e, i.key); if (cur.v == null) return null;
@@ -1457,7 +1438,10 @@ function tileStats(e, i) {
   const li = own.map((v, k) => v == null ? -1 : k).filter(k => k >= 0).pop(); const idx = MK.year === LATEST ? li : ys.indexOf(MK.year);
   const yoy = idx > 0 ? dlt(own[idx - 1], own[idx]) : null;
   const since = y0 && y0 !== MK.year ? dlt(own[0], cur.v) : null;
-  const vsMed = dlt(median(e.peers.map(p => V(p, i.key))), cur.v);
+  /* a difference, in pp for a share and in the indicator's own unit otherwise —
+     never a percentage OF a median */
+  const medPeer = median(e.peers.map(p => V(p, i.key)));
+  const vsMed = medPeer == null ? null : cur.v - medPeer;
   const rk = cur.own ? rankOf(e.o, i.key, e.peers) : null;
   return { cur, ys, y0, own, med, yoy, since, vsMed, rk, unit };
 }
@@ -1466,16 +1450,6 @@ function tileStats(e, i) {
 const cls = (d, key) => { const i = key ? indOf(key) : null;
   if (d == null || !d) return ""; if (i && neutralDir(i)) return "";
   const good = i && lowerBetter(i) ? d < 0 : d > 0; return good ? "up" : "dn"; };
-function tileHtml(e, i, on) {
-  const s = tileStats(e, i); if (!s) return "";
-  return `<div class="tile ${on ? "on" : ""}" data-arind="${esc(i.key)}" title="${esc(i.desc || i.label)} — click to focus the chart and map">
-    <button class="tch" data-go="${chartLink(i.key, e.type, e.code)}" title="Open in Charts">↗</button>
-    <span class="tl">${esc(i.label)}${s.cur.own ? "" : " °"}</span>
-    <div class="tv"><b>${fmtOf(i)(s.cur.v)}</b>${moeSpan(i, s.cur.v, moeOf(i, s.cur.own ? e.o : e.kommun))}${s.yoy != null ? `<i class="${cls(s.yoy, i.key)}">${sign(s.yoy, x => nf(x, 1))}${s.unit} y/y</i>` : ""}</div>
-    ${tileSpark(s.ys, s.own, s.med, i)}
-    <div class="tm">${s.rk ? `<span title="${s.rk.neutral ? "position, highest first — this indicator has no better end" : (lowerBetter(i) ? "rank, lowest first" : "rank, highest first")}">${s.rk.neutral ? "" : "#"}${s.rk.r} of ${s.rk.n}</span>` : `<span class="dim">municipality value</span>`}${s.vsMed != null ? `<span><i class="${cls(s.vsMed, i.key)}">${sign(s.vsMed, x => nf(x, 1))}${s.unit}</i> vs median</span>` : ""}</div>
-  </div>`;
-}
 /* headline row under the area title: the five figures that answer "what kind of area is this" */
 function multiLine(series, ind, ys) {
   const all = series.flatMap(s => s.pts.map(p => p.v)).filter(v => v != null);
@@ -1512,15 +1486,16 @@ function areaChart(e, ind) {
 }
 function areaCompareTable(e) {
   const ind = curInd(), medLabel = e.type === "kommun" ? "SE median" : e.type === "deso" ? "Kommun median (DeSO)" : "SE median (RegSO)";
-  return `<div class="scrollx"><table class="tbl compact" data-sortable><thead><tr><th>Indicator</th><th class="num">${esc(e.type === "kommun" ? e.name : e.type === "deso" ? "DeSO" : "RegSO")}</th>${e.kommun ? `<th class="num">${esc(e.kommun.name)}</th>` : ""}<th class="num">${medLabel}</th><th class="num">Rank</th><th class="num">Δ since first year</th><th>As of</th></tr></thead>
+  return `<div class="scrollx"><table class="tbl compact" data-sortable data-testid="figures-table"><thead><tr><th>Indicator</th><th>Level</th><th class="num">${esc(e.type === "kommun" ? e.name : e.type === "deso" ? "DeSO" : "RegSO")}</th>${e.kommun ? `<th class="num">${esc(e.kommun.name)}</th>` : ""}<th class="num">${medLabel}</th><th class="num">Rank</th><th class="num">Δ since first year</th><th>As of</th></tr></thead>
     <tbody>${e.inds.map(i => { const cur = eVal(e, i.key); if (cur.v == null) return "";
       const ys = eYears(e, i.key), y0 = ys[0]; const first = y0 && y0 !== MK.year ? eVal(e, i.key, y0).v : null;
       const d = first == null ? null : isPct(i) ? cur.v - first : (first ? (cur.v / first - 1) * 100 : null);
       const rk = cur.own ? rankOf(e.o, i.key, e.peers) : null; const med = median(e.peers.map(p => V(p, i.key)));
-      return `<tr class="clickrow ${i.key === ind.key ? "hi" : ""}" data-arind="${esc(i.key)}"><th><span class="thn">${esc(i.label)} <span class="dim">${esc(i.unit || "")}</span></span><button class="tch" data-go="${chartLink(i.key, e.type, e.code)}" title="Open in Charts">↗</button></th>
-        ${fmtCell(i, cur.v, !cur.own, cur.own ? e.o : e.kommun)}${e.kommun ? (muniCmp(e, i.key) ? fmtCell(i, V(e.kommun, i.key), false, e.kommun) : `<td class="num dim" title="different definition at municipality level">n/c</td>`) : ""}${fmtCell(i, med, false)}
-        <td class="num" data-v="${rk ? rk.r : ""}">${rk ? `#${rk.r} / ${rk.n}` : "–"}</td>
-        <td class="num ${d > 0 ? "good" : d < 0 ? "bad" : ""}" data-v="${d ?? ""}">${d != null ? sign(d, x => nf(x, 1)) + (isPct(i) ? " pp" : " %") + ` <span class="dim">(${y0})</span>` : "–"}</td>
+      return `<tr class="clickrow ${i.key === ind.key ? "hi" : ""}${cur.own ? "" : " inh"}" data-arind="${esc(i.key)}"><th><span class="thn">${esc(i.label)} <span class="dim">${esc(i.unit || "")}</span></span><button class="tch" data-go="${chartLink(i.key, e.type, e.code)}" title="Open in Charts">↗</button></th>
+        <td>${cur.own ? `<span class="dim">${esc(e.typeLabel.toLowerCase())}</span>` : `<span class="tag-muni" title="the kommun's figure — no finer statistic is published">muni</span>`}</td>
+        ${fmtCell(i, cur.v, false, cur.own ? e.o : e.kommun)}${e.kommun ? (muniCmp(e, i.key) ? fmtCell(i, V(e.kommun, i.key), false, e.kommun) : `<td class="num dim" title="different definition at municipality level">n/c</td>`) : ""}${fmtCell(i, med, false)}
+        <td class="num" data-v="${rk ? rk.r : ""}" title="${rk ? `among the ${rk.n} ${esc(e.peerLabel)} with a figure` : ""}">${rk ? `#${rk.r} of ${rk.n}` : "–"}</td>
+        <td class="num ${d > 0 ? "good" : d < 0 ? "bad" : ""}" data-v="${d ?? ""}">${d != null ? signed(d, 1, deltaUnit(i)) + ` <span class="dim">(${y0})</span>` : "–"}</td>
         <td class="dim">${asofText(i)}</td></tr>`; }).join("")}</tbody></table></div>`;
 }
 function areaSubTable(e) {
@@ -1789,9 +1764,10 @@ function propClimate() {
 }
 
 /* a <details> section whose open state is shareable through show= */
+const showSet = () => (S.view === "property" ? PROP.show : S.view === "makro" ? MC.show : AR.show);
 function secHtml(id, title, right, body, opts) {
   const o = opts || {};
-  const open = PROP.show.has(id) || AR.show.has(id);
+  const open = showSet().has(id);
   return `<details class="sec" data-sec="${esc(id)}" data-testid="sec-${esc(id)}"${open ? " open" : ""}${o.render ? ' data-sec-render="1"' : ""}>
     <summary><b>${esc(title)}</b>${right ? `<span class="dim">${right}</span>` : ""}</summary>
     <div class="secbody">${body}</div></details>`;
@@ -1880,56 +1856,161 @@ function propMapInit() {
   }
   m.fitBounds(L.latLng(PROP.lat, PROP.lon).toBounds(PROP.rad * 2.6));
 }
+/* ---------- the study row ----------
+   One indicator at a time, read two ways at once: the chart panel on the left
+   says how it has moved and where this area sits among its peers, the mini-map
+   on the right says where that is. They are the same component on the area page
+   and on Test property, which is why neither page has a second implementation of
+   "show me this number".
+
+   The panel renders whichever of four shapes the indicator needs, and never
+   mixes them: an observed series is a solid green line, a projection is dashed
+   purple and says so, a climate share is a screening figure under a named
+   scenario, and an indicator published once is a distribution strip rather than
+   a line with two points on it. */
+function panelHead(e, i) {
+  const s = tileStats(e, i);
+  if (!s) return `<div class="pnhead"><b>–</b><span class="dim">no figure published for this area</span></div>`;
+  const med = median(e.peers.map(p => V(p, i.key)));
+  const inh = !s.cur.own;
+  return `<div class="pnhead">
+    <b>${fmtOf(i)(s.cur.v)}${moeSpan(i, s.cur.v, moeOf(i, inh ? e.kommun : e.o))}</b>
+    ${inh ? `<span class="inh">${esc(e.kommun ? e.kommun.name : "municipality")} — municipality figure</span>` : ""}
+    ${s.yoy != null ? `<span><i class="${cls(s.yoy, i.key)}">${signed(s.yoy, 1, deltaUnit(i))}</i> y/y</span>` : ""}
+    ${s.rk ? `<span title="among the ${s.rk.n} ${esc(e.peerLabel)} with a figure${lowerBetter(i) ? ", lowest first" : s.rk.neutral ? ", highest first — this indicator has no better end" : ", highest first"}">#${s.rk.r} of ${s.rk.n}</span>` : ""}
+    ${med != null && s.cur.v != null ? `<span>${vsMedianTxt(i, s.cur.v, med)} <em class="dim">vs ${esc(e.peerLabel)} median</em></span>` : ""}
+  </div>`;
+}
+/* "vs median" is a difference, never a percentage OF a median: a share is
+   compared in percentage points and everything else in its own unit. Dividing
+   one median into another and calling it a percentage is how "3 % above the
+   median rent" comes to mean two different things on two pages. */
+function vsMedianTxt(i, v, med) {
+  const d = v - med;
+  if (isPct(i)) return signed(d, 1, "pp");
+  return (d > 0 ? "+" : d < 0 ? "−" : "") + fmtAbs(i, d);
+}
+/* peers as ticks on one axis, this area as a labelled dot, the median marked —
+   for an indicator the publisher has issued once, where a line would be two
+   points and a slope that means nothing */
+function distStrip(e, i) {
+  const vals = e.peers.map(p => ({ p, v: V(p, i.key) })).filter(x => x.v != null);
+  const mine = eVal(e, i.key).v;
+  if (vals.length < 5 || mine == null) return "";
+  const lo = Math.min(...vals.map(x => x.v)), hi = Math.max(...vals.map(x => x.v));
+  const sp = (hi - lo) || 1;
+  const W = 900, H = 96, L0 = 10, R = 10, TOP = 30;
+  const x = v => L0 + (v - lo) / sp * (W - L0 - R);
+  const med = median(vals.map(x2 => x2.v));
+  return `<svg class="chart diststrip" data-testid="dist-strip" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+    <line class="grid" x1="${L0}" x2="${W - R}" y1="${TOP + 22}" y2="${TOP + 22}"/>
+    ${vals.map(t => `<line x1="${x(t.v).toFixed(1)}" x2="${x(t.v).toFixed(1)}" y1="${TOP + 10}" y2="${TOP + 34}" stroke="#9A9D92" stroke-width="1" opacity=".5"/>`).join("")}
+    <line x1="${x(med).toFixed(1)}" x2="${x(med).toFixed(1)}" y1="${TOP + 4}" y2="${TOP + 40}" stroke="#5C5F52" stroke-width="2" stroke-dasharray="5 4"/>
+    <circle cx="${x(mine).toFixed(1)}" cy="${TOP + 22}" r="6" fill="#1C6B5C"/>
+    <text class="ax" x="${L0}" y="${H - 6}">${esc(fmtOf(i)(lo))}</text>
+    <text class="ax" x="${W - R}" y="${H - 6}" text-anchor="end">${esc(fmtOf(i)(hi))}</text>
+    <text class="ax" x="${Math.min(W - R - 60, Math.max(L0, x(mine))).toFixed(1)}" y="${TOP - 6}" text-anchor="middle">${esc(e.name)}</text>
+    <text class="ax" x="${Math.min(W - R, Math.max(L0, x(med))).toFixed(1)}" y="${H - 6}" text-anchor="middle">median</text>
+  </svg>`;
+}
+/* the projected path, dashed and purple from end to end, because every point on
+   it is projected — the one observed number is marked separately and labelled */
+function outlookChart(e, i) {
+  const o = e.type === "kommun" ? e.o : e.kommun;
+  const f = fcSeries(o, "fc_abs");
+  if (!f) return "";
+  const ys = Object.keys(f).sort();
+  if (ys.length < 2) return "";
+  const vals = ys.map(y => f[y]);
+  const obs = o.pop;
+  const all = vals.concat(obs != null ? [obs] : []);
+  const lo = Math.min(...all), hi = Math.max(...all), sp = (hi - lo) || 1;
+  const W = 900, H = 220, L0 = 88, R = 16, T0 = 14, B = 28;
+  const x = k => L0 + k / (ys.length - 1) * (W - L0 - R), y = v => T0 + (1 - (v - lo) / sp) * (H - T0 - B);
+  const d = vals.map((v, k) => `${k ? "L" : "M"}${x(k).toFixed(1)},${y(v).toFixed(1)}`).join("");
+  const ticks = [lo, lo + sp / 2, hi];
+  const every = Math.max(1, Math.round(ys.length / 8));
+  return `<svg class="chart" data-testid="outlook-chart" viewBox="0 0 ${W} ${H}">
+    ${ticks.map(t => `<line class="grid" x1="${L0}" x2="${W - R}" y1="${y(t).toFixed(1)}" y2="${y(t).toFixed(1)}"/><text class="ax" x="${L0 - 6}" y="${(y(t) + 3).toFixed(1)}" text-anchor="end">${nf(t, 0)}</text>`).join("")}
+    ${ys.map((yy, k) => k % every ? "" : `<text class="ax" x="${x(k).toFixed(1)}" y="${H - 8}" text-anchor="middle">${yy}</text>`).join("")}
+    <path d="${d}" fill="none" stroke="#5B4A9C" stroke-width="2.4" stroke-dasharray="6 4"/>
+    ${vals.map((v, k) => `<circle cx="${x(k).toFixed(1)}" cy="${y(v).toFixed(1)}" r="2.4" fill="#5B4A9C"><title>${ys[k]}: ${nf(v, 0)} (projected)</title></circle>`).join("")}
+    ${obs != null ? `<circle cx="${x(0).toFixed(1)}" cy="${y(obs).toFixed(1)}" r="5" fill="#1C6B5C"><title>observed population ${nf(obs, 0)}</title></circle>` : ""}
+  </svg>
+  <div class="bleg"><span><i style="background:#1C6B5C"></i>Observed population <b>${obs != null ? nf(obs, 0) : "–"}</b></span>
+    <span><i style="background:#5B4A9C;height:2px"></i>Projected path ${esc(ys[0])}–${esc(ys[ys.length - 1])} <b>${nf(vals[vals.length - 1], 0)}</b></span></div>`;
+}
+function panelBody(e, i) {
+  if (isOutlook(i)) {
+    const c = outlookChart(e, i);
+    return c || `<p class="empty" data-testid="state-nohistory">A projection, not a series — one published figure for ${esc((outlookOf(i) || {}).target || "the target year")}.</p>`;
+  }
+  if (isClimKey(i.key)) {
+    const strip = distStrip(e, i);
+    return (strip || `<p class="empty" data-testid="state-nohistory">Not mapped for this area — which is not the same as zero.</p>`) +
+      `<p class="cap">A screening share under a named scenario: the share of the area's land inside a published hazard polygon. It says nothing about any one building, its floor level or its protection.</p>`;
+  }
+  const ys = eYears(e, i.key);
+  if (ys.length >= 2) return areaChart(e, i);
+  const strip = distStrip(e, i);
+  return `<p class="empty" data-testid="state-nohistory">Published once — no history to plot${asofText(i) ? " · " + asofText(i) : ""}.</p>` + strip;
+}
+function chartPanel(e, i) {
+  const lvl = i.level === "deso" ? "DeSO" : i.level === "regso" ? "RegSO" : i.level === "none" ? "national" : "kommun";
+  return `<div class="card chartpanel" data-testid="chart-panel">
+    <div class="card-head"><h3>${esc(i.label)}</h3><span class="hint">${esc(i.unit || "")} · ${esc(lvl)} level</span></div>
+    ${panelHead(e, i)}
+    <div class="pnbody">${panelBody(e, i)}</div>
+    <p class="cap pnfoot">${esc(i.desc || "")} <span class="dim">${esc(i.source || "")}${asofText(i) ? " · as of " + asofText(i) : ""}</span>
+      ${indSrcLink(i, e.type, e.code, MK.year === LATEST ? LATEST : MK.year)}${i.warn ? `<br>⚠ ${esc(i.warn)}` : ""}</p>
+  </div>`;
+}
+function studyRow(e, i, key) {
+  return `<div class="studyrow" data-testid="study-row">
+    ${chartPanel(e, i)}
+    <div class="card mapwrap minicard" data-mini="${esc(key)}" data-testid="minimap">
+      <div id="${key === "area" ? "armap" : "propmap"}"></div>
+      <button class="mfull" data-minifull="${esc(key)}" data-testid="minimap-full" title="Full screen (Esc closes)">⤢</button>
+      <div class="maplegend small" id="${key === "area" ? "arlegend" : "proplegend"}"></div>
+    </div>
+  </div>`;
+}
+
 function vArea() {
   const e = areaEntity();
-  if (!e) return `<div class="back"><button data-go="map">‹ Macro map</button></div><div class="card"><p class="empty">Unknown area.</p></div>`;
+  if (!e) return `<div class="back"><button data-go="map">‹ Map</button></div><div class="card"><p class="empty">Unknown area.</p></div>`;
   const ind = curInd();
   setTimeout(arMapInit, 0);
-  const groups = GROUP_ORDER.filter(gn => e.inds.some(i => (i.group || "Other") === gn && eVal(e, i.key).v != null));
-  /* the tile group is a display choice on this page only and is not shared, so it
-     lives in UI rather than in the hash — phase 6 removes the block entirely */
-  const grp = groups.includes(UI.arGroup) ? UI.arGroup : groups[0];
-  const tiles = e.inds.filter(i => (i.group || "Other") === grp && eVal(e, i.key).v != null);
   const mapHash = e.type === "kommun" ? `map/${e.code}` : e.type === "deso" ? `map/${e.o.kommun}/deso` : `map/${e.o.kommun}`;
-  /* lower panel: the full indicator list, the structure cards and the sub-areas as tabs of one card */
-  const tabs = [["ind", "All indicators"]].concat(e.o.dist ? [["dist", "Population & housing structure"]] : []).concat(e.subs ? [["sub", e.subs.deso ? (e.subs.regso ? "RegSO & DeSO" : "DeSO") : "RegSO"]] : []);
-  /* the lower panel's tab is derived from the shared `show=` set, so an old
-     ?t=dist link still opens the right panel after route_core rewrote it */
-  const tab = AR.show.has("dist") && tabs.some(t => t[0] === "dist") ? "dist"
-            : AR.show.has("sub") && tabs.some(t => t[0] === "sub") ? "sub" : "ind";
-  const hint = `y/y = change from the previous year · "vs median" = against the median of ${e.peerLabel} (pp for shares, % otherwise) · #rank among ${e.peerLabel}, #1 = highest value · ° = municipality value where no ${e.type === "regso" ? "postal-code" : "finer"} statistic exists${e.type === "deso" ? " · n/c = not comparable (different definition at municipality level)" : ""}. Solid line = ${e.name}, dashed = median of ${e.peerLabel}. Click a tile to focus the chart and map, ↗ to open it in Charts.`;
+  const subLabel = e.subs ? (e.subs.deso && e.subs.regso ? "Sub-areas — RegSO and DeSO"
+    : e.subs.deso ? `DeSO (${e.subs.deso.length})` : `RegSO (${e.subs.regso.length})`) : "";
+  const nSub = e.subs ? (e.subs[Object.keys(e.subs)[0]] || []).length : 0;
+  const hasOutlook = !!fcSeries(e.type === "kommun" ? e.o : e.kommun, "fc_abs");
   return `
   <div class="card accent arhead">
     <div class="arid">
       <h2>${esc(e.name)}</h2>
-      <div class="artags"><span class="tag">${esc(e.typeLabel)}</span><span class="tag">code ${esc(e.code)}</span>${e.o.pop != null ? `<span class="tag">${nf(e.o.pop, 0)} inhabitants</span>` : ""}${e.type === "kommun" ? `<span class="tag">${e.ctx.length} postal codes</span>` : ""}${e.type === "regso" && e.o.codes && e.o.codes.length > 1 ? `<span class="tag">merged codes ${esc(e.o.codes.join(", "))}</span>` : ""}</div>
+      <div class="artags"><span class="tag">${esc(e.typeLabel)}</span><span class="tag">code ${esc(e.code)}</span>${e.o.pop != null ? `<span class="tag">${nf(e.o.pop, 0)} inhabitants</span>` : ""}${e.kommun ? `<span class="tag">${esc(e.kommun.name)}</span>` : ""}${e.type === "regso" && e.o.codes && e.o.codes.length > 1 ? `<span class="tag">merged codes ${esc(e.o.codes.join(", "))}</span>` : ""}</div>
     </div>
-    <div class="tools">${indPicker("map")}${periodControl()}<button class="lk" data-go="${withQ(mapHash)}">Show on map</button><button class="lk" data-go="${chartLink(MK.ind, e.type, e.code)}">↗ Chart</button>${e.type !== "deso" && desoAvail(e.type === "kommun" ? e.code : e.o.kommun) ? `<button class="lk primary" data-go="map/${e.type === "kommun" ? e.code : e.o.kommun}/deso?ind=${MK.ind}">DeSO ›</button>` : ""}</div>
+    <div class="tools">
+      <button class="lk" data-go="${withQ(mapHash)}">Show on map</button>
+      <button class="lk" data-go="${chartLink(MK.ind, e.type, e.code)}">↗ Chart</button>
+      ${e.type !== "deso" && desoAvail(e.type === "kommun" ? e.code : e.o.kommun) ? `<button class="lk" data-go="${withQ("map/" + (e.type === "kommun" ? e.code : e.o.kommun) + "/deso")}">DeSO ›</button>` : ""}
+    </div>
     ${headlineTiles(e)}
-    ${usoLine(e.o)}${outlookLine(e.type === "kommun" ? e.o : e.kommun, e.type !== "kommun")}
+    ${usoLine(e.o)}
   </div>
-  <div class="card">
-    <div class="card-head"><h3>Key figures${MK.year !== LATEST ? " · " + MK.year : ""} <span class="hq" title="${esc(hint)}">ⓘ</span></h3>
-      <div class="seg">${groups.map(g => `<button class="sg ${g === grp ? "on" : ""}" data-argroup="${esc(g)}">${esc(g)}</button>`).join("")}</div></div>
-    <div class="hero wrap">${tiles.map(i => tileHtml(e, i, i.key === ind.key)).join("") || `<div><span>no data</span></div>`}</div>
+  <div class="card tools-card">
+    <div class="tools">${indPicker("map")}${periodControl()}</div>
+    ${indQuick()}
   </div>
-  <div class="grid-2">
-    <div class="card">
-      <div class="card-head"><h3>Trend — ${esc(ind.label)}</h3><span class="hint">${esc(ind.unit || "")} · same sub-period each year</span></div>
-      ${areaChart(e, ind)}
-      <p class="cap">${esc(ind.desc || "")} <span class="dim">${esc(ind.source || "")}</span>${ind.warn ? `<br>⚠ ${esc(ind.warn)}` : ""}</p>
-    </div>
-    <div class="card">
-      <div class="card-head"><h3>${esc(ind.short || ind.label)} — ${(() => { const mm = arMapMode(e, ind); return e.type === "kommun" ? (mm.kommuneLevel ? esc(e.name) + " among kommuner" : esc(e.name) + " by " + (mm.useQ ? "quarter" : "postal code")) : "neighbours"; })()}</h3><span class="hint">${(() => { const mm = arMapMode(e, ind); return mm.kommuneLevel ? "municipality-level indicator · click a neighbour to open it" : e.type === "kommun" ? "click an area to open it" : "click a neighbour to open it"; })()}</span></div>
-      <div class="mapwrap" data-mini="area" data-testid="minimap"><div id="armap"></div>
-        <button class="mfull" data-minifull="area" data-testid="minimap-full" title="Full screen (Esc closes)">⤢</button>
-        <div class="maplegend small" id="arlegend"></div></div>
-    </div>
-  </div>
-  <div class="card">
-    <div class="card-head"><div class="seg tabs">${tabs.map(([k, l]) => `<button class="sg ${k === tab ? "on" : ""}" data-artab="${k}">${esc(l)}</button>`).join("")}</div><span class="hint">${tab === "ind" ? "click a row to focus the chart, ↗ to chart it" : tab === "bbr" ? "current dwellings from the building register" : "click a row for its page"}</span></div>
-    ${tab === "ind" ? areaCompareTable(e) : tab === "dist" ? distCard(e) : areaSubTable(e)}
-  </div>
+  ${studyRow(e, ind, "area")}
+  ${hasOutlook ? secHtml("outlook", "Population outlook", `SCB trend projection, published ${esc(((outlookOf(indOf("fc_growth")) || {}).published) || "")}`,
+      `${outlookChart(e, indOf("fc_abs") || ind)}${outlookLine(e.type === "kommun" ? e.o : e.kommun, e.type !== "kommun")}
+       <p class="cap">SCB publishes its trend projection at kommun level only, so a RegSO or DeSO page shows its kommun's figure. Every point on the dashed line is projected; the single green point is the latest observed population, which comes from a different vintage and is shown rather than spliced onto the projection.</p>`) : ""}
+  ${secHtml("figures", `All figures (${e.inds.filter(i => eVal(e, i.key).v != null).length})`, "the Level column says which are the kommun's", areaCompareTable(e))}
+  ${e.o.dist ? secHtml("dist", "Population and housing structure", "SCB, below kommun level", distCard(e)) : ""}
+  ${e.subs ? secHtml("sub", subLabel, `${nSub} areas`, areaSubTable(e)) : ""}
   ${srcNote()}`;
 }
 function arMapMode(e, ind) {
@@ -1950,7 +2031,11 @@ function arMapInit() {
   const ind = curInd(); const { useQ, sind, kommuneLevel } = arMapMode(e, ind);
   const ctx = e.type === "kommun" ? (useQ ? desoAreas(e.code) : kommuneLevel ? AREAS : e.ctx) : e.ctx;
   const vk = a => { if (!sind) return null; if (kommuneLevel) return V(byCode[a.kommun], sind.key); return V(a, sind.key) ?? (useQ ? null : V(byCode[a.kommun], sind.key)); };
-  const sc = kommuneLevel ? scaleOf(MUNI, m => V(m, sind.key), null, sind) : scaleOf(ctx.filter(a => sind && V(a, sind.key) != null), vk, null, sind);
+  /* Built from vk, the same accessor the fill uses. Building it from the areas'
+     OWN values instead left a RegSO page showing a kommun-level indicator with a
+     legend that said "no data" over polygons that were all drawn in one colour. */
+  const sc = kommuneLevel ? scaleOf(MUNI, m => V(m, sind.key), null, sind)
+    : scaleOf(ctx.filter(a => vk(a) != null), vk, null, sind);
   const own = e.type === "kommun" ? e.ctx : e.own;
   const outline = e.type !== "kommun";
   ctx.forEach(a => {
