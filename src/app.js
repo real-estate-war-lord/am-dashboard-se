@@ -186,6 +186,8 @@ const LAY = new Set();
 const ZN = { off: false };
 /* Which tab the Data section shows. */
 const DT = { tab: "areas" };
+/* the map area card's open sections */
+const MC = { show: new Set() };
 
 /* `show=` is the whole truth when it is present; when the key is absent the
    view's own defaults apply. Closing every section therefore has to serialise
@@ -236,6 +238,7 @@ function hashFor() {
     if (LAY.size) q.lay = layList();
     if (LAY.has("listings")) Object.assign(q, lstQuery());
     if (ZN.off) q.zones = "0";
+    if (MK.kommun) q.show = showValue(MC.show, MC_SHOW_DEFAULTS);
     /* Camera in the hash, so a view can be linked to. Zooming still never
        changes the selection — this records where the camera is, it does not
        give it a say in what is selected. */
@@ -293,6 +296,7 @@ function parseHash() {
     S.view = "makro";
     MK.kommun = parts[1] && byCode[parts[1]] ? parts[1] : null;
     MK.sub = parts[2] === "deso" ? "deso" : "regso";
+    setShow(MC.show, q.show, MC_SHOW_DEFAULTS);
     if (MK.sub === "deso") loadDeso(MK.kommun);
   }
   if (!curInds().some(i => i.key === MK.ind)) MK.ind = (curInds()[0] || {}).key;
@@ -492,6 +496,7 @@ document.addEventListener("click", e => {
   if (g("[data-navclose]") || g("#scrim")) { navClose(); return; }
   if (g("[data-copylink]")) { copyLink(); return; }
   if ((el = g("[data-minifull]"))) { toggleMiniFull(el.dataset.minifull); return; }
+  if (g("[data-mcfold]")) { mcSetFolded(!mcFolded()); renderKeep(); return; }
   if (g("[data-mkown]")) { MK.own = !MK.own; renderKeep(); return; }
   if (g("[data-fs]")) { toggleFullscreen(); return; }
   if (g("[data-back]")) { history.back(); return; }
@@ -575,7 +580,7 @@ document.addEventListener("toggle", e => {
      open when it was copied. */
   const t = e.target;
   if (!t || !t.dataset || !t.dataset.sec) return;
-  const set = S.view === "property" ? PROP.show : AR.show;
+  const set = S.view === "property" ? PROP.show : S.view === "makro" ? MC.show : AR.show;
   if (t.open) set.add(t.dataset.sec); else set.delete(t.dataset.sec);
   syncHash();
   if (t.dataset.secRender) renderKeep();
@@ -1137,15 +1142,79 @@ function rankOf(o, key, peers) {
   const lb = lowerBetter(ind);
   return { r: 1 + vals.filter(x => (lb ? x < v : x > v)).length, n: vals.length, neutral: neutralDir(ind) };
 }
-function muniStrip(m) {
-  /* the selected municipality in one line: population, region, selected indicator + rank, link to its page */
-  const inds = IND;
-  const key = HL_KEYS.map(k => inds.find(i => i.key === k)).filter(i => i && V(m, i.key) != null).slice(0, 4);
-  const cell = i => { const rk = rankOf(m, i.key, MUNI); return `<div><span>${esc(i.short || i.label)}</span><b>${fmtOf(i)(V(m, i.key))}</b><em>${rk ? `#${rk.r} of ${rk.n}` : ""}</em></div>`; };
-  return `<div class="mstrip">
-    <div class="mstrip-id"><b>${esc(m.name)}</b><span class="dim">${esc(m.lan || "")} · ${m.pop != null ? nf(m.pop, 0) + " inhabitants" : ""} · ${muniAreas(m.code).length} ${desoMode() ? "DeSO" : "RegSO"}</span></div>
-    <div class="mstrip-k">${key.map(cell).join("")}</div>
-    <div class="mstrip-act"><button class="lk primary" data-go="${withQ(pageOf(m))}">Open ${esc(m.name)} page ›</button><button class="lk" data-go="${chartLink(MK.ind, "kommun", m.code)}" title="Open the chart generator with this municipality">↗ Chart</button></div>
+/* ---------- HeadlineTiles ----------
+   The five figures that answer "what kind of place is this", in one row, on the
+   map's area card, the area page and Test property. Clicking one selects that
+   indicator, which is what makes the row a control rather than a summary.
+
+   A tile whose value is the kommun's says so in words — "municipality figure" —
+   rather than with a lone degree sign that the reader has to decode from a
+   footnote somewhere else on the page. An empty slot is not rendered: a grey
+   filler is visual noise that means nothing. */
+function headlineInds(e) {
+  return HL_KEYS.map(k => e.inds.find(i => i.key === k))
+    .filter(i => i && eVal(e, i.key).v != null).slice(0, 5);
+}
+function headlineTiles(e) {
+  const inds = headlineInds(e);
+  if (!inds.length) return "";
+  return `<div class="hl" data-testid="tiles">${inds.map(i => {
+    const s = tileStats(e, i);
+    const inh = !s.cur.own;
+    const proj = isOutlook(i);
+    return `<button class="hlc ${MK.ind === i.key ? "on" : ""}${inh ? " inh" : ""}${proj ? " proj" : ""}"
+      data-testid="tile-${esc(i.key)}" data-arind="${esc(i.key)}"
+      title="${esc(i.desc || i.label)} — click to read it in the chart and on the map">
+      <span>${esc(i.short || i.label)}</span>
+      <b>${fmtOf(i)(s.cur.v)}${moeSpan(i, s.cur.v, moeOf(i, inh ? e.kommun : e.o))}</b>
+      <em>${inh ? `<i class="inh">municipality figure</i>`
+        : proj ? `<i class="projpill">Projection</i>`
+        : `${s.yoy != null ? `<i class="${cls(s.yoy, i.key)}">${signed(s.yoy, 1, deltaUnit(i))}</i> y/y` : ""}${s.rk ? `${s.yoy != null ? " · " : ""}#${s.rk.r} of ${s.rk.n}` : ""}`}</em></button>`;
+  }).join("")}</div>`;
+}
+/* the same entity shape areaEntity() returns, for a kommun that is not the page */
+function kommunEntity(m) {
+  return { type: "kommun", typeLabel: "Kommun", o: m, name: m.name, code: m.code, kommun: null,
+           lan: m.lan, inds: IND, peers: MUNI, peerLabel: "kommuner",
+           ctx: AREAS.filter(a => a.kommun === m.code), own: [m], subs: null };
+}
+
+/* ---------- the map's area card ----------
+   What the map says about the kommun that is open: who it is, the five headline
+   figures, and the two ways onward. Everything else is behind a toggle, closed,
+   with its state in the URL — so the map keeps its height and a link still
+   reproduces exactly what was unfolded. */
+const MC_KEY = "am_se_mapcard";
+const mcFolded = () => { try { return localStorage.getItem(MC_KEY) === "1"; } catch (e) { return false; } };
+const mcSetFolded = v => { try { localStorage.setItem(MC_KEY, v ? "1" : "0"); } catch (e) {} };
+const MC_SHOW_DEFAULTS = [];
+function mapAreaCard(m) {
+  const e = kommunEntity(m);
+  const folded = mcFolded();
+  const subs = muniAreas(m.code).length;
+  const projects = (INFRA.projects || []).filter(p => (p.kommuner || []).includes(m.code));
+  const outlook = outlookLine(m, false);
+  return `<div class="acard ${folded ? "folded" : ""}" data-testid="area-card">
+    <div class="acard-id">
+      <b>${esc(m.name)}</b>
+      <span class="dim">${esc(lanName(m.lan) ? lanName(m.lan) + " län" : (m.lan || ""))}${m.pop != null ? " · " + nf(m.pop, 0) + " inhabitants" : ""} · ${subs} ${desoMode() ? "DeSO" : "RegSO"}</span>
+      <button class="acard-fold" data-mcfold title="${folded ? "Show" : "Hide"} this card" aria-expanded="${!folded}">${folded ? "+" : "–"}</button>
+    </div>
+    ${folded ? "" : `${headlineTiles(e)}
+    <div class="acard-act">
+      <button class="lk primary" data-go="${withQ(pageOf(m))}">Open ${esc(m.name)} page ›</button>
+      <button class="lk" data-go="${chartLink(MK.ind, "kommun", m.code)}" title="Open the chart generator with this kommun">↗ Chart</button>
+    </div>
+    ${outlook ? `<details class="acard-sec" data-sec="outlook"${MC.show.has("outlook") ? " open" : ""}>
+      <summary>Outlook 2040</summary><div class="secbody">${outlook}
+      <p class="cap">SCB's trend projection for this kommun. A projection is one published statement about a future year, not an observation — it is never plotted as one series with the observed history.</p></div></details>` : ""}
+    ${projects.length ? `<details class="acard-sec" data-sec="projects"${MC.show.has("projects") ? " open" : ""}>
+      <summary>Upcoming projects (${projects.length})</summary><div class="secbody">
+      <table class="tbl compact"><tbody>${projects.map(p => `<tr>
+        <th><button class="lk mini" data-go="project/${esc(p.id)}">${esc(p.name)}</button></th>
+        <td><span class="pipdot" style="background:${INFRA_TONE[p.status] || "#8A8C81"}"></span>${esc(p.status)}</td>
+        <td class="num">${p.open_year || esc(p.open_window || "–")}</td></tr>`).join("")}</tbody></table>
+      <p class="cap">Hand-curated from the agencies' own pages; every row links to the source. <b>Not a forecast of anything</b> — a status and an opening year as the project body states them.</p></div></details>` : ""}`}
   </div>`;
 }
 function vMakro() {
@@ -1159,7 +1228,7 @@ function vMakro() {
       <div class="tools" data-testid="map-toolbar" data-row="1">${areaSearch()}${layersMenuHtml()}${indPicker("map")}${periodControl()}${subToggle()}</div>
       <div class="chiprow" data-row="2">${indQuick()}</div></div>
     ${indExplain(ind)}
-    ${muni ? muniStrip(muni) : ""}
+    ${muni ? mapAreaCard(muni) : ""}
     <div class="mapwrap"><div id="lfmap" data-testid="map"></div>
       <div class="maplegs" data-testid="legends">
         <div class="maplegend" id="maplegend" data-testid="legend"></div>
@@ -1408,13 +1477,6 @@ function tileHtml(e, i, on) {
   </div>`;
 }
 /* headline row under the area title: the five figures that answer "what kind of area is this" */
-function headlineHtml(e) {
-  const inds = HL_KEYS.map(k => e.inds.find(i => i.key === k)).filter(i => i && eVal(e, i.key).v != null).slice(0, 5);
-  if (!inds.length) return "";
-  return `<div class="hl">${inds.map(i => { const s = tileStats(e, i); return `<button class="hlc ${MK.ind === i.key ? "on" : ""}" data-arind="${esc(i.key)}" title="${esc(i.desc || i.label)} — click to focus the chart and map">
-    <span>${esc(i.short || i.label)}${s.cur.own ? "" : " °"}</span><b>${fmtOf(i)(s.cur.v)}${moeSpan(i, s.cur.v, moeOf(i, s.cur.own ? e.o : e.kommun))}</b>
-    <em>${s.yoy != null ? `<i class="${cls(s.yoy, i.key)}">${sign(s.yoy, x => nf(x, 1))}${s.unit}</i> y/y` : ""}${s.rk ? `${s.yoy != null ? " · " : ""}#${s.rk.r} of ${s.rk.n}` : ""}</em></button>`; }).join("")}</div>`;
-}
 function multiLine(series, ind, ys) {
   const all = series.flatMap(s => s.pts.map(p => p.v)).filter(v => v != null);
   if (!all.length || ys.length < 2) {
@@ -1843,7 +1905,7 @@ function vArea() {
       <div class="artags"><span class="tag">${esc(e.typeLabel)}</span><span class="tag">code ${esc(e.code)}</span>${e.o.pop != null ? `<span class="tag">${nf(e.o.pop, 0)} inhabitants</span>` : ""}${e.type === "kommun" ? `<span class="tag">${e.ctx.length} postal codes</span>` : ""}${e.type === "regso" && e.o.codes && e.o.codes.length > 1 ? `<span class="tag">merged codes ${esc(e.o.codes.join(", "))}</span>` : ""}</div>
     </div>
     <div class="tools">${indPicker("map")}${periodControl()}<button class="lk" data-go="${withQ(mapHash)}">Show on map</button><button class="lk" data-go="${chartLink(MK.ind, e.type, e.code)}">↗ Chart</button>${e.type !== "deso" && desoAvail(e.type === "kommun" ? e.code : e.o.kommun) ? `<button class="lk primary" data-go="map/${e.type === "kommun" ? e.code : e.o.kommun}/deso?ind=${MK.ind}">DeSO ›</button>` : ""}</div>
-    ${headlineHtml(e)}
+    ${headlineTiles(e)}
     ${usoLine(e.o)}${outlookLine(e.type === "kommun" ? e.o : e.kommun, e.type !== "kommun")}
   </div>
   <div class="card">

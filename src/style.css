@@ -1422,7 +1422,7 @@ a.nav-item:hover .navext{opacity:.9}
 #mapcard:fullscreen .maplegend,#mapcard.fs-fallback .maplegend{bottom:20px}
 .mklegend{display:none}
 /* area page header: headline row */
-.arhead .hl{flex-basis:100%;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:9px;overflow:hidden;margin-top:12px}
+.hl{flex-basis:100%;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:9px;overflow:hidden;margin-top:12px}
 .hlc{background:var(--panel);border:0;text-align:left;padding:10px 14px 9px;cursor:pointer;font:inherit;display:flex;flex-direction:column;gap:2px;min-width:0}
 .hlc:hover{background:var(--panel2)}
 .hlc.on{background:#F0F4EE;box-shadow:inset 0 3px 0 var(--ink)}
@@ -1432,8 +1432,8 @@ a.nav-item:hover .navext{opacity:.9}
 .hlc em i{font-style:normal;font-weight:600}
 .hlc .up{color:var(--good)}.hlc .dn{color:var(--bad)}
 .arhead h2{margin-top:0}
-@media (max-width:1180px){.arhead .hl{grid-template-columns:repeat(3,minmax(0,1fr))}}
-@media (max-width:820px){.arhead .hl{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:1180px){.hl{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:820px){.hl{grid-template-columns:repeat(2,minmax(0,1fr))}}
 /* tiles: one context line, chart link in the corner */
 .hero .tile .tm{display:flex;flex-wrap:wrap;gap:2px 10px}
 .hero .tile{position:relative}
@@ -1741,9 +1741,9 @@ td.dim .moe{color:inherit}
 
 /* ---- the indicator picker ---- */
 .indbtn{display:inline-flex;align-items:baseline;gap:6px;max-width:32ch;white-space:nowrap;overflow:hidden}
-.indbtn b{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.indbtn b{flex:1 1 auto;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:3ch}
 .indbtn i{font-style:normal;font-family:var(--mono);font-size:10.5px;color:var(--muted);white-space:nowrap;flex:0 0 auto}
-.indbtn i.u{max-width:14ch;overflow:hidden;text-overflow:ellipsis}
+.indbtn i.u{flex:0 1 auto;min-width:0;max-width:14ch;overflow:hidden;text-overflow:ellipsis}
 .indbtn i.tag-muni{color:var(--ink2);background:var(--panel2);border:1px solid var(--line);border-radius:4px;padding:0 4px}
 .pickerpop{width:min(440px,92vw);max-height:70vh;padding:8px}
 .pickerpop #indsearch{width:100%;margin-bottom:6px}
@@ -1766,3 +1766,28 @@ td.dim .moe{color:inherit}
 .fclab.clim{border-color:#C7D2E6;background:#EDF1F8;color:#2F4E8C}
 .qseg .sg{font-size:11px}
 .pkrow .sh{font-style:normal;font-family:var(--mono);font-size:10px;color:var(--dim)}
+
+/* ---- the map's area card ---- */
+.acard{background:var(--panel2);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;margin:8px 0 0}
+.acard-id{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.acard-id b{font-family:var(--disp);font-size:16px;font-weight:600;letter-spacing:-.01em}
+.acard-id .dim{font-family:var(--mono);font-size:10.5px}
+.acard-fold{margin-left:auto;width:20px;height:20px;line-height:1;background:var(--panel);
+  border:1px solid var(--line);border-radius:5px;color:var(--muted);font-family:var(--mono);font-size:12px;cursor:pointer;padding:0}
+.acard-fold:hover{color:var(--ink);border-color:var(--ink)}
+.acard .hl{margin:9px 0 0}
+.acard .hlc{padding:8px 11px 7px}
+.acard .hlc b{font-size:21px}
+.acard-act{display:flex;gap:8px;flex-wrap:wrap;margin-top:9px}
+.acard-sec{margin-top:8px;border-top:1px solid var(--line2);padding-top:6px}
+.acard-sec>summary{cursor:pointer;font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--muted);list-style:none;display:flex;align-items:center;gap:6px}
+.acard-sec>summary::-webkit-details-marker{display:none}
+.acard-sec>summary::before{content:"▸";font-size:10px}
+.acard-sec[open]>summary::before{content:"▾"}
+.acard-sec>summary:hover{color:var(--ink)}
+.acard-sec .secbody{padding:8px 0 2px}
+/* an inherited or projected tile says which it is, in words */
+.hlc.inh b{color:var(--ink2)}
+.hlc em i.inh{font-style:normal;color:var(--muted)}
+.hlc em i.projpill{font-style:normal;color:#5B4A9C;background:#F1EEF8;border:1px solid #DCD5EE;border-radius:4px;padding:0 5px}
