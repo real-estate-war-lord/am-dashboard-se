@@ -461,6 +461,7 @@ document.addEventListener("click", e => {
   if ((el = g("[data-menu]"))) { UI.menu = UI.menu === el.dataset.menu ? null : el.dataset.menu; renderKeep(); return; }
   if (UI.menu && !g(".menupop")) { UI.menu = null; renderKeep(); }
   if ((el = g("[data-go]"))) { navClose(); go(el.dataset.go); return; }
+  if ((el = g("[data-searchgo]"))) { searchGo(el.dataset.searchgo); return; }
   if ((el = g("[data-tlevel]"))) { T.level = el.dataset.tlevel; if (!curInds().some(i => i.key === MK.ind)) MK.ind = curInds()[0].key; syncHash(); renderKeep(); return; }
   if (g("[data-csv]")) { exportCsv(); return; }
   if ((el = g("[data-export]"))) { UI.menu = null; runExport(el.dataset.export); renderKeep(); return; }
@@ -510,7 +511,6 @@ document.addEventListener("change", e => {
   const el = e.target;
   if (el.id === "indsel") { MK.ind = el.value; if (!yearsFor(MK.ind).includes(MK.year)) MK.year = LATEST; syncHash(); renderKeep(); }
   if (el.id === "yearsel") { MK.year = el.value; syncHash(); renderKeep(); }
-  if (el.id === "areaq") areaSearchGo(el.value);
   if (el.id === "mindsel") { MK.mind = el.value; syncHash(); renderKeep(); }
   if (el.id === "chind") { CH.ind = el.value; syncHash(); renderKeep(); }
   if (el.id === "chy0") { CH.y0 = el.value; syncHash(); renderKeep(); }
@@ -525,7 +525,16 @@ document.addEventListener("change", e => {
   if (el.id === "tregion") { T.lan = el.value; renderTableBody(); }
   if (el.id === "tminpop") { T.minPop = Number(el.value) || 0; renderTableBody(); }
 });
-document.addEventListener("input", e => { if (e.target.id === "tq") { T.q = e.target.value.trim().toLowerCase(); renderTableBody(); } });
+document.addEventListener("input", e => {
+  if (e.target.id === "tq") { T.q = e.target.value.trim().toLowerCase(); renderTableBody(); return; }
+  /* the search box redraws its own dropdown and nothing else — a full re-render
+     would take the focus and the caret with it on every keystroke */
+  if (e.target.id === "areaq") { SR.q = e.target.value; SR.sel = 0; SR.open = true; searchRefresh(); }
+});
+document.addEventListener("focusin", e => {
+  if (e.target.id === "areaq") { SR.open = true; searchRefresh(); }
+  else if (SR.open && !e.target.closest(".asrch")) { SR.open = false; searchRefresh(); }
+});
 document.addEventListener("toggle", e => { if (e.target.classList && e.target.classList.contains("indx")) UI.indxOpen = e.target.open; }, true);
 document.addEventListener("toggle", e => {
   /* One key for every <details> whose open state is shareable. The section's own
@@ -539,7 +548,15 @@ document.addEventListener("toggle", e => {
   if (t.dataset.secRender) renderKeep();
 }, true);
 document.addEventListener("keydown", e => {
-  if (e.key === "Enter" && e.target.id === "areaq") { areaSearchGo(e.target.value); return; }
+  if (e.target.id === "areaq") {
+    if (e.key === "Enter") { searchEnter(); return; }
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      const n = searchResults(SR.q).length;
+      if (n) { SR.sel = (SR.sel + (e.key === "ArrowDown" ? 1 : n - 1)) % n; searchRefresh(); e.preventDefault(); }
+      return;
+    }
+    if (e.key === "Escape") { SR.open = false; searchRefresh(); e.target.blur(); return; }
+  }
   if (e.key === "Enter" && e.target.id === "chq") { chartAdd(null, e.target.value); return; }
   if (e.key === "Enter" && e.target.id === "propin") { propSet(e.target.value); return; }
   if (e.key === "Escape") {
@@ -715,22 +732,95 @@ function indQuick() {
   const L = curInds(); const ks = QUICK_KEYS.map(k => L.find(i => i.key === k)).filter(Boolean);
   return ks.length > 1 ? `<div class="iq">${ks.map(i => `<button class="iqb ${MK.ind === i.key ? "on" : ""}" data-indq="${i.key}" title="${esc(i.label)}">${esc(i.short || i.label)}</button>`).join("")}</div>` : "";
 }
-/* searchable area box: kommuner open on the map, RegSO areas open their page */
-const AREA_OPTS = [{ t: "Sweden — whole country", h: "map", k: ["sweden", "sverige", "dk"] }];
-MUNI.slice().sort((a, b) => a.name.localeCompare(b.name, LOCALE)).forEach(m => AREA_OPTS.push({ t: `${m.name} — municipality, ${m.lan || ""}`, h: `map/${m.code}`, k: [m.name.toLowerCase(), m.code] }));
-AREAS.slice().sort((a, b) => a.code.localeCompare(b.code)).forEach(a => AREA_OPTS.push({ t: `${a.name} — RegSO, ${(byCode[a.kommun] || {}).name || ""}`, h: `area/regso/${a.code}`, k: [a.code, (a.name || "").toLowerCase()] }));
-/* DeSO is not in the search box: its files load per kommun, so most of the 6 160
-   are not in memory. Open a kommun and switch to DeSO to reach them. */
+/* ---------- the unified search ----------
+   One box. It takes a kommun, a RegSO or a DeSO by name or by code, and it also
+   takes a Google Maps link or a bare "lat, lon" — which resolves to a Test
+   property pin rather than to an area, because a coordinate is not an area.
+
+   The quick jumps sit at the top of its dropdown rather than in the toolbar,
+   which is what gets row 1 down to four controls. They move the camera and
+   nothing else: MK.kommun, the indicator and the hash path are untouched, so
+   zooming still never changes the selection.
+
+   The privacy sentence that used to run across every map lives on the ? here and
+   on the Test property page, where the pin actually is. */
+const AREA_OPTS = [];
+MUNI.slice().sort((a, b) => a.name.localeCompare(b.name, LOCALE)).forEach(m => AREA_OPTS.push(
+  { t: m.name, sub: `Kommun · ${lanName(m.lan) || m.lan || ""}`, h: `map/${m.code}`,
+    k: [m.name.toLowerCase(), m.code] }));
+AREAS.slice().sort((a, b) => (a.name || "").localeCompare(b.name || "", LOCALE)).forEach(a => AREA_OPTS.push(
+  { t: a.name, sub: `RegSO · ${(byCode[a.kommun] || {}).name || ""}`, h: `area/regso/${a.code}`,
+    k: [(a.name || "").toLowerCase(), a.code.toLowerCase(), a.code.split("_")[0].toLowerCase()] }));
+/* DeSO has codes and no names, and its files arrive per kommun, so only the
+   kommuner already opened contribute — which is honest: the rest are not in
+   memory to be searched. */
+const desoOpts = () => {
+  const out = [];
+  for (const kom in DESO) for (const d of DESO[kom]) out.push(
+    { t: d.code.split("_")[0], sub: `DeSO · ${(byRegso[d.regso] || {}).name || (byCode[kom] || {}).name || ""}`,
+      h: `area/deso/${d.code}`, k: [d.code.toLowerCase(), d.code.split("_")[0].toLowerCase()] });
+  return out;
+};
+const SR = { q: "", open: false, sel: 0 };
+const SR_MAX = 10;
+
+/* what the box would do with what is typed in it */
+function searchResults(q) {
+  const s = String(q || "").trim();
+  if (!s) return [];
+  /* a coordinate or a Maps link is a pin, not an area */
+  const loc = parseLocation(s);
+  if (loc && !loc.error) {
+    const ll = `${(+loc.lat).toFixed(5)},${(+loc.lon).toFixed(5)}`;
+    return [{ coord: true, t: `Test property at ${nf(loc.lat, 5)}, ${nf(loc.lon, 5)}`,
+              sub: "a coordinate is a point, not an area — it opens as a pin",
+              h: `property?p=${ll}` }];
+  }
+  const ql = s.toLowerCase();
+  const pool = AREA_OPTS.concat(desoOpts());
+  const starts = [], has = [];
+  for (const o of pool) {
+    if (o.k.some(k => k === ql || k.startsWith(ql))) starts.push(o);
+    else if (o.k.some(k => k.indexOf(ql) >= 0)) has.push(o);
+    if (starts.length >= SR_MAX) break;
+  }
+  return starts.concat(has).slice(0, SR_MAX);
+}
+const PRIVACY_TIP = "A pasted Google Maps link or coordinate is parsed in your browser and tested "
+  + "against boundary files this page already serves. It lives only in this page's address bar — the "
+  + "part after the # is never sent to a server. A short goo.gl link is refused rather than followed.";
 function areaSearch() {
   const m = MK.kommun ? byCode[MK.kommun] : null;
-  return `<span class="asrch"><input id="areaq" list="arealist" class="indsel" placeholder="${m ? esc(m.name) + " — search another area…" : "Search kommun or RegSO…"}" autocomplete="off" aria-label="Area">
-    <datalist id="arealist">${AREA_OPTS.map(o => `<option value="${esc(o.t)}"></option>`).join("")}</datalist></span>`;
+  return `<span class="asrch" data-testid="search" role="combobox" aria-expanded="${SR.open}" aria-haspopup="listbox">
+    <input id="areaq" class="indsel" value="${esc(SR.q)}" autocomplete="off" aria-label="Search area, code or coordinate"
+      placeholder="${m ? esc(m.name) + " — search area, code or coordinate" : "Search area, code, Maps link or lat, lon"}">
+    <button class="qmark" type="button" title="${esc(PRIVACY_TIP)}" aria-label="How a pasted coordinate is handled">?</button>
+    <div class="sdrop" id="sdrop">${searchDropHtml()}</div>
+  </span>`;
 }
-function areaSearchGo(txt) {
-  const q = (txt || "").trim(); if (!q) return;
-  let o = AREA_OPTS.find(x => x.t === q);
-  if (!o) { const ql = q.toLowerCase().replace(/\s+—.*$/, ""); o = AREA_OPTS.find(x => x.k.some(k => k === ql)) || AREA_OPTS.find(x => x.k.some(k => k.startsWith(ql))); }
-  if (o) go(o.h + `?ind=${encodeURIComponent(MK.ind)}` + (MK.year !== LATEST ? `&y=${MK.year}` : ""));
+function searchDropHtml() {
+  const res = searchResults(SR.q);
+  const jumps = `<div class="sjump" data-testid="search-jumps"><em>Jump to</em>${MAP_JUMPS.map(j =>
+    `<button data-mapjump="${j.id}" title="Move the camera to ${esc(j.label)} (key ${j.key}) — the selection does not change">${esc(j.label)}</button>`).join("")}</div>`;
+  const rows = res.length
+    ? res.map((o, k) => `<button class="srow ${k === SR.sel ? "on" : ""}"${o.coord ? ' data-testid="search-coord"' : ""}
+        data-searchgo="${esc(o.h)}" role="option"><b>${esc(o.t)}</b><em>${esc(o.sub)}</em></button>`).join("")
+    : SR.q ? `<div class="snone">No area matches “${esc(SR.q)}” — try a kommun name, a RegSO or DeSO code, or a coordinate.</div>` : "";
+  return jumps + rows;
+}
+function searchRefresh() {
+  const d = document.getElementById("sdrop"); if (d) d.innerHTML = searchDropHtml();
+  const w = document.querySelector(".asrch"); if (w) w.setAttribute("aria-expanded", String(SR.open));
+}
+function searchGo(h) {
+  SR.q = ""; SR.open = false; SR.sel = 0;
+  /* a coordinate result carries a whole hash of its own; an area keeps the
+     indicator and year the reader is looking at */
+  go(h.indexOf("?") >= 0 ? h : withQ(h));
+}
+function searchEnter() {
+  const res = searchResults(SR.q);
+  if (res.length) searchGo(res[Math.min(SR.sel, res.length - 1)].h);
 }
 function asofText(i) {
   const asofSrc = (MK.year !== LATEST && i.hist_asof && i.hist_asof[MK.year]) ? i.hist_asof[MK.year] : i.asof;
@@ -873,8 +963,8 @@ function vMakro() {
   return `
   <div class="card accent" id="mapcard">
     <div class="card-head tools-only">
-      <div class="tools" data-testid="map-toolbar" data-row="1">${areaSearch()}${layersMenuHtml()}${indSelect() + yearSelect()}${subToggle()}${jumpTools()}</div>
-      <div data-row="2">${indQuick()}</div></div>
+      <div class="tools" data-testid="map-toolbar" data-row="1">${areaSearch()}${layersMenuHtml()}${indSelect()}${yearSelect()}${subToggle()}</div>
+      <div class="chiprow" data-row="2">${indQuick()}</div></div>
     ${indExplain(ind)}
     ${muni ? muniStrip(muni) : ""}
     <div class="mapwrap"><div id="lfmap" data-testid="map"></div>
@@ -2232,11 +2322,11 @@ function srvLegendFor(which) {
   if (z < SRV_ZOOM) {
     return `<div class="lgtitle">${which === "srv" ? "Services" : "Public buildings"}<span>zoom in to level ${SRV_ZOOM}</span></div>`;
   }
-  return `<div class="lgtitle">${which === "srv" ? "Services" : "Public buildings"}<span>${nf(LF[which + "Count"] || 0, 0)} in view · click to filter</span></div>` +
-    cats.map(c => { const d = SRV_CATS[c];
-      return `<div class="lgrow lgclick ${on.has(c) ? "" : "off"}" data-srvcat="${which}:${c}">
-        <i style="background:${on.has(c) ? d[1] : "#FFF"};border:1.2px solid ${d[1]}"></i>${esc(d[0])}
-        ${z < d[2] ? `<em class="dim"> z${d[2]}+</em>` : ""}</div>`; }).join("") +
+  /* Keys only. The category ticks live in Layers ▾ now, which is what keeps this
+     card small enough to stack beside the others without ever covering one. */
+  return `<div class="lgtitle">${which === "srv" ? "Services" : "Public buildings"}<span>${nf(LF[which + "Count"] || 0, 0)} in view</span></div>` +
+    cats.filter(c => on.has(c)).map(c => { const d = SRV_CATS[c];
+      return `<div class="lgrow"><i style="background:${d[1]}"></i>${esc(d[0])}${z < d[2] ? `<em class="dim"> z${d[2]}+</em>` : ""}</div>`; }).join("") +
     `<div class="lgnote">© OpenStreetMap contributors (ODbL). Points only — a count per inhabitant would measure mapping effort as much as provision.${
       Object.keys(SRV_IDX).length < 290
         ? ` <b>Partial coverage:</b> ${Object.keys(SRV_IDX).length} of 290 kommuner fetched so far.`
@@ -2611,12 +2701,6 @@ function layersMenuHtml() {
         <i class="tick">${ovOn(o) ? "✓" : ""}</i><span><b>${esc(o.label)}</b><em>${esc(o.note ? o.note() : "")}</em></span></button>
         ${ovOn(o) && o.subs ? `<div class="msubs">${o.subs()}</div>` : ""}`).join("")}
       ${zoneRow}</div>` : ""}</span>`;
-}
-/* Camera-only quick jumps. They move the viewport and change nothing else, which
-   is why they can sit in the search dropdown rather than in the toolbar. */
-function jumpTools() {
-  return `<div class="seg jumps">${MAP_JUMPS.map(j =>
-    `<button class="sg" data-mapjump="${j.id}" title="Move the map to ${esc(j.label)} (key ${j.key}) — this does not change the selection">${esc(j.label)}</button>`).join("")}</div>`;
 }
 /* the category ticks that used to live inside the Services / Public legends */
 function srvSubs(which) {

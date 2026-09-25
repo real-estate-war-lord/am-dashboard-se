@@ -1627,3 +1627,40 @@ td.dim .moe{color:inherit}
   .side-foot .menupop{left:8px;right:8px;bottom:8px}
   #lfmap{height:55vh}
 }
+
+/* ---- the map's one toolbar row ----
+   Row 1 must not wrap: it is what decides how far down the map starts, and the
+   budget is 200 px from the top of the viewport at 1366×768. The search box is
+   the only elastic control, so it is the one that shrinks. */
+[data-testid=map-toolbar]{flex-wrap:nowrap;align-items:center;gap:6px}
+[data-testid=map-toolbar] .asrch{flex:1 1 200px;min-width:130px;max-width:360px}
+[data-testid=map-toolbar] .asrch input{width:100%}
+[data-testid=map-toolbar] .indsel{height:28px;padding-top:0;padding-bottom:0;max-width:22ch}
+[data-testid=map-toolbar] .lk{height:28px;padding-top:0;padding-bottom:0;display:inline-flex;align-items:center}
+[data-testid=map-toolbar] .seg .sg,[data-testid=map-toolbar] .seg button{padding-top:3px;padding-bottom:3px}
+.card-head.tools-only{gap:6px}
+.chiprow{margin:0}
+.chiprow .iq{margin:0}
+#mapcard>.indx{margin:6px 0 0}
+#mapcard>.indx>summary{padding:5px 0}
+
+/* ---- the unified search dropdown ---- */
+.asrch{position:relative;display:inline-flex;align-items:center;gap:4px}
+.asrch .qmark{width:20px;height:20px;flex:0 0 20px;border:1px solid var(--line);border-radius:50%;
+  background:var(--panel);color:var(--muted);font-family:var(--mono);font-size:10.5px;line-height:1;
+  cursor:help;padding:0}
+.asrch .qmark:hover{color:var(--ink);border-color:var(--ink)}
+.sdrop{display:none;position:absolute;top:calc(100% + 5px);left:0;z-index:70;width:min(420px,88vw);
+  background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
+  box-shadow:0 14px 40px rgba(20,28,24,.16);padding:6px;max-height:60vh;overflow:auto}
+.asrch[aria-expanded=true] .sdrop{display:block}
+.sjump{display:flex;align-items:center;gap:5px;flex-wrap:wrap;padding:4px 6px 8px;border-bottom:1px solid var(--line2);margin-bottom:5px}
+.sjump em{font-style:normal;font-family:var(--mono);font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--muted);margin-right:2px}
+.sjump button{background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:3px 10px;
+  font-family:var(--mono);font-size:10.5px;color:var(--ink2);cursor:pointer}
+.sjump button:hover{border-color:var(--ink);color:var(--ink)}
+.srow{display:block;width:100%;text-align:left;background:none;border:0;border-radius:7px;padding:6px 8px;cursor:pointer;font:inherit}
+.srow:hover,.srow.on{background:var(--panel2)}
+.srow b{display:block;font-family:var(--body);font-size:13px;font-weight:600}
+.srow em{display:block;font-style:normal;font-family:var(--mono);font-size:10.5px;color:var(--muted);margin-top:1px}
+.snone{padding:8px;font-size:12.5px;color:var(--muted)}
