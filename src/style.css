@@ -1664,3 +1664,77 @@ td.dim .moe{color:inherit}
 .srow b{display:block;font-family:var(--body);font-size:13px;font-weight:600}
 .srow em{display:block;font-style:normal;font-family:var(--mono);font-size:10.5px;color:var(--muted);margin-top:1px}
 .snone{padding:8px;font-size:12.5px;color:var(--muted)}
+
+/* ============================================================================
+   v2.0 — rental listings (the map layer and the Test property section)
+   Moved in from src/listings/listings.css when the standalone page became a
+   section. Every colour is a token, so the two read as one product.
+   ==========================================================================*/
+.lst-mk{border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.28)}
+.lst-pin{border-radius:50%;border:3px solid var(--side);background:#fff;box-shadow:0 0 0 1px rgba(0,0,0,.2)}
+/* the basemap is reference, not content: desaturated so the markers are what the eye lands on */
+.basemap{filter:saturate(.35) brightness(1.06)}
+
+.lstpop .leaflet-popup-content{margin:0;width:300px !important}
+.lst-card{font-family:var(--body);font-size:12.5px;color:var(--ink)}
+.lst-card .img{width:100%;height:148px;object-fit:cover;display:block;background:var(--panel2);border-radius:var(--r) var(--r) 0 0}
+.lst-card .noimg{width:100%;height:80px;display:flex;align-items:center;justify-content:center;
+  background:var(--panel2);color:var(--dim);font-family:var(--mono);font-size:11px;
+  border-radius:var(--r) var(--r) 0 0;border-bottom:1px solid var(--line2)}
+.lst-card .pad{padding:10px 12px 12px}
+.lst-card h3{font-family:var(--disp);font-size:15px;margin:0 0 2px;font-weight:600}
+.lst-card .sub{color:var(--muted);font-size:11.5px;margin-bottom:8px}
+.lst-card .facts{display:grid;grid-template-columns:1fr 1fr;gap:3px 10px;font-family:var(--mono);font-size:11.5px;margin-bottom:8px}
+.lst-card .facts i{font-style:normal;color:var(--muted)}
+.lst-card .badges{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px}
+.lst-bdg{font-size:10.5px;font-family:var(--mono);padding:2px 7px;border-radius:999px;
+  border:1px solid var(--line);background:var(--panel2);color:var(--ink2);text-decoration:none}
+.lst-bdg.offer{background:#FBF3E3;border-color:#EBD9B4;color:#7A5410}
+.lst-bdg.queue{background:#EFF1EE;border-color:#D9DDD6;color:#45483F}
+.lst-bdg.also{background:#E9F1EF;border-color:#C9DCD7;color:#14544A}
+.lst-bdg.pos{background:var(--panel2);color:var(--muted)}
+.lst-card .text{font-size:12px;color:var(--ink2);line-height:1.45;margin-bottom:9px}
+.lst-card .text.muted{color:var(--dim);font-style:italic}
+.lst-card .open{display:block;text-align:center;padding:8px;border-radius:var(--r);
+  background:var(--side);color:var(--side-ink);text-decoration:none;font-weight:500;font-size:12.5px}
+.lst-card .open:hover{background:var(--side2)}
+
+/* the section on Test property */
+.lst-sum{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:baseline;font-family:var(--mono);font-size:12px;color:var(--ink2)}
+.lst-sum b{font-size:14px;color:var(--ink)}
+.lst-sum .st{color:var(--muted)}
+.lst-med{display:flex;flex-wrap:wrap;gap:10px;margin:10px 0 0}
+.lst-med .m{border:1px solid var(--line);border-radius:var(--r);padding:8px 12px;min-width:118px;background:var(--panel2)}
+.lst-med .m b{display:block;font-family:var(--mono);font-size:17px;font-weight:600}
+.lst-med .m span{font-size:11px;color:var(--muted)}
+.lst-med .m.sup b{color:var(--dim);font-size:14px}
+.lst-caveat{font-family:var(--mono);font-size:11px;line-height:1.55;color:var(--muted);
+  border-top:1px solid var(--line2);padding-top:9px;margin-top:12px}
+.lst-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;margin:12px 0}
+.lst-cards .lst-card{border:1px solid var(--line);border-radius:var(--r);background:var(--panel);overflow:hidden}
+.lst-filters{display:flex;flex-wrap:wrap;gap:12px 20px;padding:10px 12px;margin:10px 0;
+  background:var(--panel2);border:1px solid var(--line2);border-radius:var(--r)}
+.lst-fgroup{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.lst-fgroup>span{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.lst-tog{display:inline-flex;align-items:center;gap:6px;padding:3px 9px;cursor:pointer;
+  border:1px solid var(--line);border-radius:999px;background:var(--panel);font-size:11.5px;color:var(--ink2)}
+.lst-tog[aria-pressed=true]{background:var(--side);border-color:var(--side);color:var(--side-ink)}
+.lst-tog .swatch{width:9px;height:9px;border-radius:2px;flex:none}
+.lst-tbl{width:100%;border-collapse:collapse;font-size:12px;font-family:var(--mono)}
+.lst-tbl th,.lst-tbl td{padding:5px 8px;text-align:left;border-bottom:1px solid var(--line2);white-space:nowrap}
+.lst-tbl th{cursor:pointer;user-select:none;color:var(--muted);font-weight:500;position:sticky;top:0;background:var(--panel)}
+.lst-tbl th:hover{color:var(--ink)}
+.lst-tbl td.num,.lst-tbl th.num{text-align:right}
+.lst-tbl tbody tr:hover{background:var(--panel2)}
+.lst-tbl .srcdot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}
+.lst-scroll{max-height:440px;overflow:auto}
+.lst-chip{display:inline-flex;align-items:baseline;gap:6px;padding:3px 9px;border:1px solid var(--line);
+  border-radius:999px;background:var(--panel);font-size:11px;font-family:var(--mono);color:var(--ink2);white-space:nowrap}
+.lst-chip .dot{width:7px;height:7px;border-radius:50%;background:var(--green);flex:none}
+.lst-chip.warn .dot{background:var(--amber)}
+.lst-chip.bad .dot{background:var(--red)}
+.lgb{background:var(--panel2);border:1px solid var(--line);border-radius:5px;font-family:var(--mono);
+  font-size:10.5px;padding:1px 6px;cursor:pointer;color:var(--ink2)}
+.lgb:hover{border-color:var(--ink);color:var(--ink)}
+.lgrow b{margin-left:auto;font-family:var(--mono);font-size:10.5px}
+@media (max-width:600px){.lst-cards{grid-template-columns:1fr}.lst-card .facts{grid-template-columns:1fr}}

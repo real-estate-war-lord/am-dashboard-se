@@ -220,11 +220,13 @@ function hashFor() {
     if (PROP.rad !== PROP_RAD_DEFAULT) q.rad = String(PROP.rad);
     q.show = showValue(PROP.show, PROP_SHOW_DEFAULTS);
     if (LAY.size) q.lay = layList();
+    if (LAY.has("listings") || PROP.show.has("listings")) Object.assign(q, lstQuery());
   } else if (S.view === "sheet") { p = sheetHash(SH.kind, ...SH.parts); }
   else if (S.view === "makro") {
     p = "map" + (MK.kommun ? "/" + MK.kommun + (MK.sub === "deso" ? "/deso" : "") : "");
     withInd();
     if (LAY.size) q.lay = layList();
+    if (LAY.has("listings")) Object.assign(q, lstQuery());
     if (ZN.off) q.zones = "0";
     /* Camera in the hash, so a view can be linked to. Zooming still never
        changes the selection — this records where the camera is, it does not
@@ -253,6 +255,7 @@ function parseHash() {
   LAY.clear();
   String(q.lay || "").split(",").filter(Boolean).forEach(k => { if (RC.LAYERS.includes(k)) LAY.add(k); });
   ZN.off = q.zones === "0";
+  lstReadHash(q);
 
   if (v === "area" && parts[1] && parts[2]) {
     S.view = "area"; AR.type = parts[1]; AR.code = parts[2];
@@ -303,7 +306,12 @@ function syncHash() { history.replaceState(null, "", "#" + hashFor()); }
 /* A handle on the live page: the Leaflet instance is a lexical const, so without
    this neither the console nor a screenshot script can set a precise view. */
 window.AM = { get map() { return LF.map; }, get area() { return LF.amap; }, go, D, MK, S, LF, LAY, PROP };
-window.addEventListener("hashchange", () => { const r = parseHash(); render(); if (r.viewChanged) { const m = document.getElementById("main"); if (m) m.scrollTop = 0; } });
+window.addEventListener("hashchange", () => {
+  /* a popover belongs to the screen it was opened on */
+  UI.menu = null; SR.open = false;
+  const r = parseHash(); render();
+  if (r.viewChanged) { const m = document.getElementById("main"); if (m) m.scrollTop = 0; }
+});
 
 /* ---------- views & navigation ----------
    Four destinations. Market and Pipeline became tabs of Data, Sources became its
@@ -397,8 +405,12 @@ const LF_LAYER_KEYS = "areaG labG ownG usoLayer schLayer srvLayer pubLayer infLa
 function dropMaps() {
   while (MAPS.length) {
     const m = MAPS.pop();
-    try { m.stop(); } catch (e) {}
+    /* off() FIRST. Leaflet's stop() completes a pan animation, and completing one
+       fires `moveend` — on a map that is being destroyed, whose moveend handler
+       writes the camera back into LF. That is how a fresh `#map/0180?c=…&z=14`
+       ended up at the zoom of the map it had just replaced. */
     try { m.off(); } catch (e) {}
+    try { m.stop(); } catch (e) {}
     try { m.remove(); } catch (e) {}
   }
   LF.map = null; LF.amap = null; LF.pmap = null;
@@ -478,6 +490,10 @@ document.addEventListener("click", e => {
     if (LAY.has(k)) LAY.delete(k); else LAY.add(k);
     LF[layKey(k) + "Drawn"] = false; syncHash(); renderKeep(); return; }
   if ((el = g("[data-zones]"))) { ZN.off = !ZN.off; LF.climDrawn = false; syncHash(); renderKeep(); return; }
+  if ((el = g("[data-lstgroup]"))) { const k = el.dataset.lstgroup, f = LST.filters;
+    const i = f.groups.indexOf(k); if (i < 0) f.groups.push(k); else f.groups.splice(i, 1);
+    syncHash(); renderKeep(); return; }
+  if (g("[data-lstretry]")) { lstRetry(); return; }
   if ((el = g("[data-legfold]"))) { const k = el.dataset.legfold; UI.legFold[k] = !UI.legFold[k]; ovLegends(); return; }
   /* a jump moves the camera and returns — no selection change, so no re-render */
   if ((el = g("[data-pipetype]"))) { PIPE.type = el.dataset.pipetype; syncHash(); renderKeep(); return; }
@@ -2582,6 +2598,308 @@ function climLegend() {
       : `Zoom in to level ${CLIM_ZOOM} to draw the zones.`} The same source as the figure on the map, drawn geometrically. Screening only, not a property-level assessment. Källa: MCF, SMHI, SGU.</div>`;
 }
 
+/* ---------- Rental listings ----------
+   The only live, third-party layer on the page. Everything else here is an
+   official figure computed offline into data/processed; these are advertisements,
+   read through the gateway in gateway/ because the sources send no CORS headers.
+
+   The rules the gateway's own documentation sets, kept on this side too:
+     - an advertised rent is NOT a contract rent, and must never be drawn as one
+       series with the SCB rent statistics this dashboard is built on
+     - a count of adverts is NOT a vacancy rate
+     - medians only at n >= 3, and labelled "advertised"
+     - a queue listing is allocated by queue time and says so
+     - every card links to the original advert
+     - and the layer never carries an own-rent field of any kind: this dashboard
+       has no business knowing what anybody pays
+
+   Politeness to the gateway: one request per viewport, debounced 600 ms after the
+   map stops moving, and a box already fetched this session is never fetched
+   again. There is no polling loop anywhere.
+
+   src/listings/view.js holds the decisions (which group a source is in, which
+   listings survive the filters, the medians) and is DOM-free and unit-tested.
+   This file is the rendering. */
+const LV = window.LISTINGS_VIEW || {};
+const GATEWAY = "https://am-se-listings.am-se-listings-gateway.workers.dev";
+const LST_ZOOM = 13;
+const LST_DEBOUNCE = 600;
+/* The box is padded before it is fetched, so a small pan stays inside something
+   already in hand rather than asking again. */
+const LST_PAD = 0.25;
+/* The gateway caps a radius at 3 km; the task caps the fallback at 2 km. Only
+   used if /bbox is not deployed — it answers 404 and this switches over once. */
+const LST_FALLBACK_MAX = 2000;
+
+const LST = {
+  boxes: [],            /* every box fetched this session */
+  rows: [],             /* every listing seen this session, deduped by src:id */
+  seen: new Set(),
+  sources: [],          /* the source roll-call of the last answer */
+  fetchedAt: null,
+  covered: true,
+  error: null,
+  loading: false,
+  timer: null,
+  bboxOk: true,
+  filters: JSON.parse(JSON.stringify(LV.DEFAULT_FILTERS || {})),
+  open: false,          /* the Test property section's "show the full module" state */
+  sort: "dist",
+  desc: false,
+};
+
+/* --- the hash --- */
+/* The filter keys are prefixed `l` so they cannot collide with the dashboard's
+   own, and they are the same spellings route_core.js migrates the old Listings
+   page's links to. */
+function lstQuery() {
+  const f = LST.filters, q = {};
+  const d = LV.DEFAULT_FILTERS || {};
+  if (f.groups && d.groups && f.groups.length !== d.groups.length) q.lg = f.groups.join(",");
+  if (f.allocation && d.allocation && f.allocation.length !== d.allocation.length) q.lal = f.allocation.join(",");
+  if (f.rooms && f.rooms.length) q.lrm = f.rooms.join(",");
+  if (f.sources) q.lsrc = f.sources.join(",");
+  if (f.showReserved) q.lres = "1";
+  if (f.offerOnly) q.loffer = "1";
+  if (LST.sort !== "dist" || LST.desc) q.lsort = LST.sort + (LST.desc ? ":d" : "");
+  if (LST.open) q.lopen = "1";
+  return q;
+}
+function lstReadHash(q) {
+  const f = LST.filters;
+  const d = LV.DEFAULT_FILTERS || {};
+  f.groups = q.lg ? q.lg.split(",").filter(Boolean) : (d.groups || []).slice();
+  f.allocation = q.lal ? q.lal.split(",").filter(Boolean) : (d.allocation || []).slice();
+  f.rooms = q.lrm ? q.lrm.split(",").filter(Boolean) : [];
+  f.sources = q.lsrc ? q.lsrc.split(",").filter(Boolean) : null;
+  f.showReserved = q.lres === "1";
+  f.offerOnly = q.loffer === "1";
+  if (q.lsort) { const [k, dd] = q.lsort.split(":"); LST.sort = k; LST.desc = dd === "d"; }
+  else { LST.sort = "dist"; LST.desc = false; }
+  LST.open = q.lopen === "1";
+}
+
+/* --- the session cache --- */
+const lstContains = (a, b) => a.s <= b.s && a.w <= b.w && a.n >= b.n && a.e >= b.e;
+function lstPad(box) {
+  const dLat = (box.n - box.s) * LST_PAD, dLon = (box.e - box.w) * LST_PAD;
+  return { s: box.s - dLat, w: box.w - dLon, n: box.n + dLat, e: box.e + dLon };
+}
+function lstBoxOf(map) {
+  const b = map.getBounds();
+  return { s: b.getSouth(), w: b.getWest(), n: b.getNorth(), e: b.getEast() };
+}
+const lstHave = box => LST.boxes.some(b => lstContains(b, box));
+
+/* --- fetching --- */
+/* One request per viewport, 600 ms after the map stops. A box already in hand is
+   never asked for again, and there is no interval anywhere. */
+function lstWant(map) {
+  if (!map || !LAY.has("listings")) return;
+  if (map.getZoom() < LST_ZOOM) return;
+  const box = lstBoxOf(map);
+  if (lstHave(box) || LST.loading) return;
+  if (LST.timer) clearTimeout(LST.timer);
+  LST.timer = setTimeout(() => { LST.timer = null; lstFetch(lstPad(box), map); }, LST_DEBOUNCE);
+}
+function lstUrl(box) {
+  if (LST.bboxOk) return `${GATEWAY}/bbox?s=${box.s.toFixed(6)}&w=${box.w.toFixed(6)}&n=${box.n.toFixed(6)}&e=${box.e.toFixed(6)}`;
+  /* the fallback for a gateway without /bbox: the centre, and a radius that
+     covers the view, capped */
+  const lat = (box.s + box.n) / 2, lon = (box.w + box.e) / 2;
+  const halfLat = havM(box.s, lon, box.n, lon) / 2, halfLon = havM(lat, box.w, lat, box.e) / 2;
+  const r = Math.min(LST_FALLBACK_MAX, Math.round(Math.sqrt(halfLat * halfLat + halfLon * halfLon)) || 500);
+  return `${GATEWAY}/nearby?lat=${lat.toFixed(6)}&lon=${lon.toFixed(6)}&r=${r}`;
+}
+async function lstFetch(box, map) {
+  LST.loading = true; LST.error = null; lstRefresh();
+  try {
+    let res = await fetch(lstUrl(box), { headers: { accept: "application/json" } });
+    if (res.status === 404 && LST.bboxOk) {
+      /* an older deployment without /bbox — fall back once, for the session */
+      LST.bboxOk = false;
+      res = await fetch(lstUrl(box), { headers: { accept: "application/json" } });
+    }
+    const body = await res.json().catch(() => null);
+    if (!body || !Array.isArray(body.listings)) throw new Error(`the gateway answered HTTP ${res.status}`);
+    /* A 502 still carries the reason for every source, so it is rendered rather
+       than thrown away: the legend has to be able to say which one failed. */
+    LST.boxes.push(box);
+    LST.sources = body.sources || [];
+    LST.fetchedAt = body.fetchedAt || null;
+    LST.covered = body.covered !== false;
+    for (const l of body.listings) {
+      const k = l.src + ":" + l.id;
+      if (LST.seen.has(k)) continue;
+      LST.seen.add(k); LST.rows.push(l);
+    }
+  } catch (err) {
+    LST.error = err && err.message ? err.message : "the gateway did not answer";
+  } finally {
+    LST.loading = false;
+    lstRefresh(map);
+  }
+}
+/* redraw whatever is showing listings right now, without re-rendering the page */
+function lstRefresh(map) {
+  const m = map || LF.map || LF.pmap;
+  if (m && LAY.has("listings")) { LF.listDrawn = false; try { lstBuild(m); } catch (e) { console.warn("listings", e); } }
+  ovLegends();
+  /* the Test property section redraws itself from here once it exists (phase 7) */
+  if (typeof lstSectionRefresh === "function") lstSectionRefresh();
+}
+function lstRetry() { LST.error = null; LST.boxes.length = 0; lstWant(LF.map || LF.pmap); }
+
+/* --- what is on screen --- */
+const lstShown = () => (LV.applyFilters ? LV.applyFilters(LST.rows, LST.filters) : LST.rows);
+const lstInBox = (rows, box) => rows.filter(l =>
+  l.lat != null && l.lon != null && l.lat >= box.s && l.lat <= box.n && l.lon >= box.w && l.lon <= box.e);
+/* the listings within the Test property radius — the pin's own circle, not a box */
+function lstNearPin(rows) {
+  if (PROP.lat == null) return rows;
+  return rows.filter(l => l.lat != null && havM(PROP.lat, PROP.lon, l.lat, l.lon) <= PROP.rad)
+             .map(l => Object.assign({}, l, { dist_m: Math.round(havM(PROP.lat, PROP.lon, l.lat, l.lon)) }))
+             .sort((a, b) => a.dist_m - b.dist_m);
+}
+
+/* --- the markers --- */
+const LST_COL = () => { const o = {}; (LV.GROUPS || []).forEach(g => { o[g.key] = g.color; }); return o; };
+function lstBuild(map) {
+  const m = map || LF.map;
+  if (!m) return;
+  lfDrop("listLayer");
+  if (m.getZoom() < LST_ZOOM && m !== LF.pmap) { LF.listDrawn = false; lstWant(m); return; }
+  lstWant(m);
+  const col = LST_COL();
+  const rows = m === LF.pmap && PROP.lat != null ? lstNearPin(lstShown()) : lstInBox(lstShown(), lstBoxOf(m));
+  const g = L.layerGroup();
+  /* Listings on a shared point are fanned out, never stacked — otherwise the one
+     on top is the only one a reader can ever click. */
+  for (const cluster of (LV.clusterByPoint ? LV.clusterByPoint(rows) : [rows])) {
+    const offs = LV.spiderOffsets(cluster.length, cluster[0].lat);
+    cluster.forEach((l, i) => {
+      const [dLat, dLon] = offs[i];
+      const mk = L.marker([l.lat + dLat, l.lon + dLon], {
+        icon: L.divIcon({ className: "",
+          html: `<div class="lst-mk" style="width:13px;height:13px;background:${col[LV.groupOf(l)]}"></div>`,
+          iconSize: [13, 13], iconAnchor: [6.5, 6.5] }),
+        title: `${l.address || ""} · ${l.src_label || l.src}`,
+      });
+      if (cluster.length > 1) {
+        L.polyline([[l.lat, l.lon], [l.lat + dLat, l.lon + dLon]],
+          { color: col[LV.groupOf(l)], weight: 1, opacity: .5 }).addTo(g);
+      }
+      mk.bindPopup(lstCard(l), { maxWidth: 320, minWidth: 300, className: "lstpop" });
+      mk.on("popupopen", () => lstFillText(l));
+      mk.addTo(g);
+    });
+  }
+  g.addTo(m); LF.listLayer = g; LF.listDrawn = true; LF.listCount = rows.length;
+}
+
+/* --- the card --- */
+function lstBadges(l) {
+  const b = [];
+  if (l.offer && l.offer.flag) b.push(`<span class="lst-bdg offer" title="${esc(l.offer.snippet || "")}">Kampanj</span>`);
+  if (l.allocation === "queue") {
+    const q = (l.queue_years_q1 != null && l.queue_years_q3 != null)
+      ? `Kö: ${l.queue_years_q1}–${l.queue_years_q3} år`
+      : "Kö: köad tid avgör";
+    b.push(`<span class="lst-bdg queue" title="Allocated by queue time, not first come first served">${esc(q)}</span>`);
+  }
+  if (Array.isArray(l.also_on) && l.also_on.length) {
+    const u = (l.also_on_urls && l.also_on_urls.homeq) || null;
+    b.push(u ? `<a class="lst-bdg also" href="${esc(u)}" target="_blank" rel="noopener">Also on HomeQ ›</a>`
+             : `<span class="lst-bdg also">Also on ${esc(l.also_on.join(", "))}</span>`);
+  }
+  /* Boplats Väst publishes a position for the property, not the entrance, and
+     several adverts can share one point. Saying so is the difference between a
+     dot that is approximate and a dot that lies. */
+  if (l.src === "boplatsvast") b.push('<span class="lst-bdg pos" title="The source gives one position per property, not per entrance">Position: property-level</span>');
+  if (l.audience) b.push(`<span class="lst-bdg">${esc((LV.AUDIENCE_LABEL || {})[l.audience] || l.audience)}</span>`);
+  return b.join("");
+}
+function lstCard(l) {
+  const m2 = LV.sekPerM2Year(l);
+  const sub = [l.area_name, l.landlord].filter(Boolean).join(" · ") || l.src_label || l.src;
+  const img = l.image
+    ? `<img class="img" src="${esc(l.image)}" alt="" loading="lazy" onerror="this.outerHTML='<div class=\\'noimg\\'>no photo</div>'">`
+    : '<div class="noimg">no photo</div>';
+  return `<div class="lst-card" data-card="${esc(l.src)}:${esc(l.id)}">
+    ${img}
+    <div class="pad">
+      <h3>${esc(l.address || "Address not given")}</h3>
+      <div class="sub">${esc(sub)} · ${esc(l.src_label || l.src)}</div>
+      <div class="facts">
+        <div><i>Advertised rent</i> ${l.rent_sek_mo != null ? nf(l.rent_sek_mo, 0) + " kr/mån" : "–"}</div>
+        <div><i>Size</i> ${l.size_m2 != null ? nf(l.size_m2, 1) + " m²" : "–"}</div>
+        <div><i>Rooms</i> ${l.rooms != null ? nf(l.rooms, l.rooms % 1 ? 1 : 0) : "–"}</div>
+        <div><i>Floor</i> ${l.floor != null ? nf(l.floor, 0) : "–"}</div>
+        <div><i>SEK/m²/yr</i> ${m2 != null ? nf(m2, 0) : "–"}</div>
+        <div><i>From</i> ${esc(l.available_from || "–")}</div>
+      </div>
+      <div class="badges">${lstBadges(l)}</div>
+      <div class="text" data-text>…</div>
+      <a class="open" href="${esc(l.url || "#")}" target="_blank" rel="noopener">Open listing ›</a>
+    </div></div>`;
+}
+const lstText = new Map();
+async function lstFillText(l) {
+  const node = document.querySelector(`[data-card="${(window.CSS && CSS.escape) ? CSS.escape(l.src + ":" + l.id) : l.src + ":" + l.id}"] [data-text]`);
+  if (!node) return;
+  if (l.text_start) { node.textContent = l.text_start; return; }
+  node.textContent = "…";
+  const key = `${l.src}:${l.id}`;
+  if (!lstText.has(key)) {
+    lstText.set(key, fetch(`${GATEWAY}/text?src=${encodeURIComponent(l.src)}&id=${encodeURIComponent(l.id)}`)
+      .then(r => (r.ok ? r.json() : null)).then(j => (j && j.text_start) || null).catch(() => null));
+  }
+  const t = await lstText.get(key);
+  if (!document.body.contains(node)) return;
+  if (t) node.textContent = t;
+  else {
+    node.classList.add("muted");
+    node.innerHTML = `Listing text isn't available here. <a href="${esc(l.url || "#")}" target="_blank" rel="noopener">Read the full listing ›</a>`;
+  }
+}
+
+/* --- the legend --- */
+function lstGroupCounts(rows) {
+  const out = {};
+  (LV.GROUPS || []).forEach(g => { out[g.key] = 0; });
+  for (const l of rows) out[LV.groupOf(l)] = (out[LV.groupOf(l)] || 0) + 1;
+  return out;
+}
+function lstStatusLine() {
+  const bad = (LST.sources || []).filter(s => s.ok === false);
+  const age = LV.snapshotAge ? LV.snapshotAge(LST.fetchedAt) : null;
+  if (!LST.sources.length) return LST.loading ? "asking the gateway…" : "";
+  if (bad.length) {
+    const stale = bad.filter(s => /stale/i.test(s.error || "")).length;
+    return `${LST.sources.length - bad.length} of ${LST.sources.length} sources answered · ${stale ? stale + " stale" : bad.length + " failed"}`;
+  }
+  return `${LST.sources.length} sources answered${age ? " · " + age : ""}`;
+}
+function lstLegend() {
+  const z = LF.map ? LF.map.getZoom() : LST_ZOOM;
+  if (LST.error) {
+    return `<div class="lgtitle">Rental listings<span>unavailable</span></div>
+      <div class="lgnote">Listings unavailable — gateway error, <button class="lgb" data-lstretry>retry</button>.
+      Nothing else on the map is affected. <span class="dim">${esc(LST.error)}</span></div>`;
+  }
+  if (z < LST_ZOOM) {
+    return `<div class="lgtitle">Rental listings<span>zoom in to see listings</span></div>
+      <div class="lgnote">Live adverts are drawn from zoom ${LST_ZOOM}: at this scale a national dot cloud would say nothing about any one place.</div>`;
+  }
+  const rows = LF.map ? lstInBox(lstShown(), lstBoxOf(LF.map)) : lstShown();
+  const c = lstGroupCounts(rows);
+  const col = LST_COL();
+  return `<div class="lgtitle">Rental listings<span>${LST.loading ? "loading…" : nf(rows.length, 0) + " in view"}</span></div>` +
+    (LV.GROUPS || []).map(g => `<div class="lgrow"><i style="background:${col[g.key]}"></i>${esc(g.label)} <b>${nf(c[g.key] || 0, 0)}</b></div>`).join("") +
+    `<div class="lgnote">${esc(lstStatusLine())}${LST.covered ? "" : " · the view is wider than one query covers, so this is its middle — zoom in for the rest"}.
+      <b>Advertised</b> rents from third-party adverts, not contract rents, and a count of adverts is not a vacancy rate.</div>`;
+}
+
 /* ---------- the feature layers ----------
    A layer is five hooks and no more: an id (which is what `lay=` carries), a row
    in the Layers ▾ menu, an `lf…Layers()` builder, a legend, and optional
@@ -2618,6 +2936,11 @@ const OV = [
     title: "The areas the police have designated as utsatt or särskilt utsatt (Dec 2025)",
     note: () => "Polismyndigheten, Dec 2025",
     build: usoBuild, legend: usoLegend },
+  { id: "listings", label: "Rental listings",
+    title: "What is advertised for rent in view, live through the listings gateway (zoom 13+)",
+    note: () => "live third-party adverts · zoom 13+",
+    subs: () => lstSubs(),
+    build: map => lstBuild(map), legend: lstLegend },
 ];
 const ovOn = o => LAY.has(o.id);
 const ovList = () => OV.filter(o => !o.avail || o.avail());
@@ -2701,6 +3024,14 @@ function layersMenuHtml() {
         <i class="tick">${ovOn(o) ? "✓" : ""}</i><span><b>${esc(o.label)}</b><em>${esc(o.note ? o.note() : "")}</em></span></button>
         ${ovOn(o) && o.subs ? `<div class="msubs">${o.subs()}</div>` : ""}`).join("")}
       ${zoneRow}</div>` : ""}</span>`;
+}
+/* the three group ticks for the listings layer, in the menu with every other
+   sub-filter — the same grouping and the same colours the section below uses */
+function lstSubs() {
+  const on = (LST.filters.groups || []);
+  const col = LST_COL();
+  return (LV.GROUPS || []).map(g =>
+    `<button class="mchip ${on.includes(g.key) ? "on" : ""}" data-lstgroup="${g.key}"><i style="background:${on.includes(g.key) ? col[g.key] : "transparent"};border-color:${col[g.key]}"></i>${esc(g.label)}</button>`).join("");
 }
 /* the category ticks that used to live inside the Services / Public legends */
 function srvSubs(which) {

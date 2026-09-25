@@ -121,6 +121,20 @@ def hop(page, route, settle=650):
     return page.evaluate("location.hash")
 
 
+def open_menu(page, testid: str) -> None:
+    """Click a menu trigger only if its popover is not already showing."""
+    pop = {"layers-btn": "layers-pop", "export-btn": "export-menu",
+           "ind-picker-btn": "ind-picker-pop"}[testid]
+    if page.eval_on_selector_all(f"[data-testid={pop}]", "e => e.length") == 0:
+        page.click(f"[data-testid={testid}]")
+        page.wait_for_timeout(250)
+
+
+def close_menus(page) -> None:
+    page.keyboard.press("Escape")
+    page.wait_for_timeout(150)
+
+
 def text(page) -> str:
     return page.evaluate("document.body.innerText")
 
@@ -249,8 +263,7 @@ def phase2(r: Report, page, errs) -> None:
 def phase3(r: Report, page, errs, calls) -> None:
     r.head("P3", "Layers ▾ including rental listings")
     hop(page, "#map/0180")
-    page.click("[data-testid=layers-btn]")
-    page.wait_for_timeout(250)
+    open_menu(page, "layers-btn")
     rows = page.eval_on_selector_all("[data-testid=layers-pop] [data-layer]",
                                      "e => e.map(x => x.getAttribute('data-layer'))")
     for want in ["infra", "public", "services", "schools", "uso", "listings"]:
@@ -261,8 +274,7 @@ def phase3(r: Report, page, errs, calls) -> None:
     # zoom 14 over Stockholm, tick the layer, expect markers from the fixture
     hop(page, f"#map/0180?c={STHLM}&z=14")
     calls["n"] = 0
-    page.click("[data-testid=layers-btn]")
-    page.wait_for_timeout(200)
+    open_menu(page, "layers-btn")
     page.click("[data-testid=layers-pop] [data-layer=listings]")
     page.wait_for_timeout(1800)
     r.ok("ticking it writes lay=listings", "listings" in page.evaluate("location.hash"),
@@ -293,8 +305,7 @@ def phase4(r: Report, page, errs) -> None:
         n = page.eval_on_selector_all("[data-testid=ind-picker]", "e => e.length")
         r.ok(f"exactly one picker on {name}", n == 1, str(n))
     hop(page, "#map")
-    page.click("[data-testid=ind-picker-btn]")
-    page.wait_for_timeout(250)
+    open_menu(page, "ind-picker-btn")
     r.ok("the popover opens with a focused search",
          page.eval_on_selector_all("[data-testid=ind-picker-pop] [data-testid=ind-search]", "e => e.length") == 1
          and page.evaluate("document.activeElement.getAttribute('data-testid')") == "ind-search")
@@ -330,8 +341,7 @@ def phase4(r: Report, page, errs) -> None:
     r.ok("zones=0 hides them even for a Climate indicator",
          page.eval_on_selector_all("[data-testid=legend-zones] .lgtitle", "e => e.length") == 0)
     hop(page, "#area/regso/0180R001_RegSO2025")
-    page.click("[data-testid=ind-picker-btn]")
-    page.wait_for_timeout(250)
+    open_menu(page, "ind-picker-btn")
     r.ok("a sub-area page groups the inherited indicators",
          page.eval_on_selector_all("[data-group='From the municipality']", "e => e.length") == 1)
 
@@ -469,8 +479,7 @@ def phase8(r: Report, page, errs) -> None:
             "period_type;value;margin_of_error;value_type;inherited_from;direction;source;table_id;"
             "source_url;as_of;fetched;licence")
     hop(page, "#data/areas/kommun")
-    page.click(".dhead [data-testid=export-btn]")
-    page.wait_for_timeout(250)
+    open_menu(page, "export-btn")
     items = page.eval_on_selector_all("[data-testid=export-menu] [data-export]",
                                       "e => e.map(x => x.getAttribute('data-export'))")
     for want in ["view", "areas", "projects", "national", "property", "nearby", "sources"]:
