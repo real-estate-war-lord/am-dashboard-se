@@ -147,3 +147,88 @@ cannot silently move them.
   publishing a per-project budget, the figure goes into `infra_se.csv` and the row
   here is deleted — `build_makro.py` warns if it names a project that no longer
   exists.
+
+---
+
+## P2 — "Map only" mode
+
+Gate green: `make validate`, `make build`, `make test` (smoke + `node --test`,
+now 30 route tests), `tests/ui_v2/spec.py --upto P11` (169/169),
+`tests/ui_v2_1/spec.py --upto P2` (135/135 — P1's 70 plus 65 new).
+
+### Built
+
+**`ind=none` is the mode, and it is the absence of an indicator — not another
+indicator and not another layer.** It travels in the same `ind=` key, so an old
+link keeps working, a Map only link is the same shape as any other, and the three
+places that name the active indicator name it: the first chip, the first row of
+the picker, and the key `0`.
+
+`src/route_core.js` owns the spelling (`IND_NONE`, `stripNone()`): `ind=none`
+survives on `map/*`, `area/*` and `property`, and is **dropped** from every path
+that has no map. `tests/route.test.js` covers the codec in five new tests,
+including idempotence on six more hashes.
+
+`src/app.js` gained one predicate and one setter rather than a flag per view:
+`mapOnly()` (the key *and* a view with a map), `setMapInd()` (what `0` comes back
+to, and the period fix-up that four click handlers used to repeat each), and
+`NONE_IND`, a synthetic indicator so `curInd()` still returns an object with a
+label and an `fmt`. The outline style is three helpers next to the colour model —
+`moStyle`/`moHover`/`moWeight` — used by all three maps, so the big map, the area
+mini-map and the pin mini-map cannot drift apart.
+
+In the mode: the choropleth is replaced by `#5C6B5F` outlines (1.1 px kommun,
+0.7 RegSO, 0.5 DeSO) that stay clickable and highlight on hover; the indicator
+legend is emptied (`.maplegend:empty` hides the box, and the Legend pill is not
+rendered when there is nothing in the stack); the period control is not rendered;
+the info strip reads **"Map only — pick an indicator to colour the areas"**; the
+polygon labels are names with no value beside them. The popups keep every figure —
+five headline rows instead of the big selected figure plus four — and the map's
+area card, the area page tiles and Test property's tiles are untouched.
+
+Every Layers ▾ layer works on top; the spec toggles the police-designated areas on
+and off against a Map only map and checks the paths, the key and the hash.
+
+`0` toggles, on the map, the area page and Test property, and is ignored while the
+caret is in a field — both halves are checked.
+
+**The screenshot review caught one thing the tests did not:** on a kommun's area
+page `own` is *every* sub-area, so the "this is the page's area" 2.6 px stroke was
+being given to all 127 Stockholm RegSO at once and the mini-map read as a black
+mesh. The heavy stroke is now only for the page of one area.
+
+### Deviations
+
+Eight, all in `docs/v2_1/DECISIONS.md`. The three to know before touching this:
+`ind=none` is stripped from non-map paths rather than ignored; the polygons keep a
+**transparent fill** (`fill-opacity: 0`) because Leaflet will not hit-test the
+interior of `fill: none`; and the hazard zones are the one layer Map only cannot
+offer, because they ride a Climate indicator.
+
+No v2.0 check was changed — the 169 still pass as written.
+
+### Known issues, not fixed here
+
+* The Charts picker has no Map only row and should not: a chart axis cannot be
+  nothing. Its scope (`"chart"`) is excluded explicitly.
+* At the national zoom the kommun labels are still suppressed by the polygon-size
+  rule, so a Map only national map shows the basemap's names and not the
+  dashboard's. Same rule as with an indicator; not a regression.
+* `CHANGELOG.md` has no v2.1 section yet — P1 did not open one either. Whichever
+  phase writes the release notes should cover P1 and P2 together.
+
+### What the next phase must know
+
+* **`mapOnly()` is the predicate, not `MK.ind === "none"`** — it also asks whether
+  the view has a map. If you add a view with a map, add it to `MAP_ONLY_VIEWS`;
+  if you add one without, do nothing and the mode will fall back for you.
+* **Set the map indicator through `setMapInd(key)`.** It remembers `MK.indPrev`
+  for `0` and fixes the period; assigning `MK.ind` directly loses both.
+* A new map layer needs no Map only branch — the layers draw over the outlines
+  unchanged. A new *choropleth* path does: look at `moStyle()` before inventing
+  a second grey.
+* `tests/ui_v2_1/spec.py` has `paths(page, "map"|"area"|"prop")` and
+  `legend_state(page, sel)`, and `open_area_popup(page, name)` opens a polygon's
+  popup through Leaflet instead of clicking a pixel. Reuse them.
+* Three screenshot routes were added (`maponly`, `maponly-kommun`,
+  `maponly-area`), so `--shots` now writes 36 files per run.

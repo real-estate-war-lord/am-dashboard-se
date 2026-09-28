@@ -1871,6 +1871,35 @@ tr.inh td.num{color:var(--ink2)}
 .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
 
 /* ============================================================================
+   v2.1 P2 — "Map only"
+   The map with no choropleth: thin neutral outlines, no key, and one line where the
+   indicator line stands. Nothing here replaces the look — the chip is the chip
+   row's own chip and the note is the indicator strip's own box.
+   ==========================================================================*/
+/* the chip reads as a mode rather than as a figure: dashed until it is on */
+.iqb.none{border-style:dashed;color:var(--muted)}
+.iqb.none:hover{color:var(--ink)}
+.iqb.none.on{border-style:solid;background:var(--ink);color:#fff}
+.pkrow.none .pkl{font-weight:600}
+/* the info strip, in the slot indExplain() occupies so the map does not jump */
+.indx.monly{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;padding:7px 12px;font-size:12.5px}
+.indx.monly b{font-family:var(--disp);font-size:14px}
+.indx.monly .dim{font-family:var(--mono);font-size:10.5px;margin-left:auto;white-space:nowrap}
+#mapcard>.indx.monly{margin:6px 0 0}
+/* With nothing coloured in, the basemap may come up a step so the place names under
+   the outlines are readable. A step, not a different basemap. */
+.mapwrap.maponly .basemap{filter:saturate(.55) brightness(1.02)}
+/* the mini-maps: no chart panel beside them, so the map takes the whole row */
+.studyrow.maponly{grid-template-columns:1fr}
+.mapwrap .monote{position:absolute;left:10px;bottom:10px;z-index:800;max-width:70%;
+  background:rgba(255,255,255,.94);border:1px solid var(--line);border-radius:8px;
+  padding:5px 9px;font-family:var(--mono);font-size:10px;line-height:1.35;color:var(--ink2);
+  pointer-events:none;box-shadow:0 2px 8px rgba(20,28,24,.10)}
+@media (max-width:700px){
+  .indx.monly .dim{margin-left:0;white-space:normal}
+}
+
+/* ============================================================================
    v2.0 — the responsive overrides that must come last
    The map toolbar's one-row rule and the tile grid are defined above; these
    undo them for narrow screens, so they have to win on source order.

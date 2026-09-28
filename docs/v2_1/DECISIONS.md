@@ -45,3 +45,33 @@ front. A reader should be able to reverse any of them from this file alone.
   figure. Not in the brief; found in the P1 screenshot review.
 - **P1** — a coded indicator (Boverket BME, cloudburst mapping) gets no y/y and no
   "Δ since" anywhere: "Shortage → Balance" is not +1 pp.
+- **P2** — `ind=none` is **dropped from the hash** on every path that has no map
+  (`data/*`, `charts`, the sheet views) rather than carried and ignored:
+  `route_core.js` `stripNone()` does it, and the view falls back to its first
+  indicator. A Data table's highlighted column and a chart axis cannot be "no
+  indicator", and a shared link that said `ind=none` there would name a column
+  that cannot exist. Dropping a key is idempotent, so `toV2()` is still safe to
+  run on every hashchange.
+- **P2** — in Map only the polygons keep a **transparent fill** (`fill-opacity: 0`)
+  rather than `fill: false`. Leaflet only hit-tests the interior of a path whose
+  `fill` attribute is not `none`, so `fill: false` would have left a 1 px stroke as
+  the only click target on 3 363 RegSO. The spec asserts fill-opacity, never the
+  presence of the attribute.
+- **P2** — the hover highlight in Map only is the **stroke only** (darker, ~2.5×
+  thicker), never a wash of fill. That keeps "in Map only nothing is filled" true at
+  every moment, including while the cursor is on an area, so the check does not
+  depend on where the mouse is.
+- **P2** — on the area page and Test property, Map only **removes the chart panel**
+  and gives the row to the mini-map. A chart panel about no indicator is a card of
+  dashes; the brief asks for the mini-map, and the headline tiles above it keep the
+  figures on the page.
+- **P2** — the **hazard zones are not offered in Map only.** They are the one layer
+  that rides an indicator (`climOn()` needs a Climate indicator to know which
+  layer), so with no indicator selected there is nothing to draw; picking one for
+  the reader would be inventing a scenario. This is what the brief's "climate zones
+  **where applicable**" resolves to. Every other Layers ▾ layer works unchanged.
+- **P2** — the map popups in Map only show **five** headline figures instead of the
+  big selected figure plus four. There is no selected indicator to lead with, and
+  an empty big row would read as a missing value rather than as no question asked.
+- **P2** — a Chart link out of Map only (`↗ Chart`, the area card, the popups) names
+  the first available headline indicator rather than passing `none` to an axis.

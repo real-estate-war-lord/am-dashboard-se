@@ -118,8 +118,10 @@ const IND_DESO = IND;
 const S = { view: "makro" };
 const YEARS = ((D.meta && D.meta.years) || []).slice().sort();
 const LATEST = (D.meta && D.meta.latest_year) || (YEARS[YEARS.length - 1] || "");
-/* sub = which layer a drilled kommun shows: its RegSO (default) or its DeSO */
-const MK = { ind: (IND[0] || {}).key, kommun: null, own: false, year: LATEST, sub: "regso", fq: "year" };
+/* sub = which layer a drilled kommun shows: its RegSO (default) or its DeSO.
+   indPrev = the indicator `0` (Map only) comes back to. */
+const MK = { ind: (IND[0] || {}).key, indPrev: (IND[0] || {}).key, kommun: null, own: false,
+             year: LATEST, sub: "regso", fq: "year" };
 const desoMode = () => !!(MK.kommun && MK.sub === "deso" && desoLoaded(MK.kommun));
 
 /* area page: `show` is the set of open <details> sections, serialised as show= */
@@ -175,7 +177,53 @@ function curPool() { if (S.view === "area") { const e = areaEntity(); return e ?
 const allDeso = () => { const out = []; for (const k in DESO) out.push(...DESO[k]); return out; };
 const yearsFor = k => yearsForPool(k, curPool());
 const curInds = () => { if (S.view === "area") { const e = areaEntity(); return e ? e.inds : IND; } return IND; };
-const curInd = () => { const L = curInds(); return L.find(i => i.key === MK.ind) || L[0] || { key: "", label: "", fmt: "pct1" }; };
+
+/* ---------- Map only ----------
+   The owner's wish: the map with nothing coloured in — boundaries, the basemap and
+   whichever feature layers are on, and no choropleth at all. It is the ABSENCE of
+   an indicator, not another indicator and not another layer, so it lives in the
+   same `ind=` key (`ind=none`; the codec is in route_core.js) and every control
+   that names the active indicator names it: the first chip, the first row of the
+   picker, and the key `0`.
+
+   It is only offered where there is a map to look at. A Data table's highlighted
+   column and a Charts axis need a real series, so on those views `ind=none` is
+   dropped from the hash and the view falls back to its first indicator rather than
+   drawing a column of dashes. */
+/* read off route_core.js, which is inlined before this file and owns the spelling */
+const IND_NONE = (window.ROUTE_CORE || {}).IND_NONE || "none";
+const NONE_IND = { key: IND_NONE, label: "Map only", short: "Map only", unit: "", group: "Map",
+  fmt: "int", direction: "neutral", level: "kommun", levels: ["kommun", "regso", "deso"],
+  desc: "No indicator: the boundaries are drawn as outlines and nothing is coloured in. "
+      + "Clicking an area still opens its figures.", source: "" };
+const MAP_ONLY_VIEWS = ["makro", "area", "property"];
+const mapOnlyOk = () => MAP_ONLY_VIEWS.includes(S.view);
+const mapOnly = () => MK.ind === IND_NONE && mapOnlyOk();
+/* A link out to Charts needs a real series, so from Map only it names the first
+   headline indicator rather than passing `none` to an axis. */
+const linkInd = () => (MK.ind === IND_NONE
+  ? (HL_KEYS.find(k => IND.some(i => i.key === k)) || (IND[0] || {}).key || "")
+  : MK.ind);
+/* One setter for every control that changes the map's indicator, so "remember what
+   `0` comes back to" and "a period that does not exist for the new indicator" are
+   handled in one place rather than in four click handlers. */
+function setMapInd(key) {
+  if (key !== IND_NONE) MK.indPrev = key;
+  MK.ind = key;
+  if (MK.fq === "q" && !quarterly(curInd())) MK.fq = "year";
+  if (!curPeriods().includes(MK.year)) MK.year = newestPeriod();
+}
+function toggleMapOnly() {
+  if (MK.ind === IND_NONE) {
+    const back = [MK.indPrev].concat(QUICK_KEYS).find(k => k && curInds().some(i => i.key === k));
+    setMapInd(back || (curInds()[0] || {}).key);
+  } else setMapInd(IND_NONE);
+  syncHash(); renderKeep();
+}
+const curInd = () => {
+  if (mapOnly()) return NONE_IND;
+  const L = curInds(); return L.find(i => i.key === MK.ind) || L[0] || { key: "", label: "", fmt: "pct1" };
+};
 
 /* ---------- routing (hash) ----------
    The hash is the source of truth, and src/route_core.js owns its spelling: the
@@ -271,6 +319,7 @@ function parseHash() {
   const q = r.query, parts = r.parts, v = r.view;
   const prevView = S.view;
   if (q.ind) MK.ind = q.ind;
+  if (q.ind && q.ind !== IND_NONE) MK.indPrev = q.ind;
   MK.fq = q.fq === "q" ? "q" : "year";
   MK.year = q.y || LATEST;
   LAY.clear();
@@ -297,7 +346,9 @@ function parseHash() {
     if (PROP.lat != null) propResolve();
   } else if (SHEETS[v] && parts.length > 1) { S.view = "sheet"; SH.kind = v; SH.parts = parts.slice(1); }
   else if (v === "charts") {
-    S.view = "charts"; CH.ind = q.ind || CH.ind;
+    /* `ind=none` is Map only — a chart axis cannot be nothing, so it is ignored
+       here as well as stripped from the hash by route_core.js */
+    S.view = "charts"; CH.ind = (q.ind && q.ind !== IND_NONE) ? q.ind : CH.ind;
     CH.areas = q.a ? q.a.split(",").filter(Boolean) : (q.a === "" ? [] : CH.areas);
     CH.y0 = q.y0 || ""; CH.y1 = q.y1 || "";
     CH.median = q.med !== "0"; CH.mode = q.mode || "auto";
@@ -309,7 +360,11 @@ function parseHash() {
     setShow(MC.show, q.show, MC_SHOW_DEFAULTS);
     if (MK.sub === "deso") loadDeso(MK.kommun);
   }
-  if (!curInds().some(i => i.key === MK.ind)) MK.ind = (curInds()[0] || {}).key;
+  /* Map only survives only on a view that has a map; anywhere else the view falls
+     back to its first indicator, which is what route_core.js has already done to
+     the hash. */
+  if (MK.ind === IND_NONE) { if (!mapOnlyOk()) MK.ind = (curInds()[0] || {}).key; }
+  else if (!curInds().some(i => i.key === MK.ind)) MK.ind = (curInds()[0] || {}).key;
   if (MK.fq === "q" && !quarterly(curInd())) MK.fq = "year";
   if (!curPeriods().includes(MK.year)) MK.year = newestPeriod();
   if (S.view === "makro") {
@@ -586,15 +641,11 @@ document.addEventListener("click", e => {
   if (g("[data-chclear]")) { CH.areas = []; syncHash(); renderKeep(); return; }
   if ((el = g("[data-sub]"))) { MK.sub = el.dataset.sub; if (MK.sub === "deso") loadDeso(MK.kommun); syncHash(); renderKeep(); return; }
   if ((el = g("[data-arsub]"))) { AR.sub = el.dataset.arsub; syncHash(); renderKeep(); return; }
-  if ((el = g("[data-indq]"))) { MK.ind = el.dataset.indq;
-    if (MK.fq === "q" && !quarterly(curInd())) MK.fq = "year";
-    if (!curPeriods().includes(MK.year)) MK.year = newestPeriod(); syncHash(); renderKeep(); return; }
+  if ((el = g("[data-indq]"))) { setMapInd(el.dataset.indq); syncHash(); renderKeep(); return; }
   if ((el = g("[data-pick]"))) { const [sc, ...rest] = el.dataset.pick.split(":"); pickerPick(sc, rest.join(":")); return; }
   if ((el = g("[data-fq]"))) { MK.fq = el.dataset.fq; MK.year = newestPeriod(); syncHash(); renderKeep(); return; }
   if (g("[data-mftoggle]")) { UI.mfOpen = !UI.mfOpen; const p = document.getElementById("mfpanel"), b = g("[data-mftoggle]"); if (p) p.style.display = UI.mfOpen ? "" : "none"; if (b) b.classList.toggle("on", UI.mfOpen); return; }
-  if ((el = g("[data-arind]"))) { MK.ind = el.dataset.arind;
-    if (MK.fq === "q" && !quarterly(curInd())) MK.fq = "year";
-    if (!curPeriods().includes(MK.year)) MK.year = newestPeriod(); syncHash(); renderKeep(); return; }
+  if ((el = g("[data-arind]"))) { setMapInd(el.dataset.arind); syncHash(); renderKeep(); return; }
   if ((el = g(".im"))) { tipToggle(el); return; }
   tipHide();
 });
@@ -657,12 +708,16 @@ document.addEventListener("keydown", e => {
     if (LF.fullKey) { closeMiniFull(); return; }
     if (S.view === "area") history.back();
   }
-  /* Quick jumps. Only on the map view, never with a modifier (Cmd-S must stay
-     Save), and never while the reader is typing — the area search box is one
-     keystroke away from these keys. */
-  if (S.view !== "makro" || e.metaKey || e.ctrlKey || e.altKey) return;
+  /* Single-key shortcuts: never with a modifier (Cmd-S must stay Save), and never
+     while the reader is typing — the area search box is one keystroke away. */
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
   const t = e.target;
   if (t && (/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) || t.isContentEditable)) return;
+  /* `0` turns the indicator fill off and back on, wherever there is a map: the big
+     one, the area page's and Test property's. */
+  if (e.key === "0" && mapOnlyOk()) { toggleMapOnly(); return; }
+  /* Quick jumps move the camera, and only the big map has one. */
+  if (S.view !== "makro") return;
   const j = MAP_JUMPS.find(x => x.key.toLowerCase() === (e.key || "").toLowerCase());
   if (j) { mapJump(j.id); }
 });
@@ -764,6 +819,22 @@ function scaleOf(list, vk, fixed, ind) {
   const t = v => { if (v == null || isNaN(v)) return null; let c = 0; while (c < breaks.length && v > breaks[c]) c++; return n > 1 ? c / (n - 1) : .5; };
   return { t, lo: vals[0], hi: vals[vals.length - 1], breaks, classes: n, n: vals.length };
 }
+/* ---------- Map only: the outline style ----------
+   Nothing is coloured in, and the areas stay clickable. Leaflet only hit-tests the
+   interior of a path whose `fill` attribute is not "none", so the polygon keeps a
+   fill and sets its opacity to zero: `fill: false` would draw the same outline and
+   answer clicks on the 1 px stroke alone.
+
+   The hover highlight is the stroke, never a wash of colour, so "in Map only mode
+   no area is filled" is true at every moment — including while the cursor is on
+   one — and a test can assert it without having to know where the mouse is. */
+const MO_LINE = "#5C6B5F", MO_HOVER = "#141C18";
+const MO_SCALE = { t: () => null, lo: null, hi: null, breaks: [], classes: 0, n: 0 };
+const moWeight = sub => (sub === "deso" ? 0.5 : sub === "regso" ? 0.7 : 1.1);
+const moStyle = w => ({ className: "mo-outline", color: MO_LINE, weight: w, opacity: .85,
+  fill: true, fillColor: MO_LINE, fillOpacity: 0, smoothFactor: 0.25 });
+const moHover = w => ({ color: MO_HOVER, weight: Math.max(2, w * 2.6), opacity: 1, fillOpacity: 0 });
+
 function legendHtml(sc, ind, key, note) {
   /* class-break legend drawn on top of the map (bottom right) */
   const f = fmtOf(ind); const b = sc.breaks || []; const n = sc.classes || 0;
@@ -872,12 +943,30 @@ function pickerTag(i, muniKeys, sc) {
    something the reader can see the result of. */
 const pickerMatch = (i, q) => !q || [i.label, i.short, i.group, i.unit].some(x => String(x || "").toLowerCase().includes(q));
 
+/* The Map only row: first in the list, in a group of its own, and filtered by the
+   search box like every other row — a row that ignored the query would sit above
+   the matches for "rent" claiming to be one. */
+const NONE_WORDS = "map only boundaries no indicator outlines blank";
+function pickerNoneRow(sc, cur, q) {
+  if (sc === "chart" || !mapOnlyOk()) return "";
+  if (q && !NONE_WORDS.includes(q)) return "";
+  const on = cur.key === IND_NONE;
+  return `<div class="pkgroup" data-group="Map"><div class="pkglab">Map<em>no indicator</em></div>
+    <button class="pkrow none ${on ? "on" : ""}" role="option" aria-selected="${on}"
+      data-ind="${IND_NONE}" data-pick="${sc}:${IND_NONE}" data-testid="pick-none"
+      title="${esc(NONE_IND.desc)}">
+      <span class="pkl">${esc(NONE_IND.label)} <em class="sh">boundaries only</em></span>
+      <span class="pku"></span><span class="pkt" title="no figure is coloured in">key 0</span></button></div>`;
+}
+
 function pickerRows(sc) {
   const L = pickerList(sc), cur = pickerCur(sc), muniKeys = pickerMuniKeys(sc);
   const q = (UI.pickQ || "").trim().toLowerCase();
   const groups = GROUP_ORDER.filter(g => L.some(i => (i.group || "Other") === g))
     .concat(L.some(i => !GROUP_ORDER.includes(i.group || "Other")) ? ["Other"] : []);
   const out = [];
+  const none = pickerNoneRow(sc, cur, q);
+  if (none) out.push(none);
   const row = i => {
     const tag = pickerTag(i, muniKeys, sc);
     return `<button class="pkrow ${i.key === cur.key ? "on" : ""}" role="option" aria-selected="${i.key === cur.key}"
@@ -921,7 +1010,7 @@ function pickerRefresh() {
 function pickerPick(sc, key) {
   UI.menu = null; UI.pickQ = "";
   if (sc === "chart") CH.ind = key;
-  else { MK.ind = key; if (!curPeriods().includes(MK.year)) MK.year = newestPeriod(); }
+  else setMapInd(key);
   syncHash(); renderKeep();
 }
 function pickerEnter() {
@@ -929,10 +1018,14 @@ function pickerEnter() {
   const first = document.querySelector("[data-testid=ind-picker-pop] .pkrow");
   if (first) pickerPick(sc, first.dataset.ind);
 }
-/* the chips: the figures people ask for first, one click each */
+/* the chips: the figures people ask for first, one click each — and, first of all,
+   the way back to a map with no figure on it at all */
 function indQuick() {
   const L = curInds(); const ks = QUICK_KEYS.map(k => L.find(i => i.key === k)).filter(Boolean);
-  return ks.length > 1 ? `<div class="iq" data-testid="ind-chips">${ks.map(i => `<button class="iqb ${MK.ind === i.key ? "on" : ""}" data-indq="${i.key}" title="${esc(i.label)}">${esc(i.short || i.label)}</button>`).join("")}</div>` : "";
+  if (ks.length < 2) return "";
+  const none = mapOnlyOk() ? `<button class="iqb none ${mapOnly() ? "on" : ""}" data-indq="${IND_NONE}"
+    data-testid="chip-none" title="${esc(NONE_IND.desc)} Key 0.">${esc(NONE_IND.label)}</button>` : "";
+  return `<div class="iq" data-testid="ind-chips">${none}${ks.map(i => `<button class="iqb ${MK.ind === i.key ? "on" : ""}" data-indq="${i.key}" title="${esc(i.label)}">${esc(i.short || i.label)}</button>`).join("")}</div>`;
 }
 
 /* ---------- the unified search ----------
@@ -1190,8 +1283,18 @@ function newestPeriod() {
   const ps = curPeriods();
   return ps.includes(LATEST) ? LATEST : (ps[ps.length - 1] || LATEST);
 }
+/* the line that stands where the indicator line stands, so turning the fill off
+   does not make the map jump up the page */
+const MAP_ONLY_LINE = "Map only — pick an indicator to colour the areas";
+function mapOnlyStrip() {
+  return `<div class="indx monly" data-testid="maponly-note"><b>Map only</b>
+    <span>— pick an indicator to colour the areas</span>
+    <span class="dim">boundaries only · click an area for its figures · key 0</span></div>`;
+}
 function periodControl() {
   const i = curInd();
+  /* nothing is drawn from a period, so there is no period to choose */
+  if (mapOnly()) return "";
   const oi = outlookOf(i);
   if (oi) {
     return `<span class="period" data-testid="period"><span class="fclab" data-testid="period-proj"
@@ -1322,7 +1425,7 @@ function mapAreaCard(m) {
     ${folded ? "" : `${headlineTiles(e)}
     <div class="acard-act">
       <button class="lk primary" data-go="${withQ(pageOf(m))}">Open ${esc(m.name)} page ›</button>
-      <button class="lk" data-go="${chartLink(MK.ind, "kommun", m.code)}" title="Open the chart generator with this kommun">↗ Chart</button>
+      <button class="lk" data-go="${chartLink(linkInd(), "kommun", m.code)}" title="Open the chart generator with this kommun">↗ Chart</button>
     </div>
     ${outlook ? `<details class="acard-sec" data-sec="outlook"${MC.show.has("outlook") ? " open" : ""}>
       <summary>Outlook 2040</summary><div class="secbody">${outlook}
@@ -1346,15 +1449,15 @@ function vMakro() {
     <div class="card-head tools-only">
       <div class="tools" data-testid="map-toolbar" data-row="1">${areaSearch()}${layersMenuHtml()}${indPicker("map")}${periodControl()}${subToggle()}</div>
       <div class="chiprow" data-row="2">${indQuick()}</div></div>
-    ${indExplain(ind)}
+    ${mapOnly() ? mapOnlyStrip() : indExplain(ind)}
     ${muni ? mapAreaCard(muni) : ""}
-    <div class="mapwrap"><div id="lfmap" data-testid="map"></div>
+    <div class="mapwrap${mapOnly() ? " maponly" : ""}"><div id="lfmap" data-testid="map"></div>
       <div class="maplegs" data-testid="legends">
         <div class="maplegend" id="maplegend" data-testid="legend"></div>
         <div class="maplegend" id="lg-zones" data-testid="legend-zones"></div>
         ${ovList().map(o => `<div class="maplegend" id="lg-${o.id}" data-testid="legend-${o.id}"></div>`).join("")}
       </div>
-      <button class="legpill" data-legpill aria-label="Show or hide the map legend">Legend ▾</button></div>
+      ${mapOnly() && !LAY.size ? "" : `<button class="legpill" data-legpill aria-label="Show or hide the map legend">Legend ▾</button>`}</div>
     ${srcNote(`<p class="cap">${muni ? "Click a polygon for its figures and a link to its page." : "Click a polygon for its figures; open a kommun with the search box above or from the popup. Table view lists everything side by side."} Colour classes: quintiles of the visible areas. Boundaries: SCB RegSO/DeSO 2025 (CC0), clipped to the coastline with OSM land polygons (ODbL); basemap OpenStreetMap.</p>`)}
   </div>`;
 }
@@ -2106,19 +2209,24 @@ function propMapInit() {
   /* the pin's own area, coloured by the active indicator, so the mini-map answers
      the same question the chart panel beside it does */
   const ind = curInd();
+  const only = mapOnly();
   if (e && e.ctx && e.ctx.length) {
-    const vk = a => V(a, ind.key) ?? (canInherit(ind.key) && a.kommun ? V(byCode[a.kommun], ind.key) : null);
-    const sc = scaleOf(e.ctx.filter(a => vk(a) != null), vk, null, ind);
+    const vk = a => (only ? null : V(a, ind.key) ?? (canInherit(ind.key) && a.kommun ? V(byCode[a.kommun], ind.key) : null));
+    const sc = only ? MO_SCALE : scaleOf(e.ctx.filter(a => vk(a) != null), vk, null, ind);
     e.ctx.forEach(a => {
       const own = e.own.includes(a); const t = sc.t(vk(a));
-      const p = L.polygon(a.rings, { color: own ? "#141C18" : "#FFFFFF", weight: own ? 2.4 : 0.8,
+      const w = only ? (own ? 2.4 : moWeight("regso")) : null;
+      const p = only
+        ? L.polygon(a.rings, Object.assign(moStyle(w), own ? { color: MO_HOVER, opacity: 1 } : {}))
+        : L.polygon(a.rings, { color: own ? "#141C18" : "#FFFFFF", weight: own ? 2.4 : 0.8,
         fillColor: t == null ? "#C4CBC4" : (sc.color ? sc.color(t) : mkShade(t, ind.key, sc)),
         fillOpacity: own ? .5 : .42, smoothFactor: .25 });
       p.bindTooltip(`<b>${esc(a.name || a.code.split("_")[0])}</b>${vk(a) != null ? `<br>${esc(ind.short || ind.label)}: ${fmtOf(ind)(vk(a))}` : ""}`);
-      if (!own) p.on("click", () => go(withQ(pageOf(a))));
+      if (!own) { p.on("click", () => go(withQ(pageOf(a))));
+        if (only) { p.on("mouseover", () => p.setStyle(moHover(w))); p.on("mouseout", () => p.setStyle(moStyle(w))); } }
       p.addTo(m);
     });
-    setLegend("proplegend", sc, ind, ind.key, e.typeLabel);
+    if (!only) setLegend("proplegend", sc, ind, ind.key, e.typeLabel);
   }
   L.circleMarker([PROP.lat, PROP.lon], { radius: 8, color: "#1C6B5C", weight: 3,
     fillColor: "#fff", fillOpacity: .95 }).addTo(m)
@@ -2246,13 +2354,18 @@ function chartPanel(e, i) {
       ${indSrcLink(i, e.type, e.code, MK.year === LATEST ? LATEST : MK.year)}${i.warn ? `<br>⚠ ${esc(i.warn)}` : ""}</p>
   </div>`;
 }
+/* In Map only there is no series to chart, so the panel is not rendered at all and
+   the mini-map takes the row: a chart panel about no indicator would be a card full
+   of dashes. The note says what the reader is looking at and how to leave it. */
 function studyRow(e, i, key) {
-  return `<div class="studyrow" data-testid="study-row">
-    ${chartPanel(e, i)}
-    <div class="card mapwrap minicard" data-mini="${esc(key)}" data-testid="minimap">
+  const only = mapOnly();
+  return `<div class="studyrow${only ? " maponly" : ""}" data-testid="study-row">
+    ${only ? "" : chartPanel(e, i)}
+    <div class="card mapwrap minicard${only ? " maponly" : ""}" data-mini="${esc(key)}" data-testid="minimap">
       <div id="${key === "area" ? "armap" : "propmap"}"></div>
       <button class="mfull" data-minifull="${esc(key)}" data-testid="minimap-full" title="Full screen (Esc closes)">⤢</button>
       <div class="maplegend small" id="${key === "area" ? "arlegend" : "proplegend"}"></div>
+      ${only ? `<div class="monote" data-testid="maponly-note">${esc(MAP_ONLY_LINE)}</div>` : ""}
     </div>
   </div>`;
 }
@@ -2275,7 +2388,7 @@ function vArea() {
     </div>
     <div class="tools">
       <button class="lk" data-go="${withQ(mapHash)}">Show on map</button>
-      <button class="lk" data-go="${chartLink(MK.ind, e.type, e.code)}">↗ Chart</button>
+      <button class="lk" data-go="${chartLink(linkInd(), e.type, e.code)}">↗ Chart</button>
       ${e.type !== "deso" && desoAvail(e.type === "kommun" ? e.code : e.o.kommun) ? `<button class="lk" data-go="${withQ("map/" + (e.type === "kommun" ? e.code : e.o.kommun) + "/deso")}">DeSO ›</button>` : ""}
     </div>
     ${headlineTiles(e)}
@@ -2319,18 +2432,31 @@ function arMapInit() {
     : scaleOf(ctx.filter(a => vk(a) != null), vk, null, sind);
   const own = e.type === "kommun" ? e.ctx : e.own;
   const outline = e.type !== "kommun";
+  /* Map only on a mini-map: the same outlines, and the area the page is about keeps
+     its heavier stroke so the reader can still see which one it is. `sind` is null
+     for Map only, so the legend below is skipped on its own. */
+  const only = mapOnly();
   ctx.forEach(a => {
     const isOwn = own.includes(a); const t = sc.t(vk(a));
-    const p = L.polygon(a.rings, { color: isOwn && (outline || kommuneLevel) ? "#141C18" : "#FFFFFF", smoothFactor: 0.25, weight: isOwn && outline ? 2.6 : isOwn && kommuneLevel ? 1.2 : kommuneLevel ? 1.5 : useQ ? 0.4 : 0.8,
+    /* "own" on a kommun page is every sub-area of the kommun, so the heavier
+       stroke is only for the page of ONE area — giving 127 RegSO a 2.6 px outline
+       turns the city into a black mesh. */
+    const heavy = isOwn && e.type !== "kommun";
+    const w = only ? (heavy ? 2.4 : moWeight(useQ ? "deso" : "regso")) : null;
+    const p = only
+      ? L.polygon(a.rings, Object.assign(moStyle(w), heavy ? { color: MO_HOVER, opacity: 1 } : {}))
+      : L.polygon(a.rings, { color: isOwn && (outline || kommuneLevel) ? "#141C18" : "#FFFFFF", smoothFactor: 0.25, weight: isOwn && outline ? 2.6 : isOwn && kommuneLevel ? 1.2 : kommuneLevel ? 1.5 : useQ ? 0.4 : 0.8,
       fillColor: t == null ? "#C4CBC4" : (sc.color ? sc.color(t) : mkShade(t, ind.key, sc)), fillOpacity: isOwn ? .85 : kommuneLevel ? .35 : .45 });
     const v = vk(a); const native = kommuneLevel || (sind && V(a, sind.key) != null);
     const label = kommuneLevel ? (byCode[a.kommun] || {}).name : a.name;
-    p.bindTooltip(`<b>${esc(label)}</b>${v != null ? `<br>${esc(sind.short || sind.label)}: ${fmtOf(sind)(v)}${native ? "" : " °"}` : ""}`);
-    if (!isOwn) { p.on("click", () => go(withQ(kommuneLevel ? pageOf(byCode[a.kommun]) : pageOf(a)))); p.on("mouseover", () => p.setStyle({ weight: 2.2, color: "#141C18" })); p.on("mouseout", () => p.setStyle({ weight: kommuneLevel ? 0.6 : 1, color: "#FFFFFF" })); }
+    p.bindTooltip(`<b>${esc(label)}</b>${!only && v != null ? `<br>${esc(sind.short || sind.label)}: ${fmtOf(sind)(v)}${native ? "" : " °"}` : ""}`);
+    if (!isOwn) { p.on("click", () => go(withQ(kommuneLevel ? pageOf(byCode[a.kommun]) : pageOf(a))));
+      p.on("mouseover", () => p.setStyle(only ? moHover(w) : { weight: 2.2, color: "#141C18" }));
+      p.on("mouseout", () => p.setStyle(only ? moStyle(w) : { weight: kommuneLevel ? 0.6 : 1, color: "#FFFFFF" })); }
     else if (e.type === "kommun" && !kommuneLevel) { p.on("click", () => go(withQ(pageOf(a)))); }
     p.addTo(map);
   });
-  if (sind) setLegend("arlegend", sc, sind, ind.key, kommuneLevel ? "kommuner" : useQ ? "DeSO" : "RegSO");
+  if (sind && !only) setLegend("arlegend", sc, sind, ind.key, kommuneLevel ? "kommuner" : useQ ? "DeSO" : "RegSO");
   const b = boundsOf(own); if (b) map.fitBounds(b, { padding: kommuneLevel ? [90, 90] : e.type === "kommun" ? [10, 10] : [70, 70], maxZoom: kommuneLevel ? 9 : 13 });
 }
 
@@ -2339,19 +2465,23 @@ function lfPopup(a, muni) {
   /* two levels: the selected indicator big + four headline figures and the ways onward; every value behind "all values" */
   const row = (i, v, own, o) => `<span class="lfrow"><span>${esc(i.short || i.label)}</span><b>${fmtOf(i)(v)}${own ? "" : ` <span class="tag-muni">muni</span>`}${moeSpan(i, v, moeOf(i, o))}</b></span>`;
   const LI = curInds(); const ind = curInd(); const isQ = a.regso != null;
+  /* Map only has no selected indicator, so the popup leads with the headline row
+     instead of a big figure — the figures are still all here, which is the point:
+     turning the fill off does not turn the data off. */
+  const only = mapOnly();
   const val = i => { const v = V(a, i.key); if (v != null) return { v, own: true }; if (!noInherit(i) && muni && V(muni, i.key) != null) return { v: V(muni, i.key), own: false }; return null; };
-  const peers = isQ ? desoAreas(a.kommun) : AREAS; const sel = val(ind);
+  const peers = isQ ? desoAreas(a.kommun) : AREAS; const sel = only ? null : val(ind);
   const rk = sel ? (sel.own ? rankOf(a, ind.key, peers) : (muni ? rankOf(muni, ind.key, MUNI) : null)) : null;
-  const keys = HL_KEYS.filter(k => k !== ind.key).map(k => LI.find(i => i.key === k)).filter(Boolean).map(i => ({ i, x: val(i) })).filter(x => x.x).slice(0, 4);
+  const keys = HL_KEYS.filter(k => only || k !== ind.key).map(k => LI.find(i => i.key === k)).filter(Boolean).map(i => ({ i, x: val(i) })).filter(x => x.x).slice(0, only ? 5 : 4);
   const native = LI.filter(i => V(a, i.key) != null).map(i => row(i, V(a, i.key), true, a)).join("");
   const inherited = LI.filter(i => !noInherit(i) && V(a, i.key) == null && muni && V(muni, i.key) != null).map(i => row(i, V(muni, i.key), false, muni)).join("");
   const n = LI.filter(i => val(i)).length; const type = isQ ? "deso" : "regso", code = a.code;
   return `<div class="lfpop"><b>${esc(a.name)}</b>${MK.year !== LATEST ? ` <span class="tag">${MK.year}</span>` : ""}
     <span class="dim">${a.regso && byRegso[a.regso] ? esc(byRegso[a.regso].name) + " · " : ""}${muni ? esc(muni.name) : ""}${a.pop != null ? " · " + nf(a.pop, 0) + " inhabitants" : ""}</span>
-    ${sel ? `<div class="lfbig"><span>${esc(ind.label)}${sel.own ? "" : ` <span class="tag-muni">muni</span>`}</span><b>${fmtOf(ind)(sel.v)}${moeSpan(ind, sel.v, moeOf(ind, sel.own ? a : muni))}</b><em title="among the ${rk ? rk.n : 0} with a figure">${rk ? `#${rk.r} of ${rk.n} ${sel.own ? (isQ ? "DeSO" : "RegSO") : "kommuner"}` : ""}</em></div>` : `<div class="lfbig dim"><span>${esc(ind.label)}</span><b>–</b></div>`}
+    ${only ? "" : sel ? `<div class="lfbig"><span>${esc(ind.label)}${sel.own ? "" : ` <span class="tag-muni">muni</span>`}</span><b>${fmtOf(ind)(sel.v)}${moeSpan(ind, sel.v, moeOf(ind, sel.own ? a : muni))}</b><em title="among the ${rk ? rk.n : 0} with a figure">${rk ? `#${rk.r} of ${rk.n} ${sel.own ? (isQ ? "DeSO" : "RegSO") : "kommuner"}` : ""}</em></div>` : `<div class="lfbig dim"><span>${esc(ind.label)}</span><b>–</b></div>`}
     ${keys.length ? `<div class="lfkey">${keys.map(({ i, x }) => `<div><span>${esc(i.short || i.label)}${x.own ? "" : ` <span class="tag-muni">muni</span>`}</span><b>${fmtOf(i)(x.v)}${moeSpan(i, x.v, moeOf(i, x.own ? a : muni))}</b></div>`).join("")}</div>` : ""}
     ${usoLine(a)}${outlookLine(muni, true)}
-    <span class="lfact"><button class="lk mini primary" data-go="${withQ(pageOf(a))}">Open page ›</button>${muni && !MK.kommun ? `<button class="lk mini" data-go="map/${muni.code}?ind=${MK.ind}">Zoom to ${esc(muni.name)}</button>` : ""}${muni && desoAvail(muni.code) && !desoMode() ? `<button class="lk mini" data-go="map/${muni.code}/deso?ind=${MK.ind}">DeSO ›</button>` : ""}<button class="lk mini" data-go="${chartLink(ind.key, type, code)}">↗ Chart</button></span>
+    <span class="lfact"><button class="lk mini primary" data-go="${withQ(pageOf(a))}">Open page ›</button>${muni && !MK.kommun ? `<button class="lk mini" data-go="map/${muni.code}?ind=${MK.ind}">Zoom to ${esc(muni.name)}</button>` : ""}${muni && desoAvail(muni.code) && !desoMode() ? `<button class="lk mini" data-go="map/${muni.code}/deso?ind=${MK.ind}">DeSO ›</button>` : ""}<button class="lk mini" data-go="${chartLink(linkInd(), type, code)}">↗ Chart</button></span>
     <details class="lfmore"><summary>All ${n} values</summary>
     ${native ? `<span class="lfsec">${isQ ? "DeSO" : "RegSO"}</span><div class="lfrows">${native}</div>` : ""}
     ${inherited ? `<span class="lfsec">The kommun's figure</span><div class="lfrows">${inherited}</div>` : ""}</details></div>`;
@@ -2406,16 +2536,19 @@ function lfLayers() {
      RegSO polygons on the national map and a click that opened a RegSO instead
      of the kommun under the cursor. Zoom no longer changes the level — drilling
      in does, which is also what the breadcrumb says is happening. */
+  const only = mapOnly();
   const drill = !!MK.kommun;
   const sub = drill && desoMode() ? "deso" : drill ? "regso" : null;
   const shapes = !drill ? MUNI : muniAreas(MK.kommun);
   const hasOwn = !sub || (ind.levels || []).includes(sub);
-  LF.level = (sub || "national") + (MK.kommun || "");
+  /* Map only is part of the level key: switching the fill off has to rebuild the
+     polygons, not just relabel them. */
+  LF.level = (sub || "national") + (MK.kommun || "") + (only ? ":only" : "");
   if (LF.areaG) LF.map.removeLayer(LF.areaG);
   if (LF.labG) LF.map.removeLayer(LF.labG);
   const vk = o => V(o, ind.key);
   const scalePool = !drill ? MUNI : shapes.filter(a => hasOwn && vk(a) != null);
-  const sc = scaleOf(scalePool.length ? scalePool : MUNI, vk, null, ind);
+  const sc = only ? MO_SCALE : scaleOf(scalePool.length ? scalePool : MUNI, vk, null, ind);
   const polys = [];
   shapes.forEach(a => {
     const m = drill ? byCode[a.kommun] : a;
@@ -2426,21 +2559,25 @@ function lfLayers() {
     const t = src ? sc.t(vk(src)) : null;
     /* thinner the finer the level: a 1.5 px stroke that reads as a border between
        kommuner turns into a white haze over a kommun's worth of DeSO. */
-    const w = !drill ? 1.5 : sub === "deso" ? 0.4 : 0.8;
+    const w = only ? moWeight(sub) : (!drill ? 1.5 : sub === "deso" ? 0.4 : 0.8);
     const fill = t == null ? "#C4CBC4" : (sc.color ? sc.color(t) : mkShade(t, ind.key, sc));
     /* smoothFactor is Leaflet dropping vertices within N screen pixels. At the
        default 1 it undoes the simplification budget the geometry was built to,
        and the angularity shows at close zoom. */
-    const p = L.polygon(a.rings, { color: "#FFFFFF", weight: w, fillColor: fill, fillOpacity: .72, smoothFactor: 0.25 });
+    const p = only ? L.polygon(a.rings, moStyle(w))
+      : L.polygon(a.rings, { color: "#FFFFFF", weight: w, fillColor: fill, fillOpacity: .72, smoothFactor: 0.25 });
     p.bindPopup(() => drill ? lfPopup(a, m) : lfKommunPopup(a), { maxWidth: 560, maxHeight: 560, autoPanPadding: [24, 24] });
-    p.on("mouseover", () => p.setStyle({ weight: Math.max(2.2, w * 2), color: "#141C18" }));
-    p.on("mouseout", () => p.setStyle({ weight: w, color: "#FFFFFF" }));
+    p.on("mouseover", () => p.setStyle(only ? moHover(w) : { weight: Math.max(2.2, w * 2), color: "#141C18" }));
+    p.on("mouseout", () => p.setStyle(only ? moStyle(w) : { weight: w, color: "#FFFFFF" }));
     polys.push(p);
   });
   LF.areaG = L.layerGroup(polys).addTo(LF.map);
-  LF.ctx = { shapes, sc, sub, drill, hasOwn, ind, vk };
+  LF.ctx = { shapes, sc, sub, drill, hasOwn, ind, vk, only };
   lfLabels();
-  setLegend("maplegend", sc, ind, ind.key,
+  /* No indicator, no key. The box is emptied rather than left standing, and
+     `.maplegend:empty` in style.css is what keeps it from showing as a white bar. */
+  if (only) { const el = document.getElementById("maplegend"); if (el) el.innerHTML = ""; ovLegends(); }
+  else setLegend("maplegend", sc, ind, ind.key,
     !drill ? "kommuner · open one for its RegSO"
            : sub === "deso" ? "DeSO" : (hasOwn ? "RegSO" : "RegSO · ° all take the kommun value"));
   if (LF.ownG) { LF.map.removeLayer(LF.ownG); LF.ownG = null; }
@@ -2495,20 +2632,21 @@ function usoLine(o) {
 
 function lfKommunPopup(m) {
   const LI = curInds(), ind = curInd();
+  const only = mapOnly();
   const row = (i, v, o) => `<span class="lfrow"><span>${esc(i.short || i.label)}</span><b>${fmtOf(i)(v)}${moeSpan(i, v, moeOf(i, o))}</b></span>`;
-  const sel = V(m, ind.key);
+  const sel = only ? null : V(m, ind.key);
   const rk = sel != null ? rankOf(m, ind.key, MUNI) : null;
-  const keys = HL_KEYS.filter(k => k !== ind.key).map(k => LI.find(i => i.key === k))
-    .filter(i => i && V(m, i.key) != null).slice(0, 4);
+  const keys = HL_KEYS.filter(k => only || k !== ind.key).map(k => LI.find(i => i.key === k))
+    .filter(i => i && V(m, i.key) != null).slice(0, only ? 5 : 4);
   const all = LI.filter(i => V(m, i.key) != null);
   const n = (DESO_IDX[m.code] || {}).n || 0;
   return `<div class="lfpop"><b>${esc(m.name)}</b>${MK.year !== LATEST ? ` <span class="tag">${MK.year}</span>` : ""}
     <span class="dim">${esc(lanName(m.lan))}${m.pop != null ? " · " + nf(m.pop, 0) + " inhabitants" : ""} · ${AREAS.filter(a => a.kommun === m.code).length} RegSO${n ? ` · ${n} DeSO` : ""}</span>
-    ${sel != null ? `<div class="lfbig"><span>${esc(ind.label)}</span><b>${fmtOf(ind)(sel)}${moeSpan(ind, sel, moeOf(ind, m))}</b><em title="among the ${rk ? rk.n : 0} kommuner with a figure">${rk ? `#${rk.r} of ${rk.n} kommuner` : ""}</em></div>`
+    ${only ? "" : sel != null ? `<div class="lfbig"><span>${esc(ind.label)}</span><b>${fmtOf(ind)(sel)}${moeSpan(ind, sel, moeOf(ind, m))}</b><em title="among the ${rk ? rk.n : 0} kommuner with a figure">${rk ? `#${rk.r} of ${rk.n} kommuner` : ""}</em></div>`
                   : `<div class="lfbig dim"><span>${esc(ind.label)}</span><b>–</b></div>`}
     ${keys.length ? `<div class="lfkey">${keys.map(i => `<div><span>${esc(i.short || i.label)}</span><b>${fmtOf(i)(V(m, i.key))}${moeSpan(i, V(m, i.key), moeOf(i, m))}</b></div>`).join("")}</div>` : ""}
     ${usoLine(m)}${outlookLine(m, false)}
-    <span class="lfact"><button class="lk mini primary" data-go="${withQ(`area/kommun/${m.code}`)}">Open page ›</button><button class="lk mini" data-go="${withQ(`map/${m.code}`)}">RegSO ›</button>${n ? `<button class="lk mini" data-go="${withQ(`map/${m.code}/deso`)}">DeSO ›</button>` : ""}<button class="lk mini" data-go="${chartLink(ind.key, "kommun", m.code)}">↗ Chart</button></span>
+    <span class="lfact"><button class="lk mini primary" data-go="${withQ(`area/kommun/${m.code}`)}">Open page ›</button><button class="lk mini" data-go="${withQ(`map/${m.code}`)}">RegSO ›</button>${n ? `<button class="lk mini" data-go="${withQ(`map/${m.code}/deso`)}">DeSO ›</button>` : ""}<button class="lk mini" data-go="${chartLink(linkInd(), "kommun", m.code)}">↗ Chart</button></span>
     <details class="lfmore"><summary>All ${all.length} values</summary>
     <div class="lfrows">${all.map(i => row(i, V(m, i.key), m)).join("")}</div></details></div>`;
 }
@@ -2516,13 +2654,18 @@ function lfKommunPopup(m) {
 function lfLabels() {
   /* labels are rebuilt on every zoom step: a name is shown only when its polygon is wide enough on screen */
   if (!LF.map || !LF.ctx) return;
-  const { shapes, sc, sub, drill, hasOwn, ind, vk } = LF.ctx; const zoom = LF.map.getZoom(); const labs = [];
+  const { shapes, sc, sub, drill, hasOwn, ind, vk, only } = LF.ctx; const zoom = LF.map.getZoom(); const labs = [];
   if (LF.labG) LF.map.removeLayer(LF.labG);
   const px = ring => { const xs = [], ys = []; ring.forEach(q => { const c = LF.map.latLngToContainerPoint(q); xs.push(c.x); ys.push(c.y); }); return [Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)]; };
   if (drill) {
     /* sub-areas: a value only where the polygon is clearly wide enough, the name only when there is room for both */
     shapes.slice().sort((x, y) => (y.pop || 0) - (x.pop || 0)).slice(0, 40).forEach(a => {
       const [w, h] = px(mainRing(a)); if (w < 64 || h < 26) return;
+      /* Map only: the name and nothing else. There is no value to print, and
+         printing the dash a missing value renders as would be a figure that is not
+         missing — it is not asked for. */
+      if (only) { labs.push(L.marker(centroid(mainRing(a)), { interactive: false,
+        icon: L.divIcon({ className: "lflab", iconSize: null, html: `<b>${esc(a.name)}</b>` }) })); return; }
       const m = byCode[a.kommun]; const own = hasOwn && vk(a) != null;
       const v = own ? vk(a) : (noInherit(ind) ? null : (m ? vk(m) : null));
       const t = sc.t(v), dark = !sc.cats && t != null && t > .55; const val = v != null ? fmtOf(ind)(v) + (own ? "" : " °") : "–";
@@ -2540,7 +2683,7 @@ function lfLabels() {
       if (placed.some(q => Math.abs(q.x - pt.x) < 70 && Math.abs(q.y - pt.y) < 26)) return;
       placed.push(pt);
       const t = sc.t(vk(m)), dark = !sc.cats && t != null && t > .55;
-      labs.push(L.marker(ll, { interactive: false, icon: L.divIcon({ className: "lflab" + (dark ? " lflab-dark" : ""), iconSize: null, html: `<b>${esc(m.name)}</b>${zoom >= 6 ? `<br>${vk(m) != null ? fmtOf(ind)(vk(m)) : "–"}` : ""}` }) }));
+      labs.push(L.marker(ll, { interactive: false, icon: L.divIcon({ className: "lflab" + (dark ? " lflab-dark" : ""), iconSize: null, html: `<b>${esc(m.name)}</b>${!only && zoom >= 6 ? `<br>${vk(m) != null ? fmtOf(ind)(vk(m)) : "–"}` : ""}` }) }));
     });
   }
   LF.labG = L.layerGroup(labs).addTo(LF.map);

@@ -59,6 +59,10 @@ SHOT_ROUTES = {
     "data-national": ("#data/national", None),
     "data-areas": ("#data/areas/kommun", None),
     "data-projects": ("#data/projects", None),
+    # P2 — Map only, at all three levels it is reachable from
+    "maponly": ("#map?ind=none", None),
+    "maponly-kommun": ("#map/0180?ind=none", None),
+    "maponly-area": ("#area/kommun/0180?ind=none", None),
 }
 SHOT_SIZES = [(1440, 900), (1366, 768), (390, 844)]
 
@@ -619,6 +623,292 @@ def _src_periods(r, page, errs, calls):
     r.ok("a monthly indicator still builds its verify-at-source link",
          bool(href) and "valueCodes%5BTid%5D" in href[0] or bool(href) and "valueCodes[Tid]" in href[0],
          (href[0] if href else "no link")[:140])
+
+
+# --------------------------------------------------------------------------- #
+# P2 — "Map only"
+# --------------------------------------------------------------------------- #
+
+# What "nothing is coloured in" means in the DOM. Leaflet writes fill="none" for a
+# path with no fill and fill="<colour>" + fill-opacity="<n>" for one with a fill, so
+# a filled path is one whose fill is a colour AND whose fill-opacity is above zero.
+# Map only keeps a transparent fill on purpose — Leaflet only hit-tests the interior
+# of a path whose fill is not "none" — so the opacity is what has to be asserted,
+# never the presence of the attribute.
+PATHS_JS = """() => {
+  const q = s => [...document.querySelectorAll(s)];
+  const filled = ps => ps.filter(p => {
+    const f = (p.getAttribute('fill') || '').toLowerCase();
+    const o = parseFloat(p.getAttribute('fill-opacity') ?? '1');
+    return f && f !== 'none' && o > 0;
+  });
+  const scope = sel => {
+    const all = q(sel + ' .leaflet-overlay-pane path');
+    const out = all.filter(p => p.classList.contains('mo-outline'));
+    return { paths: all.length, outlines: out.length, others: all.length - out.length,
+             filled: filled(all).length, filledOutlines: filled(out).length,
+             strokes: [...new Set(out.map(p => p.getAttribute('stroke')))].slice(0, 3) };
+  };
+  return { map: scope('#lfmap'), area: scope('#armap'), prop: scope('#propmap') };
+}"""
+
+
+def paths(page, which="map") -> dict:
+    return page.evaluate(PATHS_JS)[which]
+
+
+def legend_state(page, sel: str) -> dict:
+    return page.evaluate("""s => { const e = document.querySelector(s);
+      if (!e) return { there: false, text: '', shown: false };
+      return { there: true, text: e.innerText.trim(), shown: e.offsetParent !== null }; }""", sel)
+
+
+def open_area_popup(page, name: str) -> str:
+    """Open the choropleth popup of the named kommun the way a click does, and
+    return what it says. The polygons are SVG paths with no text of their own, so
+    the layer is found through Leaflet rather than by clicking a pixel and hoping."""
+    ok = page.evaluate("""nm => {
+      const m = window.AM.map; if (!m) return false;
+      let hit = null;
+      m.eachLayer(l => {
+        if (hit || !l.getPopup || !l.getPopup()) return;
+        const c = l.getPopup().getContent();
+        const html = typeof c === 'function' ? c(l) : String(c || '');
+        if (html.indexOf('>' + nm + '<') >= 0) hit = l;
+      });
+      if (!hit) return false;
+      hit.openPopup();
+      return true;
+    }""", name)
+    if not ok:
+        return ""
+    page.wait_for_timeout(400)
+    return page.eval_on_selector_all(".leaflet-popup-content", "e => e.map(x => x.innerText).join('\\n')")
+
+
+@check("maponly-no-fill", "P2", "#map?ind=none draws outlines and colours nothing in")
+def _maponly_no_fill(r, page, errs, calls):
+    # the baseline first: the same measurement must see a full choropleth, or the
+    # check below would pass on a map that failed to draw at all
+    hop(page, "#map?ind=growth", 1300)
+    base = paths(page)
+    r.ok("with an indicator the kommuner are filled", base["filled"] > 250,
+         f'{base["filled"]} filled of {base["paths"]} paths')
+    r.ok("and none of them is an outline path", base["outlines"] == 0, str(base["outlines"]))
+
+    hop(page, "#map?ind=none", 1300)
+    got = paths(page)
+    r.ok("Map only draws every kommun as an outline", got["outlines"] > 250,
+         f'{got["outlines"]} outlines')
+    r.ok("and not one filled area path", got["filled"] == 0,
+         f'{got["filled"]} filled of {got["paths"]} paths')
+    r.ok("nothing else is on the map either", got["others"] == 0, f'{got["others"]} other paths')
+    r.ok("the outline is a neutral stroke, not the ramp's green",
+         all(s and s.lower() not in ("#1c6b5c", "#ffffff") for s in got["strokes"]),
+         ", ".join(str(s) for s in got["strokes"]))
+    r.ok("no page error in Map only", not errs, (errs[0] if errs else "")[:140])
+    errs.clear()
+
+
+@check("maponly-controls", "P2", "the chip, the picker, the strip and the missing period control")
+def _maponly_controls(r, page, errs, calls):
+    hop(page, "#map?ind=none", 1100)
+    chips = page.eval_on_selector_all(
+        "[data-testid=ind-chips] button",
+        "e => e.map(x => ({ t: x.innerText.trim(), id: x.getAttribute('data-testid') || '',"
+        " ind: x.getAttribute('data-indq'), on: x.classList.contains('on') }))")
+    r.ok("the chip row starts with Map only", bool(chips) and chips[0]["t"] == "Map only",
+         (chips[0]["t"] if chips else "no chips"))
+    r.ok("and it is the chip that is lit", bool(chips) and chips[0]["on"] and chips[0]["ind"] == "none",
+         json.dumps(chips[0] if chips else {}, ensure_ascii=False))
+    r.ok("the other chips are still there to leave with", len(chips) >= 4, f"{len(chips)} chips")
+
+    r.ok("the picker button names the mode",
+         "Map only" in page.inner_text("[data-testid=ind-picker-btn]"),
+         page.inner_text("[data-testid=ind-picker-btn]").replace("\n", " ")[:80])
+    page.click("[data-testid=ind-picker-btn]")
+    page.wait_for_timeout(350)
+    first = page.eval_on_selector_all(
+        "[data-testid=ind-picker-pop] .pkrow",
+        "e => e.slice(0, 1).map(x => ({ ind: x.getAttribute('data-ind'), t: x.innerText.replace(/\\n/g,' ').trim() }))")
+    r.ok("the picker's first entry is Map only",
+         bool(first) and first[0]["ind"] == "none" and "Map only" in first[0]["t"],
+         json.dumps(first, ensure_ascii=False)[:140])
+    # it is a row like any other: a search that does not match it hides it
+    page.fill("[data-testid=ind-search]", "rent")
+    page.wait_for_timeout(300)
+    r.ok("and it is filtered out by a search it does not match",
+         page.eval_on_selector_all("[data-testid=ind-picker-pop] [data-ind=none]", "e => e.length") == 0)
+    page.keyboard.press("Escape")
+    page.wait_for_timeout(250)
+
+    r.ok("no period control — nothing is drawn from a period",
+         page.eval_on_selector_all("[data-testid=period]", "e => e.length") == 0)
+    r.ok("no indicator legend", not legend_state(page, "#maplegend")["text"],
+         legend_state(page, "#maplegend")["text"][:80])
+    r.ok("and the empty legend box is not shown as a bare white bar",
+         not legend_state(page, "#maplegend")["shown"])
+    note = page.inner_text("[data-testid=maponly-note]") if page.eval_on_selector_all(
+        "[data-testid=maponly-note]", "e => e.length") else ""
+    r.ok("the info strip says what the map is showing",
+         "Map only — pick an indicator to colour the areas" in note.replace("\n", " "),
+         note.replace("\n", " ")[:120])
+
+
+@check("maponly-popup", "P2", "clicking an area still opens its figures")
+def _maponly_popup(r, page, errs, calls):
+    hop(page, "#map?ind=none", 1300)
+    txt = open_area_popup(page, "Stockholm")
+    r.ok("the Stockholm polygon opens a popup", "Stockholm" in txt, txt.replace("\n", " ")[:120])
+    r.ok("it still names the population", "inhabitants" in txt, txt.replace("\n", " ")[:160])
+    figs = page.eval_on_selector_all(
+        ".leaflet-popup-content .lfkey div",
+        "e => e.map(x => x.innerText.replace(/\\n/g, ': '))")
+    r.ok("and carries the headline figures", len(figs) >= 4, " · ".join(figs)[:200])
+    r.ok("every one of them is a number, not a dash",
+         bool(figs) and all(re.search(r"\d", f.split(":")[-1]) for f in figs),
+         " · ".join(f for f in figs if not re.search(r"\d", f.split(":")[-1]))[:140])
+    r.ok("there is no big figure for an indicator that is not selected",
+         page.eval_on_selector_all(".leaflet-popup-content .lfbig", "e => e.length") == 0)
+    r.ok("the 'all values' fold is still there",
+         page.eval_on_selector_all(".leaflet-popup-content .lfmore", "e => e.length") == 1)
+    # and the popup did not paint the map: still nothing filled
+    r.ok("opening it filled nothing", paths(page)["filled"] == 0, str(paths(page)["filled"]))
+
+
+@check("maponly-layers", "P2", "a feature layer works on top of Map only", needs="fresh")
+def _maponly_layers(r, page, errs, calls):
+    hop(page, "#map?ind=none", 1300)
+    before = paths(page)
+    page.click("[data-testid=layers-btn]")
+    page.wait_for_timeout(300)
+    r.ok("the Layers menu lists every layer",
+         page.eval_on_selector_all("[data-testid=layers-pop] [data-layer]", "e => e.length") >= 5)
+    page.click("[data-testid=layers-pop] [data-layer=uso]")
+    page.wait_for_timeout(1500)
+    on = paths(page)
+    r.ok("the layer draws over the outlines", on["others"] > before["others"],
+         f'{on["others"]} extra paths')
+    r.ok("its own key appears", bool(legend_state(page, "[data-testid=legend-uso]")["text"]),
+         legend_state(page, "[data-testid=legend-uso]")["text"].replace("\n", " ")[:90])
+    r.ok("the areas are still unfilled under it", on["filledOutlines"] == 0,
+         str(on["filledOutlines"]))
+    r.ok("the hash carries the layer with the mode",
+         "lay=uso" in page.evaluate("location.hash") and "ind=none" in page.evaluate("location.hash"),
+         page.evaluate("location.hash"))
+    # the menu stays open across a toggle, so the same row is clicked again
+    page.click("[data-testid=layers-pop] [data-layer=uso]")
+    page.wait_for_timeout(900)
+    off = paths(page)
+    r.ok("switching it off removes it again", off["others"] == 0, f'{off["others"]} paths left')
+    r.ok("and its key with it", not legend_state(page, "[data-testid=legend-uso]")["text"])
+    r.ok("the hash drops it too", "lay=" not in page.evaluate("location.hash"),
+         page.evaluate("location.hash"))
+    r.ok("and Map only survived the round trip", "ind=none" in page.evaluate("location.hash"),
+         page.evaluate("location.hash"))
+
+
+@check("maponly-hash-stable", "P2", "the link survives a reload unchanged", needs="fresh")
+def _maponly_hash(r, page, errs, calls):
+    for route in ["#map?ind=none", "#map/0180?ind=none&lay=uso", "#map/0180/deso?ind=none"]:
+        hop(page, route, 1400)
+        before = page.evaluate("location.hash")
+        r.ok(f"{route} is already canonical", before == route, f"became {before}")
+        page.reload(wait_until="load")
+        page.wait_for_function("typeof window.AM !== 'undefined'", timeout=20000)
+        page.wait_for_timeout(1200)
+        after = page.evaluate("location.hash")
+        r.ok(f"{route} is unchanged after a reload", after == before, f"{before} → {after}")
+        r.ok(f"{route} still draws outlines after the reload", paths(page)["outlines"] > 10,
+             json.dumps(paths(page)))
+
+
+@check("maponly-key-0", "P2", "the key 0 toggles it, and never while typing")
+def _maponly_key(r, page, errs, calls):
+    hop(page, "#map/0180?ind=growth", 1200)
+    # the shortcut is ignored while the caret is in a field, so the caret is put
+    # nowhere first — and put back into a field further down to prove the guard
+    page.evaluate("() => document.activeElement && document.activeElement.blur()")
+    page.keyboard.press("0")
+    page.wait_for_timeout(900)
+    r.ok("0 turns the fill off", "ind=none" in page.evaluate("location.hash"),
+         page.evaluate("location.hash"))
+    r.ok("and the map is outlines", paths(page)["filled"] == 0 and paths(page)["outlines"] > 5,
+         json.dumps(paths(page)))
+    page.keyboard.press("0")
+    page.wait_for_timeout(900)
+    r.ok("0 again brings the same indicator back", "ind=growth" in page.evaluate("location.hash"),
+         page.evaluate("location.hash"))
+    r.ok("and the fill with it", paths(page)["filled"] > 5, json.dumps(paths(page)))
+    # typing a 0 in the search box is a 0 in the search box
+    page.click("#areaq")
+    page.fill("#areaq", "0180")
+    page.wait_for_timeout(500)
+    r.ok("typing 0 in the search box does not toggle the mode",
+         "ind=growth" in page.evaluate("location.hash"), page.evaluate("location.hash"))
+    r.ok("the keystroke went into the box", page.eval_on_selector("#areaq", "e => e.value") == "0180")
+    page.fill("#areaq", "")
+    page.keyboard.press("Escape")
+
+
+@check("maponly-minimaps", "P2", "the area page and Test property mini-maps do it too")
+def _maponly_minimaps(r, page, errs, calls):
+    hop(page, "#area/kommun/0180?ind=growth", 1400)
+    base = paths(page, "area")
+    r.ok("the area mini-map is filled with an indicator", base["filled"] > 5,
+         f'{base["filled"]} filled')
+    r.ok("and the chart panel is beside it",
+         page.eval_on_selector_all("[data-testid=chart-panel]", "e => e.length") == 1)
+
+    hop(page, "#area/kommun/0180?ind=none", 1400)
+    got = paths(page, "area")
+    r.ok("in Map only it is outlines only", got["outlines"] > 5 and got["filled"] == 0,
+         json.dumps(got))
+    r.ok("its legend is gone", not legend_state(page, "#arlegend")["text"],
+         legend_state(page, "#arlegend")["text"][:80])
+    r.ok("and no chart panel about no indicator",
+         page.eval_on_selector_all("[data-testid=chart-panel]", "e => e.length") == 0)
+    r.ok("the map says what it is showing",
+         "Map only" in (page.inner_text("[data-testid=maponly-note]")
+                        if page.eval_on_selector_all("[data-testid=maponly-note]", "e => e.length") else ""))
+    tiles = page.eval_on_selector_all("[data-testid=tiles] [data-testid^=tile-]", "e => e.length")
+    r.ok("the headline figures are still on the page", tiles >= 3, f"{tiles} tiles")
+
+    hop(page, f"#property?p={STHLM}:Test&ind=none", 1600)
+    settle(page)
+    pr = paths(page, "prop")
+    # the pin itself and its radius circles are not areas, so the assertion is on
+    # the area outlines rather than on every path the mini-map draws
+    r.ok("Test property's mini-map is outlines only",
+         pr["outlines"] > 0 and pr["filledOutlines"] == 0, json.dumps(pr))
+    r.ok("and the only other marks on it are the pin and its radii", pr["others"] <= 4,
+         f'{pr["others"]} other paths')
+    r.ok("its legend is gone too", not legend_state(page, "#proplegend")["text"])
+    r.ok("and its headline tiles are not",
+         page.eval_on_selector_all("[data-testid=tiles] [data-testid^=tile-]", "e => e.length") >= 3)
+
+
+@check("maponly-not-on-tables", "P2", "a view with no map falls back to a real indicator")
+def _maponly_tables(r, page, errs, calls):
+    hop(page, "#data/areas/kommun?ind=none", 1100)
+    r.ok("the Data hash drops ind=none", page.evaluate("location.hash") == "#data/areas/kommun",
+         page.evaluate("location.hash"))
+    head = page.eval_on_selector_all("table.tbl thead th.hi", "e => e.map(x => x.innerText.replace(/\\n/g,' '))")
+    r.ok("the highlighted column names a real indicator",
+         bool(head) and "Map only" not in head[0], (head[0] if head else "no column")[:80])
+    cells = page.eval_on_selector_all(
+        "#tbody tr",
+        "e => { const th = [...document.querySelectorAll('table.tbl thead th')];"
+        " const i = th.findIndex(x => x.classList.contains('hi'));"
+        " return e.slice(0, 10).map(tr => (tr.cells[i] || {}).innerText || ''); }")
+    r.ok("and the column holds figures, not dashes",
+         sum(1 for c in cells if re.search(r"\d", c)) >= 8, json.dumps(cells[:6], ensure_ascii=False))
+    r.ok("no Map only chip where there is no map",
+         page.eval_on_selector_all("[data-testid=chip-none]", "e => e.length") == 0)
+    hop(page, "#charts?ind=none&a=kommun:0180", 1200)
+    r.ok("a Charts link drops it as well", "ind=none" not in page.evaluate("location.hash"),
+         page.evaluate("location.hash"))
+    r.ok("and the chart still draws", page.eval_on_selector_all("svg#chsvg", "e => e.length") == 1)
 
 
 # --------------------------------------------------------------------------- #

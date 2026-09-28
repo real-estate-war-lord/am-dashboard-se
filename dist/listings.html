@@ -74,6 +74,27 @@ const CLIM_KEYS = ["flood100", "flood200", "floodBHF", "coast20", "coast30",
 const LEVELS = ["kommun", "regso", "deso"];
 const AREA_TYPES = LEVELS;
 
+/* ---------- Map only ----------
+   `ind=none` is not an indicator: it is the absence of one — the map drawn as
+   boundaries with nothing coloured in. It travels in the same `ind=` key so an
+   old link keeps working and a Map only link is the same shape as any other, and
+   it survives toV2() untouched on the three paths that actually have a map.
+
+   On every other path it is dropped. A Data table's highlighted column and a
+   Charts axis both need a real series, and a link that carried `ind=none` there
+   would name a column that cannot exist — so `#data/areas/kommun?ind=none`
+   canonicalises to `#data/areas/kommun` and the view falls back to its first
+   indicator. Dropping a key is idempotent, which is what keeps toV2() safe to run
+   on every hashchange. */
+const IND_NONE = "none";
+const MAP_PATHS = /^(map|area|property)(\/|$)/;
+function stripNone(path, query) {
+  if (query.ind !== IND_NONE || MAP_PATHS.test(String(path || ""))) return query;
+  const q = Object.assign({}, query);
+  delete q.ind;
+  return q;
+}
+
 /* ---------- hash ⇄ parts ---------- */
 /* "#table/kommun?ind=growth&y=2024" → { path, parts, query } — the inverse of buildHash() */
 function splitHash(hash) {
@@ -259,10 +280,12 @@ function toV2(hash, opts) {
   const { parts, query } = splitHash(hash);
   const head = parts[0] || "map";
   const fn = Object.prototype.hasOwnProperty.call(ALIASES, head) ? ALIASES[head] : null;
-  if (fn) { const r = fn(parts, query); return buildHash(r.path, r.query); }
-  if (head === "map") return buildHash(parts.join("/") || "map", layerFlags(climateFlag(query, o.isClim)));
-  if (head === "area") return buildHash(parts.join("/"), areaTabs(query));
-  return buildHash(parts.join("/") || "map", query);
+  let path, q;
+  if (fn) { const r = fn(parts, query); path = r.path; q = r.query; }
+  else if (head === "map") { path = parts.join("/") || "map"; q = layerFlags(climateFlag(query, o.isClim)); }
+  else if (head === "area") { path = parts.join("/"); q = areaTabs(query); }
+  else { path = parts.join("/") || "map"; q = query; }
+  return buildHash(path, stripNone(path, q));
 }
 
 /* ---------- either spelling → the internal view ---------- */
@@ -292,10 +315,10 @@ function toInternal(hash, opts) {
   return { view: head, parts, query: q };
 }
 
-const API = { CLIM_FALLBACK_IND, CLIM_KEYS, LEVELS, LAYERS, RADII, ALIASES,
+const API = { CLIM_FALLBACK_IND, CLIM_KEYS, LEVELS, LAYERS, RADII, ALIASES, IND_NONE,
               splitHash, buildHash, parseLatLon, round5, propParse, propSerialise,
               climateFlag, layerFlags, areaTabs, listingsQuery, fromListingsHash,
-              toV2, toInternal };
+              stripNone, toV2, toInternal };
 if (typeof window !== "undefined") window.ROUTE_CORE = API;
 if (typeof module !== "undefined" && module.exports) module.exports = API;
 
