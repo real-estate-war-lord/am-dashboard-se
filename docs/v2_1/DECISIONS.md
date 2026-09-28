@@ -139,3 +139,64 @@ front. A reader should be able to reverse any of them from this file alone.
   was spelled out inline there without the mode suffix, so every zoom step in Map only
   rebuilt the polygon layer and closed any open popup. Not in the brief; found while
   adding the `:ko` suffix.
+- **P4** — the ring encoding is **quantised, delta-encoded strings**, not TopoJSON.
+  The brief offered either. TopoJSON's win is shared arcs, and these three layers
+  do not share any: `build_geo.py` clips every layer to the coastline
+  independently, so a RegSO edge and its kommun edge are simplified separately
+  and are not the same arc. What is left of TopoJSON is quantisation plus delta
+  encoding, which is what `src/geo_core.js` does in 90 lines with no dependency
+  and no build step — 8.9 MB of rings became 2.0 MB, lossless at the 5 decimals
+  `rings_of()` already rounded to. The alphabet is base64url rather than Google
+  polyline's 0x3F offset, because that offset includes `\` and JSON doubles every
+  one of them.
+- **P4** — RegSO leaves the page in **two** files, not one per kommun as the brief
+  literally says. `regso/<kommun>.json` is the geometry, exactly as asked; the
+  *figures* for all 3 363 go in one `regso/values.json`. They are wanted at
+  different moments: the Data table's 3 363 rows, a national RegSO median, a rank
+  and the CSV export all need every area's figures and none of the coastline,
+  while the map needs one kommun's coastline and nothing else. Per-kommun only
+  would mean 290 fetches to print a median; one file only would mean downloading
+  1.4 MB of islands to fill in a table.
+- **P4** — moving the RegSO geometry out is not enough for the 5 MB budget on its
+  own (17.1 → 11.1 MB), so the *figures* and the eleven-year history left the page
+  too, and the kommun outlines that stay are encoded. Result 4.8 MB.
+  `build_dashboard.py` prints the figure against the budget and warns past it;
+  `tests/ui_v2_1/spec.py` P4 is what fails the gate.
+- **P4** — `regso/values.json` is fetched **on the first paint's timer**, not on
+  the first surface that needs it. Every view but the bare national map wants it,
+  it is ~1 MB gzipped, and holding it back only moves the wait to the click. The
+  per-kommun *ring* files stay strictly on demand. The loading states are real and
+  are tested with the route stalled on purpose (`regso-never-zero`), because with
+  the prefetch in place a check that merely waits would never see them.
+- **P4** — the map's area card's collapsed state moved from `localStorage` to the
+  hash (`card=0`). The brief asks for the URL; keeping both would mean a link that
+  reproduces one reader's map and not another's. Only the collapsed state is
+  written, so an ordinary link stays short. v2.0's `am_se_mapcard` key is no
+  longer read or written.
+- **P4** — `#lfmap`'s height is measured in JavaScript (`fitMapHeight()`) instead
+  of `clamp(380px, 100vh - 250px, 760px)` in the stylesheet. The 250 px was a
+  guess at how tall everything above the map is; it was wrong by a different
+  amount at every display scaling, and the acceptance item is a measured distance
+  from the top of the window. The stylesheet rule stays as the pre-script
+  fallback, and full screen still wins with its `!important` 100vh.
+- **P4** — a kommun page's mini-map showing a **kommun-level** indicator
+  ("the municipality among all others") now draws the 290 kommuner. v2.0 drew all
+  3 363 RegSO tinted with their kommun's value — the same 290 figures repeated
+  over twelve times as many polygons — which is also impossible now that RegSO
+  geometry is fetched per kommun. Reachable at `#area/kommun/<code>?sub=regso`
+  with a kommun-only indicator; no existing check covered it.
+- **P4** — `climLoadVisible()` takes a kommun's bounding box from the kommun's own
+  outline instead of the union of its RegSO rings. The old form would have skipped
+  every kommun whose ring file nobody had opened, so the hazard layers would have
+  quietly stopped loading outside the drilled kommun.
+- **P4** — the period controls read `periodPool()`, which falls back to the
+  kommuner while a sub-level pool has no history yet. Reading the selectable years
+  off 3 363 areas that have not loaded finds only the latest one, and
+  `#data/areas/regso?y=2020` would have been rewritten to the latest year before
+  the file landed and never put back. Kommun history is a superset of every
+  sub-level's.
+- **P4** — `window.AM` gained `RG`, `regsoReady()`, `loadAreas()` and
+  `injectRegso()`. The first three are what a content check needs instead of a
+  sleep; `injectRegso` is how `tests/smoke.js` — which has no `fetch` — puts the
+  pool in place from `data/processed/regso/`, so every existing smoke assertion
+  about RegSO figures and rings still runs, and runs against the real decoder.

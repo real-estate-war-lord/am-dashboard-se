@@ -1910,14 +1910,11 @@ tr.inh td.num{color:var(--ink2)}
 .indx.monly b{font-family:var(--disp);font-size:14px}
 .indx.monly .dim{font-family:var(--mono);font-size:10.5px;margin-left:auto;white-space:nowrap}
 #mapcard>.indx.monly{margin:6px 0 0}
-/* "published per kommun only" — the same strip, one slot lower, in the amber the rest
-   of the page uses for "read this before you read the number" (the prel. badge). */
-.indx.konly{display:grid;grid-template-columns:auto minmax(0,1fr);gap:3px 9px;align-items:baseline;
-  padding:8px 12px;font-size:12.5px;border-color:#E0CFA4;background:#FCF7EC;margin:6px 0 0}
-.indx.konly b{font-family:var(--disp);font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:#7A5A15}
-.indx.konly span{min-width:0}
-/* its own row, always: beside the sentence it either crowded it or ran off the side */
-.indx.konly .dim{grid-column:1/-1;font-family:var(--mono);font-size:10.5px;margin:0}
+/* "published per kommun only" was a strip here, under the indicator line, until
+   v2.1 P4: three lines of amber prose above the map cost 79 px of the 200 the map
+   is allowed before it starts, so it moved onto the map as a .monote.ko — the
+   same element the two mini-maps have always used. Its styling is down with the
+   rest of the map's overlays at the end of this file. */
 /* the kommun's own label on a kommun-only map: the one figure, once, where it belongs */
 .lflab-kom b{font-size:13px}
 .lflab-kom{font-size:12px;font-weight:600}
@@ -1936,7 +1933,6 @@ tr.inh td.num{color:var(--ink2)}
   font-size:9.5px;color:#7A5A15;border-color:#E0CFA4;background:rgba(252,247,236,.96)}
 @media (max-width:700px){
   .indx.monly .dim{margin-left:0;white-space:normal}
-  .indx.konly{grid-template-columns:minmax(0,1fr)}
 }
 
 /* ============================================================================
@@ -1974,4 +1970,84 @@ tr.inh td.num{color:var(--ink2)}
   .maplegs{display:none}
   body.legopen .maplegs{display:flex;max-height:70%}
   .legpill{display:inline-flex}
+}
+
+/* ============================================================================
+   v2.1 P4 — the map is the page
+   The map starts within 200 px of the top of the window at 1366×768 and takes
+   the rest of it (its height is measured in fitMapHeight(), not guessed here),
+   and the selected kommun's card is a panel OVER it rather than a block above
+   it. Last in the file because it has to beat the responsive tile rules above.
+   ==========================================================================*/
+
+/* The map's four corners, so nothing lands on anything else:
+     top left      the selected kommun's panel
+     top right     the legend stack
+     bottom left   Leaflet's zoom control (moved down out of the panel's way)
+     bottom centre the "published per kommun only" note, clear of both
+   The panel stops short of the bottom so the note and the zoom control have the
+   room, and scrolls inside itself instead of growing into them. */
+.mapwrap > .acard.mappanel{position:absolute;left:12px;top:12px;z-index:700;
+  /* 120px = the zoom control's 64 + its 26 from the bottom + 12 above it + the
+     12 this panel starts from. It shares the left edge with the zoom control, so
+     the panel scrolls inside itself rather than growing over the + and −. */
+  width:334px;max-width:calc(100% - 24px);max-height:calc(100% - 120px);
+  margin:0;overflow-y:auto;overscroll-behavior:contain;
+  background:rgba(255,255,255,.96);border:1px solid var(--line);border-radius:10px;
+  box-shadow:0 3px 16px rgba(20,28,24,.17)}
+/* collapsed: its own title bar and nothing else, so the reader can put the map
+   back without losing where they are */
+.mapwrap > .acard.mappanel.folded{width:auto;max-width:min(320px,calc(100% - 24px));
+  max-height:none;overflow:visible}
+.mapwrap > .acard.mappanel.folded .acard-id .dim{display:none}
+.mapwrap > .acard.mappanel .acard-id{padding-right:26px}
+.mapwrap > .acard.mappanel .acard-fold{position:absolute;top:8px;right:8px;margin:0}
+/* Leaflet puts + / − at the map's top left, which is exactly where the panel is.
+   Only on the big map: the mini-maps have no panel and keep theirs where it is. */
+#lfmap .leaflet-top.leaflet-left{top:auto;bottom:26px}
+/* the kommun-only note, centred along the bottom: the panel is above it on the
+   left, the zoom control beside it, the attribution to its right */
+/* Sentence case, not the mini-maps' small caps: this one names the indicator and
+   the kommun, and CSS small caps go through innerText — "Rent, median" would
+   read "RENT, MEDIAN" to a screen reader and to the tests alike. Only the label
+   in front of it is set in caps. */
+.mapwrap > .monote.ko{left:50%;right:auto;bottom:24px;transform:translateX(-50%);
+  max-width:min(560px,52%);text-align:center;text-transform:none;letter-spacing:0;
+  font-size:10px;line-height:1.4}
+.mapwrap > .monote.ko b{text-transform:uppercase;letter-spacing:.06em}
+/* 334 px does not hold five columns, let alone six. Two, at every viewport:
+   the media queries further up this file are written for a full-width row. */
+.mapwrap > .acard.mappanel .hl,
+.mapwrap > .acard.mappanel .hl.n6{grid-template-columns:repeat(2,minmax(0,1fr));margin-top:9px}
+.mapwrap > .acard.mappanel .hl .hlc{grid-column:auto}
+.mapwrap > .acard.mappanel .hl .hlc:last-child:nth-child(odd){grid-column:1/-1}
+.mapwrap > .acard.mappanel .hlc b,
+.mapwrap > .acard.mappanel .hl.n6 .hlc b{font-size:20px}
+.mapwrap > .acard.mappanel .acard-sec .tbl.compact th,
+.mapwrap > .acard.mappanel .acard-sec .tbl.compact td{font-size:10.5px;padding:3px 5px}
+
+/* "the file is not here yet" — never a dash, never a 0 */
+.mapwrap .monote.wait{max-width:56%;color:var(--ink2);border-color:var(--line);
+  background:rgba(255,255,255,.96)}
+
+/* ---- 600 px and below: the panel is a bottom sheet ---- */
+@media (max-width:600px){
+  .mapwrap > .acard.mappanel{left:0;right:0;top:auto;bottom:0;width:auto;max-width:none;
+    max-height:50%;border-radius:12px 12px 0 0;border-left:0;border-right:0;border-bottom:0;
+    box-shadow:0 -3px 16px rgba(20,28,24,.17)}
+  .mapwrap > .acard.mappanel.folded{width:auto;max-width:none;max-height:none}
+  .mapwrap > .acard.mappanel.folded .acard-id .dim{display:inline}
+  /* The sheet owns the map's bottom half, so everything else lives in the top
+     half and each thing has its own lane there: the zoom control on the left,
+     the legend pill on the right, the kommun-only note between them. The stack
+     is capped so that however many layers are on it cannot reach the sheet. */
+  .legpill{top:10px;right:10px;bottom:auto}
+  .maplegs{top:46px}
+  body.legopen .maplegs{display:flex;max-height:calc(50% - 60px)}
+  #lfmap .leaflet-top.leaflet-left{top:0;bottom:auto}
+  .mapwrap > .monote.ko{top:10px;bottom:auto;left:54px;right:96px;transform:none;
+    max-width:none;text-align:left}
+  /* opened, the legend stack covers that lane — and says the same thing in its
+     own note, so the overlay stands down rather than being drawn under it */
+  body.legopen .mapwrap > .monote.ko{display:none}
 }

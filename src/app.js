@@ -130,6 +130,106 @@ const median = arr => { const v = arr.filter(x => x != null && !isNaN(x)).sort((
 const byCode = {}; MUNI.forEach(m => byCode[m.code] = m);
 const byRegso = {}; AREAS.forEach(a => byRegso[a.code] = a);
 
+/* ---------- geometry: the page carries kommun outlines, encoded ----------
+   Every ring in this build is one short string (src/geo_core.js). The 290
+   kommun outlines are the only ones that travel in the page, and they are
+   decoded here, once, at load. Nothing below this line ever sees a string.
+
+   COORDINATE ORDER: [lat, lon] in, [lat, lon] out. geo_core never swaps and
+   neither does this — the one swap in the pipeline is build_makro.py's
+   rings_of(). CLAUDE.md records what the second swap did the time it existed. */
+const GC = window.GEO_CORE || { decodeRings: r => r, decodeEntity: o => o };
+MUNI.forEach(GC.decodeEntity);
+
+/* ---------- RegSO: 3 363 areas, fetched rather than inlined ----------
+   Until v2.1 the whole RegSO layer — rings, eleven years of history, the
+   distribution cards — sat in dist/index.html, which is why the page was 17 MB
+   before a reader had asked to see anything below kommun level. It now arrives
+   in two shapes, because the two are wanted at different moments:
+
+     regso/values.json      every figure for all 3 363, no geometry. What the
+                            Data table, a national RegSO median, a rank and the
+                            export need — all of them, none of the coastline.
+     regso/<kommun>.json    the rings of one kommun's RegSO. What the map needs
+                            — one kommun, not the country.
+
+   `AREAS` is the name index the page is built with (code, name, kommun) and the
+   values are merged INTO those same objects, so `byRegso`, `AREA_OPTS` and every
+   reference taken before the fetch stays valid. A surface that needs figures
+   asks regsoReady() first and says "Loading…" while it waits — a RegSO whose
+   file has not landed must never read as a dash, which is what a suppressed
+   value looks like.
+
+   The values file is asked for as soon as the first paint is done rather than on
+   the first surface that needs it: everything but the bare national map wants it,
+   it is ~1 MB over the wire, and holding it back only moves the wait. The ring
+   files stay strictly on demand. */
+const RG_META = D.regso_meta || {};
+const RG_IDX = D.regso_index || {};
+const RG = { vals: false, valsPending: false, valsFailed: false,
+             rings: {}, ringPending: {}, ringFailed: {} };
+const REGSO_N = RG_META.n || AREAS.length;
+/* every RegSO of a kommun, by name — right from the first paint, rings or not */
+const regsoAll = code => (code ? AREAS.filter(a => a.kommun === code) : []);
+/* the same list, but only once its rings are here: what may be DRAWN. An empty
+   list is what stops L.polygon() being handed an undefined ring. */
+const regsoDrawable = code => (code && RG.rings[code] ? regsoAll(code) : []);
+const regsoRingsIn = code => !!(code && RG.rings[code]);
+/* figures for all of them, and — when a kommun is named — its geometry too */
+const regsoReady = code => RG.vals && (!code || regsoRingsIn(code));
+const regsoFailed = code => RG.valsFailed || !!(code && RG.ringFailed[code]);
+/* Callers that want to know when the pool is here queue up rather than each
+   starting a fetch of their own — and a caller that arrives while one is already
+   in flight must still be told, which is the bug an `if (pending) return` on its
+   own would have: the export and the pin both ask, and whichever asked second
+   would have waited for ever. */
+const RG_WAITERS = [];
+function rgFlush() { RG_WAITERS.splice(0).forEach(f => { try { f(); } catch (e) {} }); }
+function regsoLoadVals(then) {
+  /* a failure answers too: a caller that is waiting to write a CSV has to be
+     let go, and the surfaces say what went wrong on their own */
+  if (RG.vals || RG.valsFailed) { if (then) then(); return; }
+  if (then) RG_WAITERS.push(then);
+  if (RG.valsPending) return;
+  if (!RG_META.file) { RG.valsFailed = true; rgFlush(); return; }
+  RG.valsPending = true;
+  fetch(RG_META.file)
+    .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+    .then(j => {
+      /* merged into the objects the page already holds, never replaced: a
+         reference taken before the fetch has to keep pointing at the same area */
+      (j.areas || []).forEach(a => { const o = byRegso[a.code]; if (o) Object.assign(o, a); });
+      RG.vals = true; RG.valsPending = false; RG.valsFailed = false;
+      afterRegso(); rgFlush();
+    })
+    .catch(() => { RG.valsPending = false; RG.valsFailed = true; afterRegso(); rgFlush(); });
+}
+function regsoLoadRings(code, then) {
+  if (!code || RG.rings[code]) { if (then) then(); return; }
+  const meta = RG_IDX[code];
+  if (!meta || RG.ringPending[code]) { if (!meta) RG.ringFailed[code] = true; return; }
+  RG.ringPending[code] = true;
+  fetch(meta.file)
+    .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+    .then(j => {
+      const rings = j.rings || {};
+      for (const cod in rings) { const o = byRegso[cod]; if (o) o.rings = GC.decodeRings(rings[cod]); }
+      RG.rings[code] = true; delete RG.ringPending[code]; delete RG.ringFailed[code];
+      afterRegso(); if (then) then();
+    })
+    .catch(() => { delete RG.ringPending[code]; RG.ringFailed[code] = true; afterRegso(); if (then) then(); });
+}
+/* the figures always, the geometry of one kommun when one is named */
+function regsoLoad(code) { regsoLoadVals(); if (code) regsoLoadRings(code); }
+/* Coalesced, and a full re-render rather than afterLazyLoad(): the RegSO pool is
+   read as TEXT by the table, the area page and every rank, not only drawn as a
+   layer, so repainting the overlays would leave those on "Loading…" for ever. */
+let RG_T = null;
+function afterRegso() {
+  if (RG_T) return;
+  RG_T = setTimeout(() => { RG_T = null; renderKeep(); }, 60);
+}
+
 /* DeSO (6 160 areas) is too much to inline, so it ships as one file per kommun
    (dist/deso/<kommun>.json) and is fetched the first time that kommun is opened.
    D.deso_index = {kommun: {n, file}}. Until a kommun's file has arrived its DeSO
@@ -229,7 +329,14 @@ const yearsForPool = (k, pool) => YEARS.filter(y => y === LATEST || pool.some(m 
 const histYears = (k, pool) => YEARS.filter(y => pool.some(m => m.hist && m.hist[k] && m.hist[k][y] != null));
 function curPool() { if (S.view === "area") { const e = areaEntity(); return e ? e.peers : MUNI; } if (S.view === "table") return T.level === "deso" ? allDeso() : T.level === "regso" ? AREAS : MUNI; return desoMode() ? desoAreas(MK.kommun) : MUNI; }
 const allDeso = () => { const out = []; for (const k in DESO) out.push(...DESO[k]); return out; };
-const yearsFor = k => yearsForPool(k, curPool());
+/* The pool the PERIOD controls read, which is not always the pool on screen.
+   While the RegSO or DeSO figures are still in flight their areas carry no
+   history, and reading the selectable years off them would find only the latest
+   one — so `#data/areas/regso?y=2020` would be rewritten to the latest year
+   before the file landed and never put back. Kommun history is a superset of
+   every sub-level's, so it stands in until the pool has any history at all. */
+const periodPool = () => { const p = curPool(); return p.some(o => o && o.hist) ? p : MUNI; };
+const yearsFor = k => yearsForPool(k, periodPool());
 const curInds = () => { if (S.view === "area") { const e = areaEntity(); return e ? e.inds : IND; } return IND; };
 
 /* ---------- Map only ----------
@@ -297,8 +404,9 @@ const LAY = new Set();
 const ZN = { off: false };
 /* Which tab the Data section shows. */
 const DT = { tab: "areas" };
-/* the map area card's open sections */
-const MC = { show: new Set() };
+/* the map area card: which sections are open, and whether the panel itself is
+   collapsed to its title bar (`card=0` in the hash — v2.1 P4) */
+const MC = { show: new Set(), fold: false };
 
 /* `show=` is the whole truth when it is present; when the key is absent the
    view's own defaults apply. Closing every section therefore has to serialise
@@ -352,6 +460,8 @@ function hashFor() {
     if (LAY.has("listings")) Object.assign(q, lstQuery());
     if (ZN.off) q.zones = "0";
     if (MK.kommun) q.show = showValue(MC.show, MC_SHOW_DEFAULTS);
+    /* the panel is open by default, so only the collapsed state is spelled out */
+    if (MK.kommun && MC.fold) q.card = "0";
     /* Camera in the hash, so a view can be linked to. Zooming still never
        changes the selection — this records where the camera is, it does not
        give it a say in what is selected. */
@@ -387,10 +497,15 @@ function parseHash() {
     S.view = "area"; AR.type = parts[1]; AR.code = parts[2];
     AR.sub = q.sub === "deso" ? "deso" : "regso";
     setShow(AR.show, q.show, areaShowDefaults());
-    if (AR.type === "deso") loadDeso(desoKomOf(AR.code));
-    else if (AR.type === "kommun") loadDeso(AR.code);
+    /* the sub-municipal files this page needs. A kommun page shows its RegSO in a
+       table and on the mini-map; a RegSO page needs the whole pool for its rank
+       and the Sweden median, and its kommun's rings for the map beside it. */
+    if (AR.type === "deso") { loadDeso(desoKomOf(AR.code)); regsoLoadVals(); }
+    else if (AR.type === "kommun") { loadDeso(AR.code); regsoLoad(AR.code); }
+    else if (AR.type === "regso") regsoLoad(komOf(AR.code));
   } else if (v === "table") { S.view = "table"; if (RC.LEVELS.includes(parts[1])) T.level = parts[1];
-    T.cols = q.cols === "all" ? "all" : "headline"; DT.tab = "areas"; }
+    T.cols = q.cols === "all" ? "all" : "headline"; DT.tab = "areas";
+    if (T.level === "regso") regsoLoadVals(); }
   else if (v === "market") { S.view = "market"; MKT.src = q.src === "1"; DT.tab = MKT.src ? "sources" : "national"; }
   else if (v === "pipeline") { S.view = "pipeline"; PIPE.type = q.t || ""; PIPE.status = q.s || ""; DT.tab = "projects"; }
   else if (v === "property") {
@@ -412,11 +527,17 @@ function parseHash() {
     CH.y0 = q.y0 || ""; CH.y1 = q.y1 || "";
     CH.median = q.med !== "0"; CH.mode = q.mode || "auto";
     CH.dist = q.dist || CH.dist; CH.fq = q.fq === "q" ? "q" : "year";
+    /* a RegSO series, or the "Sweden — median of RegSO" line, is the whole pool */
+    if (CH.areas.some(a => String(a).indexOf("regso:") === 0)) regsoLoadVals();
   } else {
     S.view = "makro";
     MK.kommun = parts[1] && byCode[parts[1]] ? parts[1] : null;
     MK.sub = parts[2] === "deso" ? "deso" : "regso";
     setShow(MC.show, q.show, MC_SHOW_DEFAULTS);
+    MC.fold = q.card === "0";
+    /* RegSO is the default sub-level AND the fallback while a DeSO file is in
+       flight, so a drilled kommun always wants its RegSO — both halves of it. */
+    if (MK.kommun) regsoLoad(MK.kommun);
     if (MK.sub === "deso") loadDeso(MK.kommun);
   }
   /* Map only survives only on a view that has a map; anywhere else the view falls
@@ -447,8 +568,26 @@ window.AM = { get map() { return LF.map; }, get area() { return LF.amap; },
   go, D, MK, S, LF, LAY, PROP,
   /* LST is declared further down the file, so it is read lazily */
   get LST() { return LST; },
-  /* the export model, readable without downloading a file */
-  exportRows: id => exportRows(id), exportUnitProblems: () => exportUnitProblems() };
+  /* v2.1 P4: what the lazily fetched RegSO pool is doing, and a promise a test
+     can await instead of sleeping. `injectRegso` is how tests/smoke.js — which
+     has no fetch — puts the pool in place from data/processed/regso/. */
+  RG, regsoReady: code => regsoReady(code),
+  loadAreas: () => Promise.all([loadAllRegso(), loadAllDeso()]),
+  injectRegso: (vals, ringsByKommun) => {
+    (((vals || {}).areas) || []).forEach(a => { const o = byRegso[a.code]; if (o) Object.assign(o, a); });
+    if (vals) { RG.vals = true; RG.valsFailed = false; RG.valsPending = false; rgFlush(); }
+    for (const k in (ringsByKommun || {})) {
+      const rings = (ringsByKommun[k] || {}).rings || ringsByKommun[k] || {};
+      for (const cod in rings) { const o = byRegso[cod]; if (o) o.rings = GC.decodeRings(rings[cod]); }
+      RG.rings[k] = true; delete RG.ringFailed[k];
+    }
+  },
+  /* the export model, readable without downloading a file. `exportRowCount`
+     skips the CSV serialisation — "All area data" is 556 000 rows, and a check
+     that only wants the count should not build 150 MB of strings for it. */
+  exportRows: id => exportRows(id),
+  exportRowCount: id => ((EXPORTS[id] || { rows: () => [] }).rows() || []).length,
+  exportUnitProblems: () => exportUnitProblems() };
 window.addEventListener("hashchange", () => {
   /* a popover belongs to the screen it was opened on */
   UI.menu = null; SR.open = false;
@@ -630,7 +769,11 @@ function copyLink() {
 /* A DeSO code carries its kommun in the first four characters (0114A0010_DeSO2025),
    which is why DeSO → RegSO → kommun → län is an attribute rollup here and never
    a spatial join. */
-const desoKomOf = code => String(code || "").slice(0, 4);
+/* Every code below kommun level carries its kommun in front of it —
+   0180R001_RegSO2025, 0180A0010_DeSO2025 — so the file a code needs is an
+   attribute rollup and never a lookup. */
+const komOf = code => String(code || "").slice(0, 4);
+const desoKomOf = komOf;
 function isClimKey(k) { return CLIM_KEYS.indexOf(k) >= 0; }
 /* the LF bookkeeping key for a layer: LF.<key>Layer, LF.<key>Drawn, LF.<key>Canvas */
 const LAY_KEY = { infra: "inf", public: "pub", services: "srv", schools: "sch", uso: "uso", listings: "list" };
@@ -652,7 +795,7 @@ document.addEventListener("click", e => {
   if (g("[data-navclose]") || g("#scrim")) { navClose(); return; }
   if (g("[data-copylink]")) { copyLink(); return; }
   if ((el = g("[data-minifull]"))) { toggleMiniFull(el.dataset.minifull); return; }
-  if (g("[data-mcfold]")) { mcSetFolded(!mcFolded()); renderKeep(); return; }
+  if (g("[data-mcfold]")) { MC.fold = !mcFolded(); syncHash(); renderKeep(); return; }
   if (g("[data-mkown]")) { MK.own = !MK.own; renderKeep(); return; }
   if (g("[data-fs]")) { toggleFullscreen(); return; }
   if (g("[data-back]")) { history.back(); return; }
@@ -1348,7 +1491,10 @@ function levelBadge(i) {
 }
 function indExplain(i) {
   const pool = curPool();
-  const cov = `${MUNI.filter(m => m[i.key] != null).length}/${MUNI.length} kommuner${(i.levels || []).includes("regso") ? `, ${AREAS.filter(a => a[i.key] != null).length}/${AREAS.length} RegSO` : ""}${(i.levels || []).includes("deso") ? ", DeSO per kommun" : ""}`;
+  /* the RegSO numerator is a count of the pool, so it is "…" rather than 0 until
+     the pool is here — the denominator is known from the build either way */
+  const rgCov = RG.vals ? AREAS.filter(a => a[i.key] != null).length : "…";
+  const cov = `${MUNI.filter(m => m[i.key] != null).length}/${MUNI.length} kommuner${(i.levels || []).includes("regso") ? `, ${rgCov}/${REGSO_N} RegSO` : ""}${(i.levels || []).includes("deso") ? ", DeSO per kommun" : ""}`;
   const ys = yearsForPool(i.key, pool);
   const asof = asofText(i);
   /* one line by default — label, level, unit, period; the definition, source, coverage and caveat open on ⓘ */
@@ -1403,7 +1549,7 @@ const periodFor = i => (isQuarter(MK.year) && !qPeriodsOf(i).length) ? LATEST : 
    mixed pool would show a figure for some areas and a dash for the rest. */
 function quarterly(i) {
   if (!i || qPeriodsOf(i).length < 2) return false;
-  const pool = curPool();
+  const pool = periodPool();
   return pool.length > 0 && pool.every(o => o && o.q && o.q[i.key]);
 }
 function curPeriods() {
@@ -1419,6 +1565,23 @@ function newestPeriod() {
   const ps = curPeriods();
   return ps.includes(LATEST) ? LATEST : (ps[ps.length - 1] || LATEST);
 }
+/* ---------- what a RegSO surface says before its file is here ----------
+   "Loading…", never a dash and never a 0. A dash in this dashboard means the
+   source suppressed the value, which is a statement about the data; an empty
+   count would be a statement about the place. Neither is true of a fetch that
+   has not come back. `settle()` in tests/ui_v2_1/spec.py waits on the word
+   Loading, so every check below reads the real figures or fails. */
+const RG_WAIT = "Loading the RegSO figures…";
+const RG_WAIT_GEO = "Loading the RegSO boundaries…";
+/* A fetch needs http. Opened from a file:// URL there is nothing to fetch from,
+   and saying so is more use than an error that never resolves. */
+const RG_GONE = "The RegSO data could not be loaded. It is fetched from regso/ next to this page, "
+  + "which needs a web server — from a file:// URL only kommun level is available.";
+function regsoWait(code, what) {
+  if (regsoReady(code)) return "";
+  if (regsoFailed(code)) return `<p class="empty" data-testid="regso-failed">${esc(RG_GONE)}</p>`;
+  return `<p class="empty" data-testid="regso-loading">${esc(what || RG_WAIT)}</p>`;
+}
 /* the line that stands where the indicator line stands, so turning the fill off
    does not make the map jump up the page */
 const MAP_ONLY_LINE = "Map only — pick an indicator to colour the areas";
@@ -1427,17 +1590,25 @@ function mapOnlyStrip() {
     <span>— pick an indicator to colour the areas</span>
     <span class="dim">boundaries only · click an area for its figures · key 0</span></div>`;
 }
-/* The strip that sits under the indicator line when the figure on screen belongs to the
-   kommun and not to the areas drawn inside it. It names the indicator, because the map
-   looks different from the one the reader just had and the reason has to be on the page
-   rather than only in the legend. */
+/* The note that says the figure on screen belongs to the kommun and not to the areas
+   drawn inside it. It names the indicator, because the map looks different from the one
+   the reader just had and the reason has to be on the page rather than only in the
+   legend.
+
+   v2.1 P4 moved it ONTO the map, where the two mini-maps have always put it — three
+   lines of amber prose above the map cost 79 px, which is most of the 200 px the map
+   itself is allowed before it starts. It is one line now, with the full sentence on its
+   hover, and it reads the same on the big map and on the small ones. On a phone it is
+   an ordinary strip above the map again: there is no 200 px budget there and an
+   overlay would be sitting on a third of the map. */
 function kommunOnlyStrip(i) {
   const m = MK.kommun ? byCode[MK.kommun] : null;
   const sub = drillSub() === "deso" ? "DeSO" : "RegSO";
-  return `<div class="indx konly" data-testid="kommun-only-note"><b>${esc(KOMMUN_ONLY_LINE)}</b>
-    <span>— ${esc(i.label)} is published per kommun and no finer, so ${esc(m ? m.name : "the kommun")} is
-      filled with its own figure and its ${sub} areas are drawn as outlines, not coloured in.</span>
-    <span class="dim">clicking one still opens it — the kommun's figure is on it, marked as the kommun's</span></div>`;
+  const full = `${i.label} is published per kommun and no finer, so ${m ? m.name : "the kommun"} is `
+    + `filled with its own figure and its ${sub} areas are drawn as outlines, not coloured in. `
+    + `Clicking one still opens it — the kommun's figure is on it, marked as the kommun's.`;
+  return `<div class="monote ko" data-testid="kommun-only-note" title="${esc(full)}">
+    <b>${esc(KOMMUN_ONLY_LINE)}</b> — ${esc(i.label)}, ${esc(m ? m.name : "the kommun")} filled · ${sub} outlined</div>`;
 }
 function periodControl() {
   const i = curInd();
@@ -1479,12 +1650,23 @@ function periodControl() {
 /* geometry helpers: largest ring, centroid */
 const mainRing = a => (a.rings || []).slice().sort((x, y) => y.length - x.length)[0] || [];
 const centroid = ring => ring.reduce((o, p) => [o[0] + p[0] / ring.length, o[1] + p[1] / ring.length], [0, 0]);
-function muniAreas(code) { return desoMode() ? desoAreas(code) : AREAS.filter(a => a.kommun === code); }
+/* what the big map DRAWS inside a kommun: its DeSO, or its RegSO once their ring
+   file is here. Empty while the file is in flight, which is what keeps
+   L.polygon() from being handed an undefined ring — the count the card and the
+   popups print comes from regsoAll()/the index instead, so nothing reads 0. */
+function muniAreas(code) { return desoMode() ? desoAreas(code) : regsoDrawable(code); }
 function boundsOf(list) { const pts = []; list.forEach(a => (a.rings || []).forEach(r => r.forEach(p => pts.push(p)))); return pts.length ? L.latLngBounds(pts) : null; }
 function applyPendingFit() {
   if (!LF.map || !LF.pendingFit) return;
-  const b = boundsOf(muniAreas(LF.pendingFit)); LF.pendingFit = null;
-  if (b) LF.map.fitBounds(b, { padding: [12, 12] });
+  /* The sub-areas' geometry may still be in flight, and waiting for it would
+     leave the reader looking at the whole country after asking for one kommun.
+     The kommun's own outline is in the page, covers the same ground, and gives
+     the same frame — so the camera moves now and the polygons arrive into it. */
+  const kom = byCode[LF.pendingFit];
+  const b = boundsOf(muniAreas(LF.pendingFit)) || (kom ? boundsOf([kom]) : null);
+  if (!b) return;
+  LF.pendingFit = null;
+  LF.map.fitBounds(b, { padding: [12, 12] });
 }
 /* page links for the three entity types */
 /* which page an entity belongs to, by shape: a DeSO names its RegSO, a RegSO names
@@ -1559,21 +1741,32 @@ function kommunEntity(m) {
 }
 
 /* ---------- the map's area card ----------
-   What the map says about the kommun that is open: who it is, the five headline
+   What the map says about the kommun that is open: who it is, the headline
    figures, and the two ways onward. Everything else is behind a toggle, closed,
    with its state in the URL — so the map keeps its height and a link still
-   reproduces exactly what was unfolded. */
-const MC_KEY = "am_se_mapcard";
-const mcFolded = () => { try { return localStorage.getItem(MC_KEY) === "1"; } catch (e) { return false; } };
-const mcSetFolded = v => { try { localStorage.setItem(MC_KEY, v ? "1" : "0"); } catch (e) {} };
+   reproduces exactly what was unfolded.
+
+   v2.1 P4 moved it ONTO the map. As a block above it, the card pushed the map
+   down by 200-odd pixels, so drilling into a kommun — the one action the whole
+   page is for — made the thing you had come to look at half as tall. It is a
+   panel over the map's left edge now (a bottom sheet on a phone), collapsible
+   to its own title bar, and the collapsed state is in the URL. The legends sit
+   at the map's top right and the panel at its left, so neither covers the other. */
+/* Collapsed or not is in the URL (`card=0`), not in localStorage. v2.0 kept it
+   per browser, which meant two people opening the same link saw two different
+   maps and neither could send the other what they were looking at. `card=0` is
+   only written when the panel IS collapsed, so an ordinary link stays short. */
+const mcFolded = () => !!MC.fold;
 const MC_SHOW_DEFAULTS = [];
 function mapAreaCard(m) {
   const e = kommunEntity(m);
   const folded = mcFolded();
-  const subs = muniAreas(m.code).length;
+  /* the count of sub-areas, not the count of sub-areas whose geometry has
+     arrived — "0 RegSO" would be a false statement about the kommun */
+  const subs = desoMode() ? desoAreas(m.code).length : ((RG_IDX[m.code] || {}).n || regsoAll(m.code).length);
   const projects = (INFRA.projects || []).filter(p => (p.kommuner || []).includes(m.code));
   const outlook = outlookLine(m, false);
-  return `<div class="acard ${folded ? "folded" : ""}" data-testid="area-card">
+  return `<div class="acard mappanel ${folded ? "folded" : ""}" data-testid="area-card">
     <div class="acard-id">
       <b>${esc(m.name)}</b>
       <span class="dim">${esc(lanName(m.lan) ? lanName(m.lan) + " län" : (m.lan || ""))}${m.pop != null ? " · " + nf(m.pop, 0) + " inhabitants" : ""} · ${subs} ${desoMode() ? "DeSO" : "RegSO"}</span>
@@ -1596,6 +1789,14 @@ function mapAreaCard(m) {
       <p class="cap">Hand-curated from the agencies' own pages; every row links to the source. <b>Not a forecast of anything</b> — a status and an opening year as the project body states them.</p></div></details>` : ""}`}
   </div>`;
 }
+/* The note over the map while a drilled kommun's sub-areas are still being
+   fetched. The kommun outline is drawn (it is in the page); the areas inside it
+   are not there yet, and the map says so rather than reading as an empty kommun. */
+function mapWaitNote() {
+  if (!MK.kommun || regsoReady(MK.kommun)) return "";
+  const txt = regsoFailed(MK.kommun) ? RG_GONE : RG.vals ? RG_WAIT_GEO : RG_WAIT;
+  return `<div class="monote wait" data-testid="map-loading">${esc(txt)}</div>`;
+}
 function vMakro() {
   if (!AREAS.length || !MUNI.length) return `<div class="card"><p class="empty">No macro data built yet — run <code>make fetch</code>, <code>make geo</code> and <code>make build</code>.</p></div>`;
   const ind = curInd();
@@ -1607,9 +1808,10 @@ function vMakro() {
       <div class="tools" data-testid="map-toolbar" data-row="1">${areaSearch()}${layersMenuHtml()}${indPicker("map")}${periodControl()}${subToggle()}</div>
       <div class="chiprow" data-row="2">${indQuick()}</div></div>
     ${mapOnly() ? mapOnlyStrip() : indExplain(ind)}
-    ${kommunOnlyMap() ? kommunOnlyStrip(ind) : ""}
-    ${muni ? mapAreaCard(muni) : ""}
     <div class="mapwrap${mapOnly() ? " maponly" : ""}"><div id="lfmap" data-testid="map"></div>
+      ${muni ? mapAreaCard(muni) : ""}
+      ${kommunOnlyMap() ? kommunOnlyStrip(ind) : ""}
+      ${mapWaitNote()}
       <div class="maplegs" data-testid="legends">
         <div class="maplegend" id="maplegend" data-testid="legend"></div>
         <div class="maplegend" id="lg-zones" data-testid="legend-zones"></div>
@@ -1712,6 +1914,10 @@ function tableCols() {
 }
 function tableBodyHtml() {
   const cols = tableCols(), ind = curInd(), pool = curPool(), y0 = yearsForPool(ind.key, pool)[0];
+  /* 3 363 rows of dashes would read as 3 363 suppressed figures */
+  if (T.level === "regso" && !RG.vals) {
+    return `<tr><td colspan="${cols.length + 5}" class="empty" data-testid="${RG.valsFailed ? "regso-failed" : "regso-loading"}">${esc(RG.valsFailed ? RG_GONE : RG_WAIT)}</td></tr>`;
+  }
   const rows = tableRows().slice().sort((a, b) => ((V(b, ind.key) ?? V(byCode[b.kommun], ind.key)) ?? -1e9) - ((V(a, ind.key) ?? V(byCode[a.kommun], ind.key)) ?? -1e9));
   if (!rows.length) return `<tr><td colspan="${cols.length + 5}" class="empty">no rows match the filters</td></tr>`;
   return rows.map(r => {
@@ -1737,7 +1943,7 @@ function vTable() {
     ${indExplain(ind)}
     <div class="tfilters">
       <input id="tq" type="search" placeholder="Search kommun, RegSO or code…" value="${esc(T.q)}">
-      <div class="seg"><button class="sg ${T.level === "kommun" ? "on" : ""}" data-tlevel="kommun">Kommuner (${MUNI.length})</button><button class="sg ${T.level === "regso" ? "on" : ""}" data-tlevel="regso">RegSO (${AREAS.length})</button>${allDeso().length ? `<button class="sg ${T.level === "deso" ? "on" : ""}" data-tlevel="deso">DeSO (${allDeso().length})</button>` : ""}</div>
+      <div class="seg"><button class="sg ${T.level === "kommun" ? "on" : ""}" data-tlevel="kommun">Kommuner (${MUNI.length})</button><button class="sg ${T.level === "regso" ? "on" : ""}" data-tlevel="regso">RegSO (${REGSO_N})</button>${allDeso().length ? `<button class="sg ${T.level === "deso" ? "on" : ""}" data-tlevel="deso">DeSO (${allDeso().length})</button>` : ""}</div>
       ${T.level !== "deso" ? `<select id="tregion" class="indsel"><option value="">All regions</option>${REGIONS.map(r => `<option value="${r}" ${T.lan === r ? "selected" : ""}>${r}</option>`).join("")}</select>` : ""}
       <label class="hint">min. population <input id="tminpop" type="number" min="0" step="1000" value="${T.minPop}" style="width:90px"></label>
       <span class="hint" id="tcount">${tableRows().length} rows</span>
@@ -1751,7 +1957,7 @@ function vTable() {
       <th class="num hi">${esc(ind.label)}<br><span class="dim">${esc(ind.unit || "")}</span></th>${y0 && y0 !== MK.year ? `<th class="num">Δ since ${y0}<br><span class="dim">${isPct(ind) ? "pp" : "%"}</span></th>` : ""}
       ${cols.filter(i => i.key !== ind.key).map(i => `<th class="num">${esc(i.label)}<br><span class="dim">${esc(i.unit || "")}</span></th>`).join("")}</tr></thead>
       <tbody id="tbody">${tableBodyHtml()}</tbody></table></div>
-    <p class="cap">Sorted by the selected indicator; click a column header to re-sort, a row to open the area's page, ↗ to chart it. A cell tagged <span class="tag-muni">muni</span> is the kommun's figure, shown where the sub-area publishes none. Rows: ${T.level === "regso" ? `${AREAS.length} RegSO — SCB's named neighbourhoods, 2025 division` : T.level === "deso" ? `${allDeso().length} DeSO in the kommuner opened so far — codes only, no names` : `${MUNI.length} kommuner`}. <b>Export writes every indicator</b> whichever column set is on screen.</p>
+    <p class="cap">Sorted by the selected indicator; click a column header to re-sort, a row to open the area's page, ↗ to chart it. A cell tagged <span class="tag-muni">muni</span> is the kommun's figure, shown where the sub-area publishes none. Rows: ${T.level === "regso" ? `${REGSO_N} RegSO — SCB's named neighbourhoods, 2025 division` : T.level === "deso" ? `${allDeso().length} DeSO in the kommuner opened so far — codes only, no names` : `${MUNI.length} kommuner`}. <b>Export writes every indicator</b> whichever column set is on screen.</p>
     ${srcNote()}
   </div>`;
 }
@@ -1764,17 +1970,21 @@ function downloadCsv(lines, name) {
 function areaEntity() {
   if (AR.type === "kommun") {
     const m = byCode[AR.code]; if (!m) return null;
-    const mine = AREAS.filter(a => a.kommun === m.code);
-    const subs = { regso: mine };
+    /* `ctx`/`own` are DRAWN, so they are the RegSO whose rings have arrived;
+       `subs` is TABLED, so it is all of them by name. The two used to be the
+       same array, which with lazy geometry meant either a mini-map handed an
+       undefined ring or a sub-area table that lost 127 rows. */
+    const drawn = regsoDrawable(m.code);
+    const subs = { regso: regsoAll(m.code) };
     if (desoLoaded(m.code)) subs.deso = desoAreas(m.code);
     return { type: "kommun", typeLabel: "Kommun", o: m, name: m.name, code: m.code, kommun: null, lan: m.lan, inds: IND, peers: MUNI, peerLabel: "kommuner",
-             ctx: mine, own: mine, subs };
+             ctx: drawn, own: drawn, subs };
   }
   if (AR.type === "regso") {
     const a = byRegso[AR.code]; if (!a) return null; const m = byCode[a.kommun];
     const kids = desoAreas(a.kommun).filter(d => d.regso === a.code);
     return { type: "regso", typeLabel: "RegSO", o: a, name: a.name, code: a.code, kommun: m, lan: m && m.lan, inds: IND, peers: AREAS, peerLabel: "RegSO areas",
-             ctx: AREAS.filter(x => x.kommun === a.kommun), own: [a], subs: kids.length ? { deso: kids } : null };
+             ctx: regsoDrawable(a.kommun), own: [a], subs: kids.length ? { deso: kids } : null };
   }
   if (AR.type === "deso") {
     const q = byDeso[AR.code]; if (!q) return null; const m = byCode[q.kommun];
@@ -1877,6 +2087,8 @@ function areaCompareTable(e) {
 function areaSubTable(e) {
   if (!e.subs) return "";
   const keys = Object.keys(e.subs); const sub = keys.includes(AR.sub) ? AR.sub : keys[0]; const list = e.subs[sub];
+  /* the RegSO rows are names now and figures once regso/values.json lands */
+  if (sub === "regso" && !RG.vals) return regsoWait();
   const cols = IND.filter(i => (i.levels || []).includes(sub));
   const ind = cols.find(i => i.key === MK.ind) || cols[0];
   const pool = sub === "deso" ? list : AREAS, y0 = yearsForPool(ind.key, pool)[0];
@@ -2045,10 +2257,18 @@ async function propResolve() {
   if (PROP.resKey === key) return;
   PROP.resKey = key;
   const r = await locate(PROP.lat, PROP.lon);
+  /* And the RegSO figures, before the page reads any of them. propVal() walks
+     DeSO → RegSO → kommun and takes the first figure it finds, so a pin resolved
+     while the pool was still in flight would fall through to the kommun's figure
+     and label it "municipality figure" — a wrong statement, not a missing one. */
+  await new Promise(res => regsoLoadVals(res));
   /* the reader may have moved the pin while the rings were in flight */
   if (PROP.resKey !== key) return;
   PROP.res = r;
-  if (PROP.lat != null) loadDeso(r && r.kommun ? r.kommun.code : null);
+  /* the pin reads its figures off the finest area it lands in, and draws that
+     area's neighbours on the mini-map — so both levels of the kommun it landed
+     in are fetched, not only DeSO */
+  if (PROP.lat != null) { loadDeso(r && r.kommun ? r.kommun.code : null); regsoLoad(r && r.kommun ? r.kommun.code : null); }
   if (S.view === "property") renderKeep();
 }
 /* the finest entity we actually hold figures for */
@@ -2164,7 +2384,7 @@ function propArea() {
   if (e.regso) {
     return { type: "regso", typeLabel: "RegSO", o: e.regso, name: e.regso.name, code: e.regso.code,
              kommun: e.kommun, lan: e.kommun && e.kommun.lan, inds: IND, peers: AREAS, peerLabel: "RegSO areas",
-             ctx: AREAS.filter(x => x.kommun === e.regso.kommun), own: [e.regso], subs: null };
+             ctx: regsoDrawable(e.regso.kommun), own: [e.regso], subs: null };
   }
   if (e.kommun) return kommunEntity(e.kommun);
   return null;
@@ -2556,6 +2776,16 @@ function studyRow(e, i, key) {
 function vArea() {
   const e = areaEntity();
   if (!e) return `<div class="back"><button data-go="map">‹ Map</button></div><div class="card"><p class="empty">Unknown area.</p></div>`;
+  /* A RegSO page is entirely made of figures that arrive with regso/values.json,
+     and every rank and median on it is read off the other 3 362. Until the file
+     is here the page says so — rendering it early would print a dash in every
+     cell, and a dash in this dashboard means the source suppressed the value. */
+  if (e.type === "regso" && !RG.vals) {
+    return `<div class="back"><button data-go="${esc(withQ("map/" + e.o.kommun))}">‹ Map</button></div>
+      <div class="card accent arhead"><div class="arid"><h2>${esc(e.name)}</h2>
+      <div class="artags"><span class="tag">RegSO</span><span class="tag">code ${esc(e.code)}</span>${e.kommun ? `<span class="tag">${esc(e.kommun.name)}</span>` : ""}</div></div>
+      ${regsoWait()}</div>`;
+  }
   const ind = curInd();
   setTimeout(arMapInit, 0);
   const mapHash = e.type === "kommun" ? `map/${e.code}` : e.type === "deso" ? `map/${e.o.kommun}/deso` : `map/${e.o.kommun}`;
@@ -2606,8 +2836,13 @@ function arMapInit() {
   LF.amap = map;
   L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 18, maxNativeZoom: 19, detectRetina: true, className: "basemap" }).addTo(map);
   const ind = curInd(); const { useQ, sind, kommuneLevel } = arMapMode(e, ind);
-  const ctx = e.type === "kommun" ? (useQ ? desoAreas(e.code) : kommuneLevel ? AREAS : e.ctx) : e.ctx;
-  const vk = a => { if (!sind) return null; if (kommuneLevel) return V(byCode[a.kommun], sind.key); return V(a, sind.key) ?? (useQ ? null : V(byCode[a.kommun], sind.key)); };
+  /* "the municipality among all others" is drawn as the 290 kommuner, whose
+     outlines are in the page. v2.0 drew it as all 3 363 RegSO tinted with their
+     kommun's value — the same 290 figures repeated over twelve times as many
+     polygons — which v2.1 P4 can no longer do anyway: RegSO geometry is fetched
+     per kommun, so the national set does not exist in memory. */
+  const ctx = e.type === "kommun" ? (useQ ? desoAreas(e.code) : kommuneLevel ? MUNI : e.ctx) : e.ctx;
+  const vk = a => { if (!sind) return null; if (kommuneLevel) return V(a, sind.key); return V(a, sind.key) ?? (useQ ? null : V(byCode[a.kommun], sind.key)); };
   /* Built from vk, the same accessor the fill uses. Building it from the areas'
      OWN values instead left a RegSO page showing a kommun-level indicator with a
      legend that said "no data" over polygons that were all drawn in one colour. */
@@ -2619,7 +2854,9 @@ function arMapInit() {
     : kommuneLevel ? scaleOf(MUNI, m => V(m, sind.key), null, sind)
     : scaleOf(ctx.filter(a => vk(a) != null), vk, null, sind);
   if (kof) kof.poly.addTo(map);
-  const own = e.type === "kommun" ? e.ctx : e.own;
+  /* at kommun level the page's own shape is the kommun itself, one polygon among
+     the 290; otherwise it is every sub-area of it */
+  const own = kommuneLevel ? [e.o] : e.type === "kommun" ? e.ctx : e.own;
   const outline = e.type !== "kommun";
   /* Map only on a mini-map: the same outlines, and the area the page is about keeps
      its heavier stroke so the reader can still see which one it is. `sind` is null
@@ -2639,10 +2876,9 @@ function arMapInit() {
       : L.polygon(a.rings, { color: isOwn && (outline || kommuneLevel) ? "#141C18" : "#FFFFFF", smoothFactor: 0.25, weight: isOwn && outline ? 2.6 : isOwn && kommuneLevel ? 1.2 : kommuneLevel ? 1.5 : useQ ? 0.4 : 0.8,
       fillColor: t == null ? "#C4CBC4" : (sc.color ? sc.color(t) : mkShade(t, ind.key, sc)), fillOpacity: isOwn ? .85 : kommuneLevel ? .35 : .45 });
     const v = vk(a); const native = kommuneLevel || (sind && V(a, sind.key) != null);
-    const label = kommuneLevel ? (byCode[a.kommun] || {}).name : a.name;
     /* no value in the tooltip where the value would be the kommun's, repeated per area */
-    p.bindTooltip(`<b>${esc(label)}</b>${!only && !kof && v != null ? `<br>${esc(sind.short || sind.label)}: ${fmtOf(sind)(v)}${native ? "" : " °"}` : ""}`);
-    if (!isOwn) { p.on("click", () => go(withQ(kommuneLevel ? pageOf(byCode[a.kommun]) : pageOf(a))));
+    p.bindTooltip(`<b>${esc(a.name)}</b>${!only && !kof && v != null ? `<br>${esc(sind.short || sind.label)}: ${fmtOf(sind)(v)}${native ? "" : " °"}` : ""}`);
+    if (!isOwn) { p.on("click", () => go(withQ(pageOf(a))));
       p.on("mouseover", () => p.setStyle(only ? moHover(w) : kof ? koHover(w) : { weight: 2.2, color: "#141C18" }));
       p.on("mouseout", () => p.setStyle(only ? moStyle(w) : kof ? koStyle(w) : { weight: kommuneLevel ? 0.6 : 1, color: "#FFFFFF" })); }
     else if (e.type === "kommun" && !kommuneLevel) { p.on("click", () => go(withQ(pageOf(a)))); }
@@ -2697,7 +2933,8 @@ function loadDeso(code, then) {
     .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
     .then(d => {
       DESO[code] = d.areas || [];
-      DESO[code].forEach(a => byDeso[a.code] = a);
+      /* the rings arrive encoded (src/geo_core.js); decoded once, here */
+      DESO[code].forEach(a => { GC.decodeEntity(a); byDeso[a.code] = a; });
       LF.desoPending = null;
       if (then) then(); else renderKeep();
     })
@@ -2749,6 +2986,23 @@ function lfLayers() {
   const sc = only ? MO_SCALE : scaleOf(scalePool.length ? scalePool : MUNI, vk, null, ind);
   const polys = [];
   const kom = drill ? byCode[MK.kommun] : null;
+  /* The sub-areas' files are not here yet. The kommun outline IS — it ships in
+     the page — so the map shows the kommun and the note above it says what is
+     still coming, rather than going blank and rather than colouring one figure
+     across a shape the reader did not ask about. */
+  if (drill && !shapes.length && kom && (kom.rings || []).length) {
+    const p = L.polygon(kom.rings, { color: MO_LINE, weight: 1.4, opacity: .9,
+      fill: true, fillColor: KO_LINE, fillOpacity: .12, smoothFactor: 0.25, className: "rg-wait" });
+    p.bindPopup(() => lfKommunPopup(kom), { maxWidth: 560, maxHeight: 560, autoPanPadding: [24, 24] });
+    LF.areaG = L.layerGroup([p]).addTo(LF.map);
+    LF.ctx = { shapes: [], sc, sub, drill, hasOwn, ind, vk, only, komOnly, kom };
+    /* no classes are on screen, so there is no key to draw; the note under the
+       map is what says why */
+    const el = document.getElementById("maplegend"); if (el) el.innerHTML = "";
+    ovLegends();
+    if (LF.ownG) { LF.map.removeLayer(LF.ownG); LF.ownG = null; }
+    return;
+  }
   if (komOnly && kom && (kom.rings || []).length) {
     const kt = sc.t(vk(kom));
     /* first into the group, so the outlines above take the clicks; `interactive:false`
@@ -2851,7 +3105,7 @@ function lfKommunPopup(m) {
   const all = LI.filter(i => V(m, i.key) != null);
   const n = (DESO_IDX[m.code] || {}).n || 0;
   return `<div class="lfpop"><b>${esc(m.name)}</b>${MK.year !== LATEST ? ` <span class="tag">${MK.year}</span>` : ""}
-    <span class="dim">${esc(lanName(m.lan))}${m.pop != null ? " · " + nf(m.pop, 0) + " inhabitants" : ""} · ${AREAS.filter(a => a.kommun === m.code).length} RegSO${n ? ` · ${n} DeSO` : ""}</span>
+    <span class="dim">${esc(lanName(m.lan))}${m.pop != null ? " · " + nf(m.pop, 0) + " inhabitants" : ""} · ${(RG_IDX[m.code] || {}).n || regsoAll(m.code).length} RegSO${n ? ` · ${n} DeSO` : ""}</span>
     ${only ? "" : sel != null ? `<div class="lfbig"><span>${esc(ind.label)}</span><b>${fmtOf(ind)(sel)}${moeSpan(ind, sel, moeOf(ind, m))}</b><em title="among the ${rk ? rk.n : 0} kommuner with a figure">${rk ? `#${rk.r} of ${rk.n} kommuner` : ""}</em></div>`
                   : `<div class="lfbig dim"><span>${esc(ind.label)}</span><b>–</b></div>`}
     ${keys.length ? `<div class="lfkey">${keys.map(i => `<div><span>${esc(i.short || i.label)}</span><b>${fmtOf(i)(V(m, i.key))}${moeSpan(i, V(m, i.key), moeOf(i, m))}</b></div>`).join("")}</div>` : ""}
@@ -3541,7 +3795,10 @@ function climLoadVisible(map) {
   const want = [];
   for (const code in DESO_IDX) {
     if (!byCode[code]) continue;
-    const bb = boundsOf(AREAS.filter(a => a.kommun === code));
+    /* the kommun's own outline, which is in the page — this used to union the
+       kommun's RegSO rings, and those are fetched per kommun now, so a kommun
+       nobody had opened would never have been reached */
+    const bb = boundsOf([byCode[code]]);
     if (!bb || !b.intersects(bb)) continue;
     const k = layer + "/" + code;
     if (CLIM_ZONES[k] || CLIM_ZONES["_l_" + k]) continue;
@@ -4219,10 +4476,39 @@ function srvSubs(which) {
     return `<button class="mchip ${on.has(c) ? "on" : ""}" data-srvcat="${which}:${c}"><i style="background:${on.has(c) ? d[1] : "transparent"};border-color:${d[1]}"></i>${esc(d[0])}</button>`; }).join("");
 }
 
+/* ---------- the map is the page ----------
+   v2.1 P4: the map starts within 200 px of the top of the window at 1366×768
+   and takes the rest of it. The stylesheet used to say
+   `clamp(380px, 100vh - 250px, 760px)` — a guess at how tall everything above
+   the map is, which was wrong by a different amount at every display scaling
+   and left either a gap under the map or the legend below the fold. The height
+   is measured from where the container actually sits instead.
+
+   The mini-maps' own full screen is excluded: `.mapwrap.is-full > div:first-child`
+   is 100vh with !important and must stay that way. The big map's Fullscreen API
+   toggle is NOT excluded — the card moves to the top of the screen, so the
+   measurement is exactly what should be redone, and the fullscreenchange handler
+   calls this. */
+const MAP_MIN_H = 320;      /* below this the map is not worth having */
+const MAP_GAP = 10;         /* so the bottom border is not flush with the window */
+let MAP_H_T = null;
+function fitMapHeight() {
+  const el = document.getElementById("lfmap");
+  if (!el) return;
+  const wrap = el.parentElement;
+  if (wrap && wrap.classList && wrap.classList.contains("is-full")) return;
+  const top = el.getBoundingClientRect().top;
+  const h = Math.max(MAP_MIN_H, Math.round(window.innerHeight - top - MAP_GAP));
+  el.style.height = h + "px";
+  if (LF.map) LF.map.invalidateSize();
+}
 function lfInit() {
   const el = document.getElementById("lfmap");
   if (!el || typeof L === "undefined") return;
   lfGuardCanvas(); lfGuardMap();
+  /* sized BEFORE Leaflet reads the container, or the first fitBounds is
+     computed against the stylesheet's height and the view is off */
+  fitMapHeight();
   /* render() has already torn every map down through the registry, so there is
      nothing to remove here — only to register. */
   const map = regMap(L.map(el, { center: LF.center, zoom: LF.zoom, scrollWheelZoom: true, zoomSnap: 0.5, zoomDelta: 1, wheelPxPerZoomLevel: 30, wheelDebounceTime: 20 }));
@@ -4270,11 +4556,14 @@ function toggleFullscreen() {
   if (document.fullscreenElement) { document.exitFullscreen(); return; }
   if (el.requestFullscreen) el.requestFullscreen().catch(() => el.classList.toggle("fs-fallback"));
   else el.classList.toggle("fs-fallback");
-  setTimeout(() => LF.map && LF.map.invalidateSize(), 300);
+  setTimeout(fitMapHeight, 300);
 }
 document.addEventListener("fullscreenchange", () => {
   const b = document.querySelector("[data-fs]"); if (b) b.textContent = document.fullscreenElement ? "⤡ Exit full screen" : "⤢ Full screen";
-  setTimeout(() => LF.map && LF.map.invalidateSize(), 250);
+  /* the card is at the top of the screen in full screen and back in the page
+     out of it, so the height is re-measured either way rather than left at
+     whatever it was on the other side of the toggle */
+  setTimeout(fitMapHeight, 250);
 });
 /* A mini-map cannot use the Fullscreen API: it sits inside a scrolling column and
    the API would take the whole card with it, losing the chart beside it. It gets a
@@ -4500,6 +4789,10 @@ function chartSvgLine(withTitle) {
     ${ys.map((yy, i) => `<text x="${x(i).toFixed(1)}" y="${H - B + 22}" text-anchor="middle" font-family="${M}" font-size="12" fill="#8A8C81">${yy}</text>`).join("")}
     ${paths}${legend}${foot}</svg>`;
 }
+/* A RegSO line, and the "Sweden — median of RegSO" line behind it, are read off
+   the whole pool — so a chart that names one waits for regso/values.json rather
+   than drawing a flat line at nothing. */
+const chartWaiting = () => !RG.vals && CH.areas.some(a => String(a).indexOf("regso:") === 0);
 function vCharts() {
   const ind = chartInd(), ys = chartYears(); const ents = CH.areas.map(chEntity).filter(Boolean);
   const quick = [["Top 5 kommuner", MUNI.slice().sort((a, b) => (b.pop || 0) - (a.pop || 0)).slice(0, 5).map(m => "kommun:" + m.code)],
@@ -4527,12 +4820,12 @@ function vCharts() {
     <div class="chips">${ents.map((e, k) => `<span class="chip" style="border-color:${CH_COLORS[k % CH_COLORS.length]}"><i style="background:${CH_COLORS[k % CH_COLORS.length]}"></i>${esc(e.name)}${!e.inds.some(i => i.key === ind.key) ? ' <em title="indicator not available at this level">n/a</em>' : ""}<button data-chrm="${esc(e.id)}" title="remove">×</button></span>`).join("")}</div>
     <div class="tfilters"><label class="hint" style="flex:1;display:flex;gap:8px;align-items:center">title <input id="chtitle" type="text" value="${esc(CH.title)}" placeholder="${esc(chartAutoTitle())}" style="flex:1;min-width:200px"></label>
       <button class="lk primary" data-chpng>⤓ Download PNG</button><button class="lk" data-chcsv>⤓ Data CSV</button><span class="hint">link: copy the address bar — it holds the whole setup</span></div>
-    <div class="chartbox">${ents.length ? chartSvg(true) : `<div class="chempty" data-testid="chart-empty"><b>Nothing to plot</b><p>The selection is empty. Type a kommun or RegSO in the box above (up to 8), or start with a set:</p>
+    <div class="chartbox">${chartWaiting() ? regsoWait() : ents.length ? chartSvg(true) : `<div class="chempty" data-testid="chart-empty"><b>Nothing to plot</b><p>The selection is empty. Type a kommun or RegSO in the box above (up to 8), or start with a set:</p>
       <div class="tools"><button class="lk primary" data-chadd="${CH_DEFAULT_AREAS.join("|")}" data-testid="chart-default">+ the default four</button>${quick.map(([l, ids]) => `<button class="lk" data-chadd="${ids.join("|")}">+ ${l}</button>`).join("")}</div>
       <p class="dim">Tip: every area page and table row has a ↗ that opens it here with the indicator pre-selected.</p></div>`}</div>
     <p class="cap">${esc(ind.desc || "")} ${ind.warn ? "⚠ " + esc(ind.warn) : ""} Same sub-period each year (e.g. Q3 or July); values are those shown in the dashboard.</p>
   </div>
-  ${chartMode() === "line" && ents.length && series.length ? `<div class="card"><div class="card-head"><h3>Data</h3><span class="hint">${esc(ind.unit || "")}</span></div>
+  ${!chartWaiting() && chartMode() === "line" && ents.length && series.length ? `<div class="card"><div class="card-head"><h3>Data</h3><span class="hint">${esc(ind.unit || "")}</span></div>
     <div class="scrollx"><table class="tbl compact" data-sortable><thead><tr><th>Year</th>${series.map(s_ => `<th class="num">${esc(s_.name)}</th>`).join("")}</tr></thead>
     <tbody>${ys.map((yy, i) => `<tr><th>${yy}</th>${series.map(s_ => fmtCell(ind, s_.pts[i].v, false)).join("")}</tr>`).join("")}</tbody></table></div></div>` : ""}
   ${chartMode() === "dist" && ents.some(e => e.o.dist) ? `<div class="card"><div class="card-head"><h3>Data</h3><span class="hint">share · count</span></div>
@@ -4904,12 +5197,27 @@ function loadAllDeso() {
   toast(`Fetching ${missing.length} DeSO files so the export is complete…`);
   return Promise.all(missing.map(c => fetch(DESO_IDX[c].file)
     .then(r => (r.ok ? r.json() : null))
-    .then(j => { if (!j) return; DESO[c] = j.areas || []; DESO[c].forEach(a => byDeso[a.code] = a); })
+    .then(j => { if (!j) return; DESO[c] = j.areas || [];
+                 DESO[c].forEach(a => { GC.decodeEntity(a); byDeso[a.code] = a; }); })
     .catch(() => {}))).then(() => missing.length);
+}
+/* The RegSO figures are one file, so "All area data" waits for it rather than
+   writing a CSV whose RegSO rows happen to be whatever the reader had opened.
+   No rings are fetched: the export has no geometry column. */
+function loadAllRegso() {
+  if (RG.vals) return Promise.resolve(false);
+  toast("Fetching the RegSO figures so the export is complete…");
+  return new Promise(res => regsoLoadVals(() => res(true)));
 }
 function runExport(id) {
   const x = EXPORTS[id]; if (!x) return;
-  if (id === "areas") { loadAllDeso().then(() => writeExport(id)); return; }
+  if (id === "areas") { Promise.all([loadAllRegso(), loadAllDeso()]).then(() => writeExport(id)); return; }
+  /* the view's own rows can be a RegSO table or a RegSO page, and those are
+     already on screen only once the pool is here — but a link straight to
+     Export ▾ must not write a file of blanks */
+  if (id === "view" && !RG.vals && (T.level === "regso" || AR.type === "regso")) {
+    loadAllRegso().then(() => writeExport(id)); return;
+  }
   writeExport(id);
 }
 function writeExport(id) {
@@ -4946,3 +5254,14 @@ function toast(msg) {
 
 parseHash();
 render();
+/* The RegSO figures, once the first paint is out of the way.
+   Every surface but the bare national map wants them — a drill-down, an area
+   page, the Data table, a rank, the export — and holding them back until one of
+   those is opened only moves the wait to the click. They are ~1 MB over the
+   wire against the 12 MB they used to add to this file, and the map on screen is
+   drawn entirely from geometry the page already carries, so nothing on it is
+   waiting for this. The per-kommun RING files stay strictly on demand. */
+setTimeout(regsoLoadVals, 0);
+/* the map is sized to the window rather than to a guess in the stylesheet */
+fitMapHeight();
+window.addEventListener("resize", () => { if (MAP_H_T) clearTimeout(MAP_H_T); MAP_H_T = setTimeout(fitMapHeight, 120); });

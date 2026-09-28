@@ -212,9 +212,20 @@ Requires Python 3.10+ (standard library only) and, for `make test`, Node.
 No API key, no account, nothing to install.
 `START_HERE.md` has the step-by-step version, `CLAUDE.md` the working conventions.
 
-**The page must be served over http**, not opened from disk: the 6 160 DeSO areas
-ship as one file per kommun (`dist/deso/<kommun>.json`) and are fetched when you open
-that kommun. From a `file://` URL the DeSO toggle stays unavailable; everything else works.
+**The page must be served over http**, not opened from disk. `dist/index.html` carries
+the 290 kommun outlines and a name index of the 3 363 RegSO — 4.8 MB — and fetches
+everything below kommun level next to itself:
+
+| file | what is in it | fetched when |
+|---|---|---|
+| `dist/regso/values.json` | every figure for all 3 363 RegSO | on the first paint's timer |
+| `dist/regso/<kommun>.json` | that kommun's RegSO boundaries | you open the kommun |
+| `dist/deso/<kommun>.json` | its 6 160-area DeSO layer, figures and boundaries | you open the DeSO level |
+
+Boundaries travel as one delta-encoded string per ring rather than as arrays of
+coordinate pairs (`src/geo_core.js` is the decoder), which is what takes the page from
+17 MB to under 5. From a `file://` URL there is nothing to fetch from, so only kommun
+level is available and the page says so instead of showing empty areas.
 
 ## What this data can and cannot say
 

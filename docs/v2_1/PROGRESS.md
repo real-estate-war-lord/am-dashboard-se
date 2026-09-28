@@ -340,3 +340,123 @@ at most one kommun-only".
   copy the pattern rather than rely on an empty value surviving `buildHash()`.
 * Four screenshot routes were added (`komonly-regso`, `komonly-deso`, `area-regso`,
   `charts-default`), so `--shots` now writes 48 files per run.
+
+---
+
+## P4 — map-first layout and page weight
+
+Gate green: `make validate`, `make build`, `make test` (smoke + `node --test`, now
+122 unit tests), `tests/ui_v2/spec.py --upto P11` (169/169), `tests/ui_v2_1/spec.py
+--upto P4`.
+
+### Built
+
+**The map is the page.** At 1366×768 `#map`, `#map/0180`, `#map/0180/deso` and
+`#map?ind=none` all start the map within 200 px of the top of the window and it
+takes the rest of it. Two changes got there:
+
+* `#lfmap`'s height is **measured**, not guessed. The stylesheet said
+  `clamp(380px, 100vh - 250px, 760px)`; 250 px was an estimate of everything above
+  the map and was wrong by a different amount at every display scaling.
+  `fitMapHeight()` reads the container's real top and fills the window, on first
+  paint, on resize and on both sides of the full-screen toggle. The CSS rule
+  stays as the pre-script fallback.
+* **The kommun's card is a panel over the map**, not a block above it — 334 px at
+  the top left on a desktop, a bottom sheet on a phone, collapsible to its own
+  title bar. It is the whole card: name, the six headline tiles, Open page, Chart,
+  Outlook 2040 and Upcoming projects. Collapsed state is in the URL (`card=0`);
+  `localStorage` is gone, so two people following one link see one map.
+
+The map's four corners are now allotted, and the spec measures every pair for
+overlap: the panel top left, the legend stack top right, Leaflet's zoom control
+bottom left (moved out from under the panel), and the "published per kommun only"
+note along the bottom. That note used to be three lines of amber prose above the
+map costing 79 px — the whole reason `#map/0180?ind=rent` missed the budget. It is
+one line on the map now, with the full sentence on its hover, the same treatment
+the two mini-maps have always had. On a phone every one of those has a lane of its
+own in the map's top half, because the sheet owns the bottom half.
+
+**Page weight: 17.1 MB → 4.8 MB.** Two independent changes.
+
+* **Rings are strings.** Every ring in `data/processed/` is delta-encoded against
+  the previous point, zig-zag, 5 bits per character, base64url alphabet —
+  Google's polyline algorithm with a different alphabet, because polyline's 0x3F
+  offset puts `\` in the range and JSON doubles every one of them. Lossless at the
+  5 decimals `rings_of()` already rounded to: 8.9 MB of geometry became 2.0 MB, and
+  `data/processed/deso/` fell from 15 MB to 8.9 MB with it. `enc_ring()` in
+  `build_makro.py` is the encoder, `src/geo_core.js` the only decoder, and
+  `tests/geo.test.js` (9 tests) checks the round trip, the corrupt-input path, the
+  idempotence of `decodeRings()` and the real build output's coordinate order.
+* **RegSO left the page.** `dist/index.html` carries the 290 kommun outlines and a
+  RegSO name index — `code`, `name`, `kommun`, 0.25 MB — and nothing else below
+  kommun level. `dist/regso/values.json` holds every figure for all 3 363,
+  `dist/regso/<kommun>.json` one kommun's rings. The figures are merged **into**
+  the objects the page was built with, so `byRegso`, `AREA_OPTS` and every
+  reference taken before the fetch stay valid.
+
+Every surface that reads a RegSO figure asks first and says "Loading…" otherwise —
+the Data table, a RegSO area page, a kommun page's sub-area table, a RegSO chart,
+the map. Every surface that *draws* RegSO goes through `regsoDrawable(kommun)`,
+which is empty until the ring file is in; the counts beside them ("127 RegSO") come
+from the index, so nothing ever reads 0. The map draws the kommun's own outline —
+which is in the page — while its areas are on the way, so a drill-down moves the
+camera immediately.
+
+`tests/ui_v2_1/spec.py` P4 drives that state on purpose: `window.fetch` is wrapped
+before the page loads and `regso/values.json` is held open, so the checks read what
+the page says with the file missing, and then read it again after releasing it.
+
+**The export fetches what it needs.** "All area data" awaits the RegSO figures and
+every DeSO file before it writes; the spec recomputes the row count from the
+processed files — 556 185 — and compares. `window.AM` gained `RG`, `regsoReady()`,
+`loadAreas()`, `exportRowCount()` and `injectRegso()`, the last of which is how
+`tests/smoke.js` (which has no `fetch`) puts the pool in place from disk, so every
+existing smoke assertion about RegSO figures and rings still runs — through the
+real decoder.
+
+### Deviations
+
+Eleven, all in `docs/v2_1/DECISIONS.md`. The four to read before touching this:
+quantised strings rather than TopoJSON and why; RegSO leaves in **two** files, not
+one per kommun; `regso/values.json` is fetched on the first paint's timer rather
+than on first use; and a kommun page's mini-map showing a kommun-level indicator
+draws the 290 kommuner rather than 3 363 RegSO tinted with their kommun's value.
+
+No v2.0 check was changed — the 169 still pass as written.
+
+### Known issues, not fixed here
+
+* `data/processed/` grew a `regso/` directory (5.9 MB) that is committed like the
+  DeSO one. `makro.json` itself fell from 16 MB to 4.0 MB, so the repository is
+  smaller overall, but the two directories are now 14.8 MB of committed JSON.
+* A phone that opens a kommun-only indicator loses the note when it opens the
+  legend stack — they want the same lane. The legend carries the same sentence,
+  which is why the note stands down rather than being drawn under it.
+* The area mini-map still fits to the page's own area (P3's known issue), and
+  `indExplain`'s "as of" at RegSO/DeSO still falls back to the kommun stamp (P1's).
+* `CHANGELOG.md` still has no v2.1 section. P1–P4 have all skipped it; whoever
+  writes the release notes now has four phases to cover.
+
+### What the next phase must know
+
+* **`dist/index.html` has a 5 MB budget.** `build_dashboard.py` prints how much of
+  it is used and warns past it; the spec's `page-weight` check is what fails the
+  gate. Anything you are about to inline, weigh first.
+* **`window.DATA.regso` is a name index, not the data.** `code`, `name`, `kommun`
+  and nothing else until the fetches land. Read a figure only behind
+  `regsoReady()`; draw a polygon only from `regsoDrawable(kommun)`; count areas
+  from `RG_IDX[kommun].n` or `regsoAll(kommun)`, never from what is drawn.
+* **Rings are encoded strings everywhere in `data/processed/`.** `src/geo_core.js`
+  decodes, and it is the only thing that may. [lat, lon] in, [lat, lon] out — the
+  one swap in the pipeline is `rings_of()` in `build_makro.py`. See CLAUDE.md.
+* **`fitMapHeight()` owns `#lfmap`'s height.** If you add anything above the map,
+  re-measure at 1366×768: the budget is 200 px and `#map` currently sits at ~176.
+  A new overlay on the map needs a corner nobody else has — the spec measures
+  panel × legend × zoom × note for overlap at three viewport sizes.
+* **`MC.fold` is the panel's collapsed state and it lives in the hash** (`card=0`),
+  written only when collapsed. `mcFolded()` is the reader.
+* `periodPool()`, not `curPool()`, is what the period controls read — it falls back
+  to the kommuner while a sub-level pool has no history yet, so a shared `y=2020`
+  link survives the load.
+* Four screenshot routes were added (`mapfirst`, `mapfirst-kommun`,
+  `mapfirst-folded`, `mapfirst-deso`), so `--shots` now writes 60 files per run.

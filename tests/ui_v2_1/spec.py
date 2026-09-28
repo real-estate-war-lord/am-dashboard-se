@@ -68,6 +68,11 @@ SHOT_ROUTES = {
     "komonly-deso": ("#map/0180/deso?ind=rent", None),
     "area-regso": (f"#area/regso/{'0180R001_RegSO2025'}", None),
     "charts-default": ("#charts", None),
+    # P4 — the map-first layout, with the area card as a panel over the map
+    "mapfirst": ("#map", None),
+    "mapfirst-kommun": ("#map/0180", None),
+    "mapfirst-folded": ("#map/0180?card=0", None),
+    "mapfirst-deso": ("#map/0180/deso", None),
 }
 SHOT_SIZES = [(1440, 900), (1366, 768), (390, 844)]
 
@@ -1205,6 +1210,435 @@ def _tile_units(r, page, errs, calls):
     r.ok("no bare ± is left without an explanation",
          page.eval_on_selector_all(".moe:not([title])", "e => e.length") == 0)
     r.ok("no page error", not errs, (errs[0] if errs else "")[:140])
+    errs.clear()
+
+
+# --------------------------------------------------------------------------- #
+# P4 — map-first layout and page weight
+# --------------------------------------------------------------------------- #
+
+MAP_TOP_BUDGET = 200          # px from the top of the window at 1366×768
+PAGE_BUDGET_MB = 5.0          # dist/index.html
+
+
+def box(page, sel: str) -> dict:
+    """The element's rectangle in window coordinates, or {} if it is not there."""
+    return page.evaluate(
+        """s => { const e = document.querySelector(s); if (!e) return null;
+                  const r = e.getBoundingClientRect();
+                  return { top: r.top, left: r.left, bottom: r.bottom, right: r.right,
+                           w: r.width, h: r.height,
+                           shown: !!(e.offsetParent || getComputedStyle(e).position === 'fixed') }; }""",
+        sel) or {}
+
+
+def overlaps(a: dict, b: dict) -> bool:
+    if not a or not b:
+        return False
+    return not (a["right"] <= b["left"] or b["right"] <= a["left"]
+                or a["bottom"] <= b["top"] or b["bottom"] <= a["top"])
+
+
+@check("map-first-desktop", "P4", "the map starts within 200 px of the top and takes the rest")
+def _map_first(r, page, errs, calls):
+    for w, h in [(1366, 768), (1440, 900)]:
+        page.set_viewport_size({"width": w, "height": h})
+        for route in ["#map", "#map/0180", "#map/0180/deso", "#map?ind=none"]:
+            hop(page, route, 1000)
+            settle(page)
+            b = box(page, "[data-testid=map]")
+            r.ok(f"{w}×{h} {route}: the map starts at {round(b.get('top', 9999))} px",
+                 b and b["top"] <= MAP_TOP_BUDGET, f"top {b.get('top')}, budget {MAP_TOP_BUDGET}")
+            # "fills the rest of the screen": its bottom edge reaches the window
+            r.ok(f"{w}×{h} {route}: and reaches the bottom of the window",
+                 b and h - b["bottom"] <= 24, f"bottom {b.get('bottom')} of {h}")
+    page.set_viewport_size({"width": 1440, "height": 900})
+    r.ok("no page error on the map-first layout", not errs, (errs[0] if errs else "")[:140])
+    errs.clear()
+
+
+@check("map-panel-desktop", "P4", "the selected area's card is a panel over the map")
+def _map_panel(r, page, errs, calls):
+    page.set_viewport_size({"width": 1366, "height": 768})
+    hop(page, "#map/0180?ind=growth", 1200)
+    settle(page)
+    card = box(page, ".mapwrap > [data-testid=area-card]")
+    mapb = box(page, "[data-testid=map]")
+    r.ok("the card is inside the map wrapper", bool(card),
+         "found" if card else "no [data-testid=area-card] under .mapwrap")
+    r.ok("and it sits ON the map, not above it", overlaps(card, mapb),
+         f"card {card}, map {mapb}")
+    r.ok("so the map still starts within the budget", mapb and mapb["top"] <= MAP_TOP_BUDGET,
+         f"top {mapb.get('top')}")
+    # it is the whole card: name, tiles and both ways onward. innerText applies
+    # text-transform, and the section summaries are small caps, so the comparison
+    # is case-insensitive rather than written in the CSS's case.
+    t = page.inner_text(".mapwrap > [data-testid=area-card]").lower()
+    r.ok("it names the kommun", "stockholm" in t, t.replace("\n", " ")[:90])
+    r.ok("it carries the headline tiles",
+         page.eval_on_selector_all(".mapwrap > [data-testid=area-card] [data-testid^=tile-]",
+                                   "e => e.length") >= 5)
+    r.ok("and the Open page and Chart actions",
+         "open stockholm page" in t and "chart" in t, t.replace("\n", " ")[:120])
+    for sec, label in [("outlook", "Outlook 2040"), ("projects", "Upcoming projects")]:
+        found = page.eval_on_selector_all(
+            f".mapwrap > [data-testid=area-card] [data-sec={sec}]", "e => e.length")
+        r.ok(f"and {label}", found == 1 and label.lower() in t,
+             f"{found} section(s); card text: " + t.replace("\n", " ")[:160])
+
+    # the legends are at the other edge and must not be under it
+    leg = box(page, "[data-testid=legend]")
+    r.ok("there is a legend on screen to collide with", leg and leg["h"] > 0, json.dumps(leg))
+    r.ok("the legend does not collide with the panel", not overlaps(card, leg),
+         f"card {card}, legend {leg}")
+    # nor does Leaflet's own zoom control, which lives where the panel now is
+    zoom = box(page, "#lfmap .leaflet-control-zoom")
+    r.ok("nor does the zoom control", zoom and zoom["h"] > 0 and not overlaps(card, zoom),
+         f"zoom {zoom}, card {card}")
+
+    # collapsed state travels in the URL
+    page.click(".mapwrap > [data-testid=area-card] [data-mcfold]")
+    page.wait_for_timeout(500)
+    h = page.evaluate("location.hash")
+    r.ok("collapsing writes card=0 into the hash", "card=0" in h, h[:120])
+    folded = box(page, ".mapwrap > [data-testid=area-card]")
+    r.ok("and the panel shrinks to its own title bar",
+         folded and card and folded["h"] < card["h"] / 2, f'{folded.get("h")} vs {card.get("h")}')
+    r.ok("the tiles are gone with it",
+         page.eval_on_selector_all(".mapwrap > [data-testid=area-card] [data-testid^=tile-]",
+                                   "e => e.length") == 0)
+    mapb2 = box(page, "[data-testid=map]")
+    r.ok("and the map did not move when it collapsed",
+         mapb2 and abs(mapb2["top"] - mapb["top"]) < 2, f'{mapb2.get("top")} vs {mapb["top"]}')
+
+    # the link reproduces it on a fresh parse
+    hop(page, h.lstrip("#"), 1200)
+    settle(page)
+    r.ok("the link reopens collapsed",
+         page.eval_on_selector_all(".mapwrap > [data-testid=area-card].folded", "e => e.length") == 1,
+         page.evaluate("location.hash")[:120])
+    page.click(".mapwrap > [data-testid=area-card] [data-mcfold]")
+    page.wait_for_timeout(500)
+    r.ok("and expanding takes the key out again",
+         "card=0" not in page.evaluate("location.hash"), page.evaluate("location.hash")[:120])
+    # the kommun-only note moved onto the map in P4 (three lines of prose above it
+    # cost 79 px of the 200 the map is allowed), so it has to keep out of the way too
+    hop(page, "#map/0180?ind=rent", 1400)
+    settle(page)
+    mapb = box(page, "[data-testid=map]")
+    r.ok("a kommun-only indicator no longer pushes the map down",
+         mapb and mapb["top"] <= MAP_TOP_BUDGET, f"top {mapb.get('top')}")
+    note = box(page, ".mapwrap > [data-testid=kommun-only-note]")
+    card = box(page, ".mapwrap > [data-testid=area-card]")
+    leg = box(page, "[data-testid=legend]")
+    zoom = box(page, "#lfmap .leaflet-control-zoom")
+    r.ok("the note is on the map", bool(note) and overlaps(note, mapb), json.dumps(note))
+    for what, b in [("the panel", card), ("the legend", leg), ("the zoom control", zoom)]:
+        r.ok(f"and clear of {what}", not overlaps(note, b), f"note {note}, other {b}")
+    ntext = page.inner_text(".mapwrap > [data-testid=kommun-only-note]")
+    r.ok("it still names the indicator and the kommun",
+         "Rent" in ntext and "Stockholm" in ntext, ntext.replace("\n", " ")[:120])
+    r.ok("and the long version is on its hover",
+         "published per kommun" in (page.get_attribute(
+             ".mapwrap > [data-testid=kommun-only-note]", "title") or "").lower())
+    page.set_viewport_size({"width": 1440, "height": 900})
+    r.ok("no page error on the panel", not errs, (errs[0] if errs else "")[:140])
+    errs.clear()
+
+
+@check("map-panel-phone", "P4", "on a phone the map is in the first screen and the card is a sheet",
+       needs="fresh")
+def _map_panel_phone(r, page, errs, calls):
+    page.set_viewport_size({"width": 390, "height": 844})
+    for route in ["#map", "#map/0180"]:
+        hop(page, route, 1200)
+        settle(page)
+        b = box(page, "[data-testid=map]")
+        r.ok(f"390×844 {route}: the map is inside the first screen",
+             b and b["top"] <= 844, f"top {b.get('top')}")
+        r.ok(f"390×844 {route}: and there is a usable amount of it", b and b["h"] >= 300,
+             f"{b.get('h')} px tall")
+    card = box(page, ".mapwrap > [data-testid=area-card]")
+    mapb = box(page, "[data-testid=map]")
+    r.ok("the card is a bottom sheet — flush with the bottom of the map",
+         card and mapb and abs(card["bottom"] - mapb["bottom"]) <= 2,
+         f'card bottom {card.get("bottom")}, map bottom {mapb.get("bottom")}')
+    r.ok("and it is the full width of the map",
+         card and mapb and card["w"] >= mapb["w"] - 2, f'{card.get("w")} vs {mapb.get("w")}')
+    r.ok("it takes at most half the map, so the map is still the page",
+         card and mapb and card["h"] <= mapb["h"] * 0.55,
+         f'sheet {card.get("h")} of {mapb.get("h")} px of map')
+    # the legend pill moved out of the sheet's way
+    pill = box(page, "[data-legpill]")
+    r.ok("the legend pill is not under the sheet", not overlaps(pill, card),
+         f"pill {pill}, card {card}")
+    page.click("[data-legpill]")
+    page.wait_for_timeout(350)
+    legs = box(page, "[data-testid=legends]")
+    r.ok("nor is the legend stack once it is opened", not overlaps(legs, card),
+         f"legends {legs}, card {card}")
+    page.click("[data-legpill]")
+    page.wait_for_timeout(300)
+
+    # the kommun-only note has its own lane between the zoom control and the pill
+    hop(page, "#map/0180?ind=rent", 1600)
+    settle(page)
+    note = box(page, ".mapwrap > [data-testid=kommun-only-note]")
+    card = box(page, ".mapwrap > [data-testid=area-card]")
+    pill = box(page, "[data-legpill]")
+    zoom = box(page, "#lfmap .leaflet-control-zoom")
+    mapb = box(page, "[data-testid=map]")
+    r.ok("the note is on the map here too", bool(note) and overlaps(note, mapb), json.dumps(note))
+    for what, b in [("the sheet", card), ("the pill", pill), ("the zoom control", zoom)]:
+        r.ok(f"and clear of {what}", not overlaps(note, b), f"note {note}, other {b}")
+    r.ok("and the map is still inside the first screen",
+         mapb and mapb["top"] <= 844, f"top {mapb.get('top')}")
+    page.set_viewport_size({"width": 1440, "height": 900})
+    r.ok("no page error on a phone", not errs, (errs[0] if errs else "")[:140])
+    errs.clear()
+
+
+def page_data() -> dict:
+    """window.DATA as the FILE holds it.
+
+    Not as the live page holds it: the loader merges regso/values.json into the
+    very objects `window.DATA.regso` points at, so a browser that has been open
+    for a second reports every figure as if it had been inline all along. The
+    question here is what a reader downloads, so it is answered from the bytes."""
+    html = (DIST / "index.html").read_text(encoding="utf-8")
+    mark = "window.DATA = "
+    at = html.index(mark)
+    end = html.index(";</script>", at)
+    return json.loads(html[at + len(mark):end].replace("<\\/", "</"))
+
+
+@check("page-weight", "P4", "the page itself is under 5 MB and carries no RegSO geometry")
+def _page_weight(r, page, errs, calls):
+    f = DIST / "index.html"
+    mb = f.stat().st_size / 1e6
+    r.ok(f"dist/index.html is {mb:.1f} MB", mb <= PAGE_BUDGET_MB,
+         f"{mb:.2f} MB against a {PAGE_BUDGET_MB} MB budget")
+    D = page_data()
+    kommuner, regso = D.get("kommuner") or [], D.get("regso") or []
+    r.ok("the 290 kommun outlines are still in the page", len(kommuner) == 290, str(len(kommuner)))
+    r.ok("and they are encoded, not arrays of pairs",
+         bool(kommuner) and isinstance((kommuner[0].get("rings") or [None])[0], str),
+         str(type((kommuner[0].get("rings") or [None])[0]) if kommuner else "no kommuner"))
+    r.ok("all 3 363 RegSO are named in the page", len(regso) == 3363, str(len(regso)))
+    r.ok("with no geometry", not any("rings" in a for a in regso))
+    r.ok("and no history", not any("hist" in a for a in regso))
+    keys = sorted({k for a in regso for k in a})
+    r.ok("the index is code, name and kommun and nothing else",
+         keys == ["code", "kommun", "name"], ", ".join(keys)[:200])
+    r.ok("one ring file per kommun is manifested",
+         len(D.get("regso_index") or {}) == 290, str(len(D.get("regso_index") or {})))
+    meta = D.get("regso_meta") or {}
+    r.ok("and the figures have a file of their own",
+         meta.get("file") == "regso/values.json" and meta.get("n") == 3363, json.dumps(meta))
+    for name in ["regso/values.json", "regso/0180.json", "regso/index.json"]:
+        r.ok(f"dist/{name} is next to the page", (DIST / name).exists())
+    # and the live page really does merge them in, so the index is not a dead end
+    r.ok("the running page has the figures merged into that same index",
+         page.evaluate("() => window.AM.RG.vals && window.DATA.regso.some(a => a.pop != null)"))
+
+
+@check("regso-lazy-draws", "P4", "every view that draws sub-areas still works")
+def _regso_lazy(r, page, errs, calls):
+    n_regso = len(json.loads((DIST / "regso" / "0180.json").read_text(encoding="utf-8"))["rings"])
+    r.ok("Stockholm's ring file holds its RegSO", n_regso == 127, f"{n_regso} in the file")
+    # the brief's own link spells a level key that does not exist (the level is in
+    # the path — v2.1 P3); both spellings have to land on the same map. The
+    # indicator is named because a kommun-only one lays a fill under the outlines
+    # and the count would be 128 for a reason that has nothing to do with this.
+    for route in ["#map/0180?ind=growth", "#map/0180?ind=growth&lvl=regso"]:
+        hop(page, route, 1400)
+        settle(page)
+        got = paths(page, "map")
+        r.ok(f"{route} draws {n_regso} RegSO", got["paths"] == n_regso,
+             f'{got["paths"]} paths')
+        r.ok(f"{route}: nothing still says Loading", "Loading" not in text(page),
+             "; ".join(loading_bits(page))[:140])
+    hop(page, "#map/0180/deso?ind=growth", 1600)
+    settle(page)
+    r.ok("and the DeSO level still draws", paths(page, "map")["paths"] > 500,
+         str(paths(page, "map")["paths"]))
+
+    hop(page, f"#area/regso/{REGSO_STHLM}?ind=growth", 1400)
+    settle(page)
+    t = text(page)
+    r.ok("a RegSO page renders its own figures", "Abrahamsberg" in t and "RegSO" in t,
+         t.replace("\n", " ")[:120])
+    r.ok("with a rank against the other RegSO", re.search(r"#\d+ of \d{3,}", t) is not None,
+         (re.search(r"#\d+ of \d{4}", t) or re.search(r"#\d+ of \d{3,}", t) or ["none"])[0])
+    r.ok("and its mini-map draws the kommun's RegSO", paths(page, "area")["paths"] > 100,
+         str(paths(page, "area")["paths"]))
+
+    hop(page, "#data/areas/regso", 1600)
+    settle(page)
+    rows = page.eval_on_selector_all("#tbody tr", "e => e.length")
+    r.ok("the Data table lists all 3 363 RegSO", rows == 3363, f"{rows} rows")
+    r.ok("and not one 'Loading' row", "Loading" not in text(page),
+         "; ".join(loading_bits(page))[:140])
+    r.ok("no page error anywhere in the drill-down", not errs, (errs[0] if errs else "")[:140])
+    errs.clear()
+
+
+@check("regso-never-zero", "P4", "a file still in flight says so — never 0, never a dash",
+       needs="fresh")
+def _regso_never_zero(r, page, errs, calls):
+    """The RegSO pool is held open, and the page is read while it is missing.
+
+    This is the check v2.0 could not have had: every other RegSO assertion in
+    this spec runs after settle(), so a "Loading…" that never resolves and a
+    table of 3 363 dashes would both pass them. Here the fetch is held open on
+    purpose and the page has to name what it is waiting for.
+
+    The hold is a wrapper around window.fetch installed before the page loads,
+    not a Playwright route: a route handler that blocks would block the same
+    thread the assertions below run on, and the page asks for this file on its
+    first paint, so the interception has to be in place before that."""
+    base = page.url.split("#")[0]
+    page.add_init_script("""
+      window.__holdRegso = true;
+      const orig = window.fetch;
+      window.fetch = function (u, o) {
+        if (String(u).indexOf('regso/values.json') >= 0 && window.__holdRegso) {
+          return new Promise(res => {
+            const t = setInterval(() => {
+              if (!window.__holdRegso) { clearInterval(t); res(orig(u, o)); }
+            }, 60);
+          });
+        }
+        return orig(u, o);
+      };
+    """)
+    # about:blank first: navigating to the same document with a different fragment
+    # is a same-document navigation, so the page would not reload and the init
+    # script would never run — which is how the first version of this check passed
+    # against a page that had already finished loading the file.
+    page.goto("about:blank")
+    page.goto(base + "#data/areas/regso", wait_until="load")
+    page.wait_for_function("typeof window.AM !== 'undefined'", timeout=20000)
+    page.wait_for_timeout(700)
+    r.ok("the file really is being held", page.evaluate("!window.AM.RG.vals"),
+         "RG.vals is already true — the hold did not take")
+    t = text(page)
+    r.ok("the table says it is loading", "Loading" in t, t.replace("\n", " ")[:140])
+    r.ok("and shows no data rows at all",
+         page.eval_on_selector_all("#tbody tr td.num", "e => e.length") == 0)
+    r.ok("but still states how many rows there are", "3363" in t.replace(" ", "").replace(" ", ""),
+         [ln for ln in t.splitlines() if "RegSO" in ln][:2])
+    r.ok("and no 0 is printed where a figure belongs",
+         not re.search(r"^\s*0\s*$", t, re.M), t.replace("\n", " ")[:140])
+
+    hop(page, f"#area/regso/{REGSO_STHLM}", 900)
+    t = text(page)
+    r.ok("a RegSO page says it is loading rather than printing dashes",
+         "Loading" in t, t.replace("\n", " ")[:140])
+    r.ok("and still names the area it is about", "Abrahamsberg" in t, t.replace("\n", " ")[:90])
+
+    hop(page, "#map/0180?ind=growth", 900)
+    t = text(page)
+    r.ok("the map says what it is fetching", "Loading" in t, t.replace("\n", " ")[:140])
+    r.ok("but the kommun's own figures are on the card already",
+         "Stockholm" in t and "inhabitants" in t)
+    r.ok("and the card does not claim 0 RegSO", "0 RegSO" not in t,
+         [ln for ln in t.splitlines() if "RegSO" in ln][:2])
+
+    page.evaluate("window.__holdRegso = false")
+    settle(page, 12000)
+    t = text(page)
+    r.ok("once it lands the map draws them", paths(page, "map")["paths"] == 127,
+         str(paths(page, "map")["paths"]))
+    r.ok("and nothing says Loading any more", "Loading" not in t,
+         "; ".join(loading_bits(page))[:140])
+    r.ok("no page error while the file was in flight", not errs, (errs[0] if errs else "")[:140])
+    errs.clear()
+
+
+def areas_export_rows() -> dict:
+    """How many rows "All area data" must write, per level, from the files.
+
+    Same rule as rowsAreas() in app.js: one row per area × indicator × period
+    with a value that is not null, over the yearly history (plus the live latest
+    value), the quarterly series and the projected path. Recomputed here rather
+    than compared with a number written into the test, so it stays true when the
+    data is rebuilt — and per level, so a regression tells you which one broke."""
+    makro = json.loads((ROOT / "data" / "processed" / "makro.json").read_text(encoding="utf-8"))
+    latest = makro["meta"]["latest_year"]
+    keys = [i["key"] for i in makro["indicators"]]
+
+    def emit(o) -> int:
+        n = 0
+        for k in keys:
+            hist = (o.get("hist") or {}).get(k) or {}
+            periods = set(hist)
+            if o.get(k) is not None:
+                periods.add(latest)
+            for t in periods:
+                v = o.get(k) if t == latest else hist.get(t)
+                if v is not None:
+                    n += 1
+            for block in ("q", "fc"):
+                ser = (o.get(block) or {}).get(k) or {}
+                n += sum(1 for t in ser if ser[t] is not None)
+        return n
+
+    out = {"kommun": sum(emit(m) for m in makro["kommuner"])}
+    vals = json.loads((DIST / "regso" / "values.json").read_text(encoding="utf-8"))
+    out["regso"] = sum(emit(a) for a in vals["areas"])
+    deso = 0
+    for code in makro["deso_index"]:
+        d = json.loads((DIST / "deso" / f"{code}.json").read_text(encoding="utf-8"))
+        deso += sum(emit(a) for a in d["areas"])
+    out["deso"] = deso
+    out["total"] = out["kommun"] + out["regso"] + out["deso"]
+    return out
+
+
+@check("export-all-areas", "P4", "'All area data' fetches what it needs and writes every row",
+       needs="fresh")
+def _export_all(r, page, errs, calls):
+    want = areas_export_rows()
+    r.ok("the files hold rows to compare against", want["total"] > 500000,
+         json.dumps(want))
+    # nothing below kommun has been opened, so neither the RegSO figures nor most
+    # DeSO files are in memory — the export is what has to go and get them
+    before = page.evaluate("() => window.AM.exportRowCount('areas')")
+    got = page.evaluate("""async () => {
+      await window.AM.loadAreas();
+      const rows = window.AM.exportRowCount('areas');
+      return { rows, regso: window.AM.RG.vals };
+    }""")
+    r.ok("it fetched the RegSO figures first", got["regso"], json.dumps(got))
+    r.ok("and the DeSO files it did not have", got["rows"] > before,
+         f"{before} rows before, {got['rows']} after")
+    r.ok(f'it writes {got["rows"]} rows', got["rows"] == want["total"],
+         f'page {got["rows"]}, files {want["total"]}')
+    # and the file it writes is the same schema, with all three levels in it
+    head = page.evaluate("() => window.AM.exportRows('national')[0]")
+    levels = page.evaluate("""() => {
+      const seen = {};
+      for (const row of window.AM.exportRows('view')) seen[row.split(';')[0]] = 1;
+      return Object.keys(seen); }""")
+    r.ok("the long schema is unchanged", head.startswith("level;code;name;"), head[:80])
+    r.ok("and this view's rows carry a level", len(levels) >= 1, ", ".join(levels))
+    r.ok("no page error while it fetched them", not errs, (errs[0] if errs else "")[:140])
+    errs.clear()
+
+
+@check("charts-regso-waits", "P4", "a RegSO chart waits for the pool rather than drawing nothing",
+       needs="fresh")
+def _charts_regso(r, page, errs, calls):
+    hop(page, f"#charts?ind=growth&a=regso:{REGSO_STHLM}&med=1", 1400)
+    settle(page)
+    t = text(page)
+    r.ok("the RegSO series is on the chart", "Abrahamsberg" in t, t.replace("\n", " ")[:120])
+    r.ok("nothing says Loading once it is here", "Loading" not in t,
+         "; ".join(loading_bits(page))[:140])
+    r.ok("and the median line names the RegSO pool",
+         "median of RegSO" in t or "RegSO" in t, t.replace("\n", " ")[:140])
+    r.ok("no page error on a RegSO chart", not errs, (errs[0] if errs else "")[:140])
     errs.clear()
 
 

@@ -4,9 +4,18 @@
 Inputs  config/indicators.json
         data/raw/scb_<TABLE>_<level>.jsonl.gz  (94 pulls)  + scb_<TABLE>.meta.json
         data/geo/kommuner.geojson · regso.geojson · deso.geojson
-Output  data/processed/makro.json          kommun + RegSO inline
-        data/processed/deso/<kommun>.json  DeSO, loaded on demand by the page
+Output  data/processed/makro.json            kommun inline, RegSO as a name index
+        data/processed/regso/values.json     the 3 363 RegSO, figures, no rings
+        data/processed/regso/<kommun>.json   RegSO rings, loaded on demand
+        data/processed/regso/index.json
+        data/processed/deso/<kommun>.json    DeSO, loaded on demand by the page
         data/processed/deso/index.json
+
+v2.1 P4 — page weight. The 290 kommun outlines are the only geometry left in
+the page; every RegSO ring, every RegSO figure and every DeSO file is fetched
+next to it. Rings travel encoded (see enc_ring below and src/geo_core.js, which
+is the only decoder): one short string per ring instead of an array of pairs,
+lossless at the 5 decimals rings_of() rounds to.
 
 Every calculation is driven by the `calc` field of an indicator. A source with
 no `share` block is a passthrough even when its indicator is a ratio — that is
@@ -46,6 +55,7 @@ from se_common import (  # noqa: E402
 
 OUT = PROC / "makro.json"
 DESO_DIR = PROC / "deso"
+REGSO_DIR = PROC / "regso"
 
 RE_KOMMUN = re.compile(r"^\d{4}$")
 RE_LAN = re.compile(r"^\d{2}$")
@@ -448,8 +458,48 @@ def load_geo(name: str):
 
 
 def rings_of(feature: dict) -> list:
+    """GeoJSON [lon, lat] → the [lat, lon] Leaflet wants, rounded to ~1.1 m.
+
+    THE ONLY SWAP IN THE PIPELINE. Nothing downstream — not enc_ring below, not
+    src/geo_core.js — touches the order again; CLAUDE.md records what the second
+    swap did the one time it existed."""
     return [[[round(p[1], 5), round(p[0], 5)] for p in ring]
             for poly in feature["geometry"]["coordinates"] for ring in poly]
+
+
+# ---- the ring codec (the decoder is src/geo_core.js; keep the two in step) ----
+# Google's polyline algorithm with a base64url alphabet instead of the 0x3F
+# offset, because that offset puts "\" in the range and JSON doubles every one
+# of them. Zig-zag, 5 bits per character, low group first, deltas against the
+# previous point of the ring. Lossless at 5 decimals, which is what rings_of
+# has already rounded to.
+ENC_ALPHA = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
+ENC_SCALE = 100000
+
+
+def enc_num(v: int) -> str:
+    x = ~(v << 1) if v < 0 else (v << 1)
+    out = []
+    while x >= 0x20:
+        out.append(ENC_ALPHA[0x20 | (x & 0x1F)])
+        x >>= 5
+    out.append(ENC_ALPHA[x])
+    return "".join(out)
+
+
+def enc_ring(ring: list) -> str:
+    la = lo = 0
+    out = []
+    for p in ring:
+        a, b = round(p[0] * ENC_SCALE), round(p[1] * ENC_SCALE)
+        out.append(enc_num(a - la))
+        out.append(enc_num(b - lo))
+        la, lo = a, b
+    return "".join(out)
+
+
+def enc_rings(rings: list) -> list:
+    return [enc_ring(r) for r in (rings or [])]
 
 
 # ---------------------------------------------------------------- distributions
@@ -1089,6 +1139,46 @@ def main() -> int:
                         "codes": dists["kommun"][what].get("codes")}
                  for what in ("age", "income", "tenure", "industry", "selfsuff")}
 
+    # ---- every ring is encoded from here on; the kommun outlines are the only
+    #      ones that stay in the page. See enc_ring() and src/geo_core.js.
+    for level in ("kommun", "regso", "deso"):
+        for e in ENT[level].values():
+            e["rings"] = enc_rings(e.get("rings"))
+
+    # ---- RegSO: the figures in one file, the rings in one file per kommun
+    #
+    # Two files rather than one, because the two are wanted at different moments.
+    # Every RegSO surface — the Data table's 3 363 rows, the national RegSO
+    # median behind a rank, the export — needs the FIGURES for all of them and
+    # none of the geometry; the map needs the geometry of ONE kommun and nothing
+    # else. Shipping them together would mean fetching 290 files to print a
+    # median, or 1.4 MB of coastline to fill in a table.
+    REGSO_DIR.mkdir(parents=True, exist_ok=True)
+    for old in REGSO_DIR.glob("*.json"):
+        old.unlink()
+    regso_rings: dict = collections.defaultdict(dict)
+    for cod, e in regso.items():
+        regso_rings[e["kommun"]][cod] = e["rings"]
+    regso_index = {}
+    for kod, rings in sorted(regso_rings.items()):
+        (REGSO_DIR / f"{kod}.json").write_text(
+            json.dumps({"kommun": kod, "rings": rings}, ensure_ascii=False, separators=(",", ":")),
+            encoding="utf-8")
+        regso_index[kod] = {"n": len(rings), "file": f"regso/{kod}.json"}
+    regso_values = [{k: v for k, v in e.items() if k != "rings"}
+                    for e in sorted(regso.values(), key=lambda a: a["code"])]
+    (REGSO_DIR / "values.json").write_text(
+        json.dumps({"areas": regso_values, "built": built},
+                   ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    (REGSO_DIR / "index.json").write_text(
+        json.dumps({"kommuner": regso_index, "built": built},
+                   ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    regso_mb = sum(p.stat().st_size for p in REGSO_DIR.glob("*.json")) / 1e6
+    print(f"regso: values.json {(REGSO_DIR / 'values.json').stat().st_size / 1e6:.1f} MB · "
+          f"{len(regso_index)} ring files · {regso_mb:.1f} MB total · "
+          f"largest ring file "
+          f"{max((REGSO_DIR / f'{k}.json').stat().st_size for k in regso_index) / 1e3:.0f} kB")
+
     # ---- DeSO goes to one file per kommun, loaded on demand
     DESO_DIR.mkdir(parents=True, exist_ok=True)
     for old in DESO_DIR.glob("*.json"):
@@ -1169,7 +1259,15 @@ def main() -> int:
         "src_periods": {t: [p for p in codes if p[:4] >= years_sorted[0]]
                         for t, codes in src_periods.items()},
         "kommuner": sorted(kommuner.values(), key=lambda m: -(m.get("pop") or 0)),
-        "regso": sorted(regso.values(), key=lambda a: a["code"]),
+        # RegSO in the page is the name index and nothing else: code, name and
+        # kommun for all 3 363, which is what the search box, the row counts and
+        # the breadcrumbs need on a cold open. The figures arrive from
+        # regso/values.json and are merged into these same objects; the rings
+        # arrive per kommun. ~0.25 MB here against 10.4 MB before.
+        "regso": [{"code": a["code"], "name": a["name"], "kommun": a["kommun"]}
+                  for a in regso_values],
+        "regso_meta": {"n": len(regso_values), "file": "regso/values.json"},
+        "regso_index": regso_index,
         "deso_index": index,
     }
     OUT.parent.mkdir(parents=True, exist_ok=True)

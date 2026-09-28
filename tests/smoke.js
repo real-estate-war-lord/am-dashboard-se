@@ -38,6 +38,9 @@ const routeJs = fs.readFileSync(path.join(ROOT, "src", "route_core.js"), "utf8")
 /* search_core.js is inlined between them (v2.1 P3): app.js builds AREA_OPTS through
    window.SEARCH_CORE.keysFor at module scope, so it has to be in the sandbox first. */
 const searchJs = fs.readFileSync(path.join(ROOT, "src", "search_core.js"), "utf8");
+/* geo_core.js likewise (v2.1 P4): app.js decodes the kommun outlines through
+   window.GEO_CORE at module scope. */
+const geoJs = fs.readFileSync(path.join(ROOT, "src", "geo_core.js"), "utf8");
 const viewJs = fs.readFileSync(path.join(ROOT, "src", "listings", "view.js"), "utf8");
 const exportJs = fs.readFileSync(path.join(ROOT, "src", "export_core.js"), "utf8");
 
@@ -119,6 +122,7 @@ try {
   vm.runInContext(tpJs, sandbox, { filename: "testprop.js" });
   vm.runInContext(routeJs, sandbox, { filename: "route_core.js" });
   vm.runInContext(searchJs, sandbox, { filename: "search_core.js" });
+  vm.runInContext(geoJs, sandbox, { filename: "geo_core.js" });
   vm.runInContext(viewJs, sandbox, { filename: "listings/view.js" });
   vm.runInContext(exportJs, sandbox, { filename: "export_core.js" });
   vm.runInContext(appJs + EXPORTS, sandbox, { filename: "app.js" });
@@ -130,8 +134,25 @@ try {
 const A = sandbox.__app;
 const S = A.S, MK = A.MK, AR = A.AR, T = A.T, CH = A.CH, D = A.D;
 
+/* ---- v2.1 P4: the RegSO pool the page fetches ----
+   There is no fetch in this sandbox, so the files the browser would download are
+   read off disk and handed to the same merge the loader uses. Every check below
+   this line therefore exercises the loaded state, which is the state a reader
+   sees; the un-loaded state is what tests/ui_v2_1/spec.py drives, with the route
+   held open. The rings come back through src/geo_core.js's decoder, so this is
+   also the round trip of every RegSO polygon in the build. */
+const PROCD = path.join(ROOT, "data", "processed");
+const regsoVals = JSON.parse(fs.readFileSync(path.join(PROCD, "regso", "values.json"), "utf8"));
+const regsoRings = {};
+for (const kod of Object.keys(D.regso_index || {})) {
+  regsoRings[kod] = JSON.parse(fs.readFileSync(path.join(PROCD, "regso", `${kod}.json`), "utf8"));
+}
+sandbox.window.AM.injectRegso(regsoVals, regsoRings);
+
 console.log(`\ndata: ${D.kommuner.length} kommuner · ${D.regso.length} RegSO · ` +
             `${Object.keys(D.deso_index).length} DeSO files · ${D.indicators.length} indicators\n`);
+console.log(`fetched in: regso/values.json (${regsoVals.areas.length} areas) · ` +
+            `${Object.keys(regsoRings).length} RegSO ring files\n`);
 
 console.log("views:");
 S.view = "makro"; MK.kommun = null;

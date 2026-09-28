@@ -63,6 +63,31 @@ stored as [lat,lon] — `build_makro` swapped them once more and every sub-munic
 was drawn off the Somali coast, unnoticed until a screenshot was taken. `tests/smoke.js`
 now asserts every ring is inside Sweden and that a kommun's sub-areas are inside it.
 
+**Rings are encoded strings, and exactly one place swaps (v2.1 P4).** Every ring in
+`data/processed/` is one short string, not an array of pairs: delta-encoded, zig-zag,
+5 bits per character, base64url alphabet — Google's polyline algorithm with a different
+alphabet, because polyline's 0x3F offset puts `\` in the range and JSON doubles every one.
+Lossless at the 5 decimals `rings_of()` already rounds to; 8.9 MB of geometry became 2.0 MB.
+
+- **Encoder:** `enc_ring()` in `scripts/build_makro.py`. **Decoder:** `src/geo_core.js` — the
+  only one. `tests/geo.test.js` checks the round trip and decodes the real build output.
+- **The swap lives in `rings_of()` in `build_makro.py` and nowhere else.** `[lat, lon]` in,
+  `[lat, lon]` out, through the encoder, the file, the decoder and Leaflet. `decodeRings()`
+  is deliberately idempotent, so calling it twice cannot repeat 2018's triple swap.
+- Change the encoding and you must change both sides in the same commit; `node --check` will
+  not catch a decoder that disagrees with the encoder, but `make test-js` will.
+
+**Trap: RegSO is no longer in the page (v2.1 P4).** `dist/index.html` carries the 290 kommun
+outlines and a RegSO *name* index (code, name, kommun) — nothing else below kommun level.
+`regso/values.json` holds all 3 363 areas' figures, `regso/<kommun>.json` their rings, and
+`deso/<kommun>.json` as before. `window.DATA.regso` therefore has **no `rings` and no `hist`**
+until the fetches land. Anything that reads a RegSO figure must ask `regsoReady()` first and
+say "Loading…" otherwise — a dash in this dashboard means the source suppressed the value,
+and 0 would be a claim about the place. Anything that *draws* RegSO must go through
+`regsoDrawable(kommun)`, which is empty until the ring file is in: handing `L.polygon()` an
+undefined ring is the failure mode. The page-weight budget is 5 MB and `build_dashboard.py`
+prints how much of it is used.
+
 **Trap:** the UI renders through `FMT`/`fmtOf` in `app.js`, and an indicator whose `fmt`
 is missing from that table used to fall back to `pct1` — so every `ksek`/`sek0`/`ratio2`
 indicator silently rendered as a percentage ("385 kSEK" as "380,8 %") in the table, the
