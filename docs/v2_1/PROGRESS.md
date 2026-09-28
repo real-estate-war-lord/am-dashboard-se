@@ -460,3 +460,131 @@ No v2.0 check was changed — the 169 still pass as written.
   link survives the load.
 * Four screenshot routes were added (`mapfirst`, `mapfirst-kommun`,
   `mapfirst-folded`, `mapfirst-deso`), so `--shots` now writes 60 files per run.
+
+---
+
+## P5 — Test property as an asset-management tool
+
+Gate green: `make validate`, `make build`, `make test` (smoke + `node --test`),
+`tests/ui_v2/spec.py --upto P11` (169/169), `tests/ui_v2_1/spec.py --upto P5`
+(P1–P4's 206 plus 91 new).
+
+### Built
+
+**The summary strip is the first thing on the page, and the seven answers are the
+page's own.** `stripItems()` is one model — the DOM reads it, `window.AM.stripItems()`
+exposes it and the Nearby export writes it — so the strip cannot say one thing
+while the table under it says another. For the Södermalm pin it reads: nearest
+transport stop **20 m** (Slussen), **7** groceries within 500 m, nearest year-9
+merit **299,7** (Maria Elementarskola, 400 m), in a mapped hazard zone **Yes**
+(Coast +2.0 m, Coast +3.0 m, Sea 2100 RCP8.5, Sea 2100 RCP4.5, Landslide),
+police-designated area **No**, **12** live listings within 1 km (12 direct · 0
+queue), median advertised **2 702** SEK/m²/yr. Every one of those is recomputed
+from `dist/` by the spec and compared, and each item is a button that opens the
+section its figure comes from and scrolls to it.
+
+Two rules the whole strip turns on:
+
+* **"…", never 0.** An input still in flight makes the item say "…" and name what
+  it is waiting for. The strip reaches further than the sections do — 500 m for
+  groceries and 2 km for a stop, whatever the pin's radius — so it has its own
+  kommun set and its own `stripSrvWaiting()`. `srvWaiting()` asks only about
+  `nearKommuner(500)` and would have let the strip print a count off a file that
+  had not arrived, which is exactly the bug P1 fixed one row further down.
+* **Three climate answers, not two.** Yes / No / **Not mapped**. A layer with 0 %
+  covers this spot and does not include it; a layer with no value never surveyed
+  it, and calling that "No" would turn an absence of data into a clean bill of
+  health.
+
+**The privacy paragraph is one line.** `PRIVACY_FOLD`: "Nothing leaves your
+browser except the listings request." plus a `details` fold carrying the whole
+position — what the # never sends, why a goo.gl link is refused, and exactly what
+the one outbound request contains. Both halves are in the DOM whether the fold is
+open or not, so `tests/smoke.js`'s "never sent to a server" assertion still reads
+the real text. Six lines above every pin became one.
+
+**Direct and queue are two kinds of supply and are never averaged together.**
+`lstSectionBody()` splits once and everything below reads the split: a
+`lst-split` line ("Direct / first come 27 · Queue 1") that is there whether the
+cards are open or not, medians **over the direct listings only** with a caption
+that says so and why, and — with the cards open — two labelled blocks. The direct
+block names HomeQ and the landlords' portals and says first come, first served;
+the queue block names Bostadsförmedlingen and Boplats, says the allocation is by
+queued time, and carries the **sources' own** q1–q3 queued time (15–20 years in
+the fixture) or "not published by these sources". Nothing is estimated.
+
+With the recorded fixture at a 2 km radius the exclusion is measurable: the direct
+median is 2 670 SEK/m²/yr and the mixed one is 2 680, and the spec asserts the page
+prints the first and not the second.
+
+**The Nearby export leads with the strip.** Seven `kind: summary` rows inside the
+unchanged `NEARBY_COLUMNS`, each with its label, its figure in words and its
+publisher — OpenStreetMap, Skolverket, MCF/SMHI/SGU, Polismyndigheten, the
+gateway — then the 556 per-thing rows underneath as the working.
+
+**Sections on open:** Rental listings and Services. The Summary strip is not an
+accordion (see DECISIONS), everything else stays folded, and `show=` still
+overrides all of it including `show=none`.
+
+**`LST.pinDone`** is the new state the strip needs: it is built before the section
+that starts the request, so "nothing has answered yet" and "the answer was empty"
+had to stop being the same thing.
+
+### Deviations
+
+Eleven, all in `docs/v2_1/DECISIONS.md`. The four to read before touching this:
+the strip is **seven** items because the brief's last bullet is two figures;
+Summary is not a fold; the climate item has a third answer; and the strip's radii
+are fixed rather than the reader's, which is why it has a waiting predicate of
+its own.
+
+One v2.1 check was **updated, never deleted** — P2's `maponly-minimaps` route
+gained `show=none`, because listings open by default and a cluster's leader lines
+are a legitimate layer on top of Map only rather than "another mark on the
+mini-map". No v2.0 check was changed; the 169 still pass as written.
+
+### Known issues, not fixed here
+
+* On a **mini-map** showing a kommun-only indicator, the "published per kommun
+  only" note and the small legend want the same bottom-right corner and overlap.
+  Pre-existing (P3 added the note, P4 shrank the legend); P4's corner-overlap
+  measurements only cover the big map. Visible in
+  `shots/P5/prop-summary_1366x768.png`. **P6 should measure the two mini-maps'
+  corners the way P4 measures the big one.**
+* The strip's caption runs to five lines at 1440 because `.cap` is capped at 96ch
+  of 10 px mono. Consistent with every other caption on the page, but it is the
+  longest thing in the new card.
+* The screenshot helper hops between routes on one page, so a route with no `ind=`
+  inherits the previous shot's indicator. `prop-summary` therefore shows Rent
+  rather than the default. Pre-existing in `shots()`; harmless for the eye test,
+  worth knowing when reading a screenshot.
+* `indExplain`'s "as of" at RegSO/DeSO still falls back to the kommun stamp (P1's
+  known issue) and the area mini-map still fits to its own area (P3's).
+* `CHANGELOG.md` still has no v2.1 section. P1–P5 have all skipped it; **P6 has
+  five phases to cover.**
+
+### What the next phase must know
+
+* **`stripItems()` is the one model.** Add an eighth answer there and the DOM, the
+  export and `window.AM.stripItems()` all get it; the spec's `STRIP` list and the
+  CSS `grid-column` spans on `.pst:last-child` are the two places that assume
+  seven.
+* **A strip item must never print 0 for a fetch.** Every input needs a waiting
+  predicate that covers the *strip's* reach, not the sections'. `stripSrvWaiting()`
+  and `LST.pinDone` are the two that exist; a new input needs its own.
+* **`lstIsQueue(l)` is the split**, and it goes through `LISTINGS_VIEW.groupOf`, so
+  a new municipal queue source joins the right side by having `allocation: "queue"`
+  and nothing else changes. `lstMedians()` is only ever handed direct rows.
+* **`lstSectionRefresh()` now redraws the strip too** (`propStripRefresh()`). Any
+  new path that lands listings data must go through it or the strip will sit on
+  "…" while the section below it fills.
+* **`propGoSec(id)`** is how anything opens and scrolls to a section
+  (`data-secgo="<id>"`). It writes `show=` so the shared link reproduces it.
+* `PROP_SHOW_DEFAULTS` is `["listings", "services"]`. A check that wants a known
+  fold state must say `show=…` or `show=none` rather than rely on the default.
+* The spec gained `js_errs()`, `digits()`, `nearest_service()`, `fixture_split()`
+  and `strip_geom()`. `fixture_split()` recomputes the direct/queue counts and both
+  medians from `tests/fixtures/listings_stockholm.json`, so the listings checks
+  survive a re-recorded fixture.
+* Two screenshot routes were added (`prop-summary`, `prop-alloc`), so `--shots`
+  now writes 66 files per run.

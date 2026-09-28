@@ -200,3 +200,64 @@ front. A reader should be able to reverse any of them from this file alone.
   sleep; `injectRegso` is how `tests/smoke.js` — which has no `fetch` — puts the
   pool in place from `data/processed/regso/`, so every existing smoke assertion
   about RegSO figures and rings still runs, and runs against the real decoder.
+- **P5** — the summary strip is **seven** items, where the brief's prose lists six
+  bullets. Its last bullet is two different figures ("live listings within the
+  radius **+** median advertised SEK/m²/yr"), and the phase's own acceptance check
+  says "strip shows 7 items", so the count and the median are separate items with
+  separate states: a gateway error leaves the count reading "unavailable" and the
+  median reading "–".
+- **P5** — **Summary is not an accordion.** The brief lists it among the sections
+  open by default, but a strip that is the page's first row and is always on
+  screen has nothing to fold, and a `<details data-sec="summary">` that can never
+  usefully be closed would be a control that does nothing. `PROP_SHOW_DEFAULTS` is
+  therefore `["listings", "services"]` — the two sections whose figures the strip
+  quotes — and v2.0's `["infra"]` is dropped, which the brief's item 5 requires.
+- **P5** — the strip's radii are **fixed and its own**, not the reader's: groceries
+  at 500 m because the brief says 500 m, and the nearest transport stop searched
+  out to 2 km whatever the pin's radius is set to. It follows that the strip reads
+  more kommun files than the sections do, so it has its own reach
+  (`stripReach()` / `stripKommuner()`) and its own `stripSrvWaiting()`. Reusing
+  `srvWaiting()`, which asks only about `nearKommuner(500)`, would have let the
+  strip print a count off a file that was still on the way — the v2.0 bug P1 fixed,
+  reintroduced one row higher up the page.
+- **P5** — the climate item has **three** answers, not the yes/no the brief asks
+  for: Yes, No, and **Not mapped**. 0 % means a layer covers this spot and does not
+  include it; null means nobody surveyed it. Folding the second into "No" would
+  turn an absence of data into a clean bill of health, which is the one thing
+  `CLAUDE.md` says the Climate block must never do. "Yes" lists the layers by name.
+- **P5** — `LST.pinDone` is new state. The strip is built before the listings
+  section in the same render, so on the first paint the request has not been made
+  yet and an empty `LST.rows` is not an answer. `pinDone` is the only thing that
+  distinguishes "nothing came back yet" (the item says "…") from "the gateway
+  answered and there is nothing within the radius" (the item says 0, honestly).
+- **P5** — medians are computed over the **direct** listings only, and the split is
+  made once in `lstSectionBody()` and read by everything under it. A queue rent is
+  what the flat costs whoever has queued longest; a direct rent is what it costs
+  whoever applies first. With the recorded fixture at a 2 km radius the two
+  medians really are different numbers — 2 670 direct against 2 680 mixed — and the
+  spec asserts the page prints the first and not the second.
+- **P5** — the queue block carries the **sources' own** q1–q3 queued-time figures
+  (the median of each across the queue adverts that publish them) and says "not
+  published by these sources" where none does. No queued time is estimated,
+  interpolated or carried over from another advert.
+- **P5** — the Nearby export's strip rows use `kind: "summary"` inside the existing
+  `NEARBY_COLUMNS`, which are unchanged: a v2.0 check pins that header, and the
+  seven answers are not a second schema. The figure goes into `status` **in words**
+  ("Yes — Coast +2.0 m, …", "n=2 direct · too few to publish", "unavailable"),
+  because four of the seven answers are not numbers at all, and `distance_m` is
+  filled only where the figure itself is a distance.
+- **P5** — the strip's last cell spans the rest of its row at every breakpoint
+  (7 → 4 → 2 columns). Seven items in a four- or two-column grid otherwise leave
+  the eighth cell empty, and the 1 px hairline background shows through it as a
+  grey box — the same defect v2.1 P1 took out of the Data › National tile grid.
+- **P5** — one v2.1 check was **updated, not deleted**: P2's `maponly-minimaps`
+  route gained `show=none`. Rental listings now open by default and a listings
+  cluster draws one leader line per advert, which P2 explicitly allows ("every
+  Layers ▾ layer works on top") but which that check was counting as "another mark
+  on the mini-map". The assertion it is actually about — no area filled, nothing
+  of the map's own but the pin and its radii — is unchanged. No v2.0 check changed.
+- **P5** — `js_errs()` in the spec drops console entries that are failed HTTP
+  requests. The error-mode fixture answers 500 on purpose and the recorded
+  listings carry `example.invalid` photo URLs that cannot resolve anywhere, so
+  "no page error" on those two paths could only ever mean "nothing was thrown".
+  Every other check still asserts against the raw list.

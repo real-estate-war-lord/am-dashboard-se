@@ -1422,6 +1422,67 @@ a.nav-item:hover .navext{opacity:.9}
 .anpin .anlab{flex:0 1 160px}
 .anpin .anerr{flex-basis:100%;color:#B0331B;font-size:11px;font-family:var(--mono);line-height:1.4}
 .anpriv{border-left:2px solid var(--line);padding-left:10px;margin-top:10px}
+/* the privacy position: one line, with the whole of it a click away (v2.1 P5) */
+.privfold{flex-basis:100%;margin-top:12px;border-left:2px solid var(--line);padding-left:10px}
+.privfold>summary{cursor:pointer;list-style:none;font-family:var(--mono);font-size:11px;
+  line-height:1.5;color:var(--ink2)}
+.privfold>summary::-webkit-details-marker{display:none}
+.privfold>summary b{color:var(--ink);font-weight:600}
+.privfold>summary i{font-style:normal;color:var(--muted);border-bottom:1px dotted var(--dim);margin-left:4px}
+.privfold>summary:hover i{color:var(--ink);border-bottom-color:var(--ink)}
+.privbody{margin-top:7px}
+.privbody p{font-family:var(--mono);font-size:10.5px;line-height:1.6;color:var(--muted);margin:0 0 6px;max-width:96ch}
+.privbody p:last-child{margin-bottom:0}
+.privbody b{color:var(--ink2)}
+
+/* ---- the summary strip (v2.1 P5) ----
+   Seven answers, each a button into the section that shows its working. Same
+   grid discipline as the headline row: one hairline background, the cells draw
+   themselves, nothing can read as an empty grey box. */
+.stripcard{padding:14px 16px 15px}
+.pstrip{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:1px;background:var(--line);
+  border:1px solid var(--line);border-radius:9px;overflow:hidden}
+.pst{background:var(--panel);border:0;text-align:left;padding:9px 11px 8px;cursor:pointer;font:inherit;
+  display:flex;flex-direction:column;gap:2px;min-width:0}
+.pst:hover{background:var(--panel2)}
+.pst:focus-visible{outline:2px solid var(--good);outline-offset:-2px}
+.pst .pstl{font-family:var(--mono);font-size:9px;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--muted);line-height:1.35;min-height:24px}
+.pst b{font-family:var(--disp);font-size:21px;letter-spacing:-.03em;line-height:1.15;font-weight:700}
+.pst em{font-style:normal;font-family:var(--mono);font-size:9.5px;line-height:1.4;color:var(--ink2);
+  overflow-wrap:anywhere}
+.pst.loading b,.pst.none b{color:var(--dim)}
+.pst.warn b{color:var(--warn)}
+.pst.err b{font-family:var(--mono);font-size:13px;color:var(--bad);font-weight:600}
+.pst.warn{box-shadow:inset 0 3px 0 var(--warn)}
+.pst.err{box-shadow:inset 0 3px 0 var(--bad)}
+/* Seven items in a grid that wraps, so the last one stretches across whatever is
+   left of its row. Without it a four- or two-column strip leaves the eighth cell
+   empty and the hairline background shows through as a grey box — the same
+   mistake v2.1 P1 took out of Data › National. */
+.pst:last-child{grid-column:7 / -1}
+@media (max-width:1320px){.pstrip{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .pst:last-child{grid-column:3 / -1}}
+@media (max-width:820px){.pstrip{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .pst:last-child{grid-column:1 / -1}}
+@media (max-width:420px){.pst b{font-size:19px}}
+
+/* ---- direct vs queue (v2.1 P5) ---- */
+.lst-split{display:flex;flex-wrap:wrap;gap:4px 14px;align-items:baseline;margin-top:7px;
+  font-family:var(--mono);font-size:11px;color:var(--ink2)}
+.lst-split span{border:1px solid var(--line);border-radius:999px;padding:2px 9px;background:var(--panel2)}
+.lst-split b{font-size:12px;color:var(--ink);margin-left:5px}
+.lst-split i{font-style:normal;color:var(--muted);font-size:10px}
+.lst-alloc{margin-top:14px;border-top:1px solid var(--line);padding-top:10px}
+.lst-ahead{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px}
+.lst-ahead h4{font-family:var(--disp);font-size:14px;font-weight:600;margin:0;letter-spacing:-.01em;
+  display:inline-flex;align-items:baseline;gap:7px}
+.lst-ahead h4 .n{font-family:var(--mono);font-size:11px;font-weight:500;color:var(--ink2);
+  border:1px solid var(--line);border-radius:999px;padding:1px 7px}
+.lst-awhy{font-family:var(--mono);font-size:10.5px;color:var(--muted);line-height:1.5}
+.lst-aq{flex-basis:100%;font-family:var(--mono);font-size:10.5px;color:var(--ink2)}
+.lst-aq i{font-style:normal;color:var(--muted)}
+.lst-alloc .lst-cards{margin:9px 0 10px}
 .anwhere{display:flex;flex-wrap:wrap;gap:6px 16px;font-family:var(--mono);font-size:12px;margin:4px 0 10px}
 .anwhere span em{font-style:normal;color:var(--muted);margin-right:5px}
 .ansep{font-family:var(--mono);font-size:10.5px;color:var(--muted);margin-top:10px;padding-top:8px;border-top:1px solid var(--line)}

@@ -73,6 +73,10 @@ SHOT_ROUTES = {
     "mapfirst-kommun": ("#map/0180", None),
     "mapfirst-folded": ("#map/0180?card=0", None),
     "mapfirst-deso": ("#map/0180/deso", None),
+    # P5 — Test property as an asset-management tool: the strip at the top and the
+    # direct/queue split with the cards open
+    "prop-summary": (f"#property?p={STHLM}:Test", "prop-strip"),
+    "prop-alloc": (f"#property?p={STHLM}:Test&rad=2000&show=listings&lopen=1", "lst-split"),
 }
 SHOT_SIZES = [(1440, 900), (1366, 768), (390, 844)]
 
@@ -217,6 +221,16 @@ def settle(page, timeout_ms: int = 8000) -> str:
     return text(page)
 
 
+def js_errs(errs: list[str]) -> list[str]:
+    """The errors that are the page's own fault.
+
+    A console entry for a failed HTTP request is not one of them: the error-mode
+    fixture answers 500 on purpose, and the recorded listings carry
+    `example.invalid` photo URLs that cannot resolve anywhere. A thrown exception
+    still counts, which is the whole point of watching `pageerror` at all."""
+    return [e for e in errs if "Failed to load resource" not in e]
+
+
 def loading_bits(page) -> list[str]:
     """Every line still claiming to load — the detail for a failed settle."""
     return [ln.strip() for ln in text(page).splitlines() if LOADING.search(ln)]
@@ -275,6 +289,95 @@ def services_within(lat: float, lon: float, radius: int, cat: str) -> int:
             if hav_m(lat, lon, row[1], row[2]) <= radius:
                 n += 1
     return n
+
+
+def nearest_service(lat: float, lon: float, reach: int, cat: str):
+    """The nearest OSM point of one category within `reach` metres, or None.
+
+    Mirrors stripPoints() in app.js: the same kommun-bbox rule (a file is read
+    when its bounding box comes within `reach`), the same straight-line distance,
+    the same rounding to a whole metre."""
+    best = None
+    for code, meta in srv_index().items():
+        bb = meta.get("bbox")
+        if not bb:
+            continue
+        d_lat = max(0.0, bb[0] - lat, lat - bb[2])
+        d_lon = max(0.0, bb[1] - lon, lon - bb[3])
+        if hav_m(lat, lon, lat + d_lat, lon + d_lon) >= reach:
+            continue
+        f = DIST / "services" / f"{code}.json"
+        if not f.exists():
+            continue
+        for row in json.loads(f.read_text(encoding="utf-8")):
+            if row[0] != cat:
+                continue
+            m = hav_m(lat, lon, row[1], row[2])
+            if m > reach:
+                continue
+            if best is None or m < best[0]:
+                best = (m, row)
+    return None if best is None else {"m": round(best[0]), "row": best[1]}
+
+
+# --------------------------------------------------------------------------- #
+# the listings fixture, recomputed the way listings/view.js computes it
+# --------------------------------------------------------------------------- #
+
+RESERVED_AUDIENCE = ["student", "youth", "senior", "short_term"]
+
+
+def fixture_near(lat: float, lon: float, radius: int) -> list[dict]:
+    """The fixture's listings inside a radius, after the page's DEFAULT filters.
+
+    The only default that removes anything is `showReserved: false`, which holds
+    back a student/ungdom/senior advert — real supply most readers cannot apply
+    for. Recomputed here so the split and the medians below are not compared with
+    numbers typed into the test."""
+    body = json.loads(FIXTURE.read_text(encoding="utf-8"))
+    out = []
+    for lst in body["listings"]:
+        if lst.get("lat") is None or lst.get("lon") is None:
+            continue
+        if hav_m(lat, lon, lst["lat"], lst["lon"]) > radius:
+            continue
+        if lst.get("audience") in RESERVED_AUDIENCE:
+            continue
+        out.append(lst)
+    return out
+
+
+def sek_m2_year(lst: dict):
+    rent, size = lst.get("rent_sek_mo"), lst.get("size_m2")
+    if not isinstance(rent, (int, float)) or not isinstance(size, (int, float)) or size <= 0:
+        return None
+    return rent * 12 / size
+
+
+def median(values: list[float]):
+    v = sorted(x for x in values if x is not None)
+    if not v:
+        return None
+    mid = len(v) // 2
+    return v[mid] if len(v) % 2 else (v[mid - 1] + v[mid]) / 2
+
+
+def fixture_split(lat: float, lon: float, radius: int) -> dict:
+    """Direct/queue counts and the advertised median over the DIRECT ones only."""
+    near = fixture_near(lat, lon, radius)
+    direct = [x for x in near if x.get("allocation") != "queue"]
+    queue = [x for x in near if x.get("allocation") == "queue"]
+    d_vals = [v for v in (sek_m2_year(x) for x in direct) if v is not None]
+    a_vals = [v for v in (sek_m2_year(x) for x in near) if v is not None]
+    return {"n": len(near), "direct": len(direct), "queue": len(queue),
+            "median_direct": median(d_vals), "median_mixed": median(a_vals),
+            "n_direct_priced": len(d_vals),
+            "queue_years": [(x.get("queue_years_q1"), x.get("queue_years_q3")) for x in queue]}
+
+
+def digits(s: str) -> str:
+    """A figure read off the page with every kind of thousands space removed."""
+    return re.sub(r"[\s  ]", "", str(s or ""))
 
 
 def swedish_int(n: int) -> str:
@@ -886,7 +989,13 @@ def _maponly_minimaps(r, page, errs, calls):
     tiles = page.eval_on_selector_all("[data-testid=tiles] [data-testid^=tile-]", "e => e.length")
     r.ok("the headline figures are still on the page", tiles >= 3, f"{tiles} tiles")
 
-    hop(page, f"#property?p={STHLM}:Test&ind=none", 1600)
+    # `show=none` is named explicitly because v2.1 P5 opens Rental listings by
+    # default, and a listings cluster draws a leader line per advert — a legitimate
+    # layer on top of Map only (P2 asks for exactly that), which would otherwise be
+    # counted here as "another mark". What this check is about is that no AREA is
+    # filled and that the mini-map draws nothing of its own but the pin and its
+    # radii. Updated in P5, not deleted; see docs/v2_1/DECISIONS.md.
+    hop(page, f"#property?p={STHLM}:Test&ind=none&show=none", 1600)
     settle(page)
     pr = paths(page, "prop")
     # the pin itself and its radius circles are not areas, so the assertion is on
@@ -1639,6 +1748,437 @@ def _charts_regso(r, page, errs, calls):
     r.ok("and the median line names the RegSO pool",
          "median of RegSO" in t or "RegSO" in t, t.replace("\n", " ")[:140])
     r.ok("no page error on a RegSO chart", not errs, (errs[0] if errs else "")[:140])
+    errs.clear()
+
+
+# --------------------------------------------------------------------------- #
+# P5 — Test property as an asset-management tool
+# --------------------------------------------------------------------------- #
+
+# the seven answers, in the order the strip prints them, with the section each
+# one has to link to
+STRIP = [("transport", "services"), ("grocery", "services"), ("school", "schools"),
+         ("climate", "climate"), ("police", "safety"), ("listings", "listings"),
+         ("median", "listings")]
+
+
+def strip_items(page) -> list[dict]:
+    """The strip as the DOM has it: id, the big value, the line under it."""
+    return page.evaluate("""() => [...document.querySelectorAll('[data-testid=prop-strip] .pst')]
+      .map(b => ({ id: (b.dataset.testid || '').replace(/^strip-/, ''),
+                   sec: b.dataset.secgo,
+                   value: (b.querySelector('b') || {}).innerText || '',
+                   label: (b.querySelector('.pstl') || {}).innerText || '',
+                   sub: (b.querySelector('em') || {}).innerText || '' }))""")
+
+
+@check("strip-seven-items", "P5", "the summary strip answers seven questions, none of them with 0",
+       needs="fresh")
+def _strip_items(r, page, errs, calls):
+    lat, lon = (float(x) for x in STHLM.split(","))
+    hop(page, f"#property?p={STHLM}:Test", 1200)
+    settle(page)
+    items = strip_items(page)
+    r.ok("seven items", len(items) == 7, f"{len(items)}: " + ", ".join(i["id"] for i in items))
+    r.ok("in the documented order and each pointing at its section",
+         [(i["id"], i["sec"]) for i in items] == STRIP,
+         json.dumps([(i["id"], i["sec"]) for i in items]))
+    r.ok("the strip is above the first accordion",
+         page.evaluate("""() => {
+           const s = document.querySelector('[data-testid=prop-strip]');
+           const a = document.querySelector('.sec');
+           return !!s && !!a && s.getBoundingClientRect().top < a.getBoundingClientRect().top;
+         }"""))
+    by = {i["id"]: i for i in items}
+    r.ok("nothing is still saying …", not any(i["value"] == "…" for i in items),
+         ", ".join(f'{i["id"]}={i["value"]!r}' for i in items if i["value"] == "…"))
+
+    # groceries: the count the files hold within 500 m, whatever the pin's radius
+    want = services_within(lat, lon, 500, "grocery")
+    r.ok("the files hold groceries within 500 m to compare against", want > 0, f"{want}")
+    r.ok(f"the grocery item reads {want}", digits(by["grocery"]["value"]) == str(want),
+         f'page {by["grocery"]["value"]!r}, files {want}')
+    r.ok("and its label names the 500 m, not the pin's radius",
+         "500" in by["grocery"]["label"], by["grocery"]["label"])
+
+    # the nearest transport stop, recomputed
+    stop = nearest_service(lat, lon, 2000, "transport")
+    r.ok("the files hold a transport stop within 2 km", stop is not None, json.dumps(stop))
+    if stop:
+        shown = digits(by["transport"]["value"])
+        r.ok("the transport item reads a distance in metres",
+             re.fullmatch(r"\d+m", shown) is not None, by["transport"]["value"])
+        # the page rounds a sub-kilometre distance to the nearest 10 m
+        r.ok(f'and it is the nearest stop ({stop["m"]} m)',
+             shown == f"{round(stop['m'] / 10) * 10}m", f'page {shown}, files {stop["m"]} m')
+        r.ok("with the stop named beside it", len(by["transport"]["sub"]) > 2,
+             by["transport"]["sub"])
+
+    # the nearest year 9, cross-checked against the Schools section's own first row
+    hop(page, f"#property?p={STHLM}:Test&show=schools", 1200)
+    settle(page)
+    first = page.eval_on_selector_all(
+        "[data-testid=schools-near] tbody tr",
+        "e => e.length ? [e[0].cells[0].innerText.trim(), e[0].cells[2].innerText.trim()] : []")
+    items = strip_items(page)
+    by = {i["id"]: i for i in items}
+    r.ok("the Schools section has a nearest row to compare with", len(first) == 2, json.dumps(first))
+    if len(first) == 2:
+        r.ok("the strip's merit is the nearest school's merit",
+             digits(by["school"]["value"]) == digits(first[1].split("\n")[0]),
+             f'strip {by["school"]["value"]!r}, table {first[1]!r}')
+        r.ok("and it names that school", first[0][:12] in by["school"]["sub"],
+             f'strip sub {by["school"]["sub"]!r}, table {first[0]!r}')
+
+    # climate and the police designation are yes/no answers, and "not mapped" is
+    # its own answer — never folded into "no"
+    r.ok("the climate item answers yes, no or not mapped",
+         by["climate"]["value"] in ("Yes", "No", "Not mapped"), by["climate"]["value"])
+    r.ok("and says which layers it is talking about", len(by["climate"]["sub"]) > 4,
+         by["climate"]["sub"])
+    r.ok("the police item answers yes or no", by["police"]["value"] in ("Yes", "No"),
+         by["police"]["value"])
+    clim = page.evaluate("""() => {
+      const c = window.AM.stripItems().find(i => i.id === 'climate');
+      return c ? c.value : null; }""")
+    r.ok("the model and the DOM agree on the climate answer", clim == by["climate"]["value"],
+         f"model {clim!r}, page {by['climate']['value']!r}")
+    r.ok("no page error while the strip filled", not errs, (errs[0] if errs else "")[:140])
+    errs.clear()
+
+
+def strip_geom(page) -> dict:
+    """Where the seven cells and their figures actually are, in pixels."""
+    return page.evaluate("""() => {
+      const g = document.querySelector('[data-testid=prop-strip]');
+      if (!g) return null;
+      const gb = g.getBoundingClientRect();
+      const cells = [...g.querySelectorAll('.pst')].map(c => {
+        const r = c.getBoundingClientRect();
+        const v = c.querySelector('b').getBoundingClientRect();
+        const e = c.querySelector('em');
+        return { id: (c.dataset.testid || '').replace(/^strip-/, ''),
+                 top: Math.round(r.top), left: Math.round(r.left),
+                 w: Math.round(r.width), h: Math.round(r.height),
+                 vtop: Math.round(v.top),
+                 /* the line under the figure, clipped by its own cell? */
+                 over: e ? Math.round(e.getBoundingClientRect().bottom - r.bottom) : 0 };
+      });
+      return { cells, cover: cells.reduce((s, c) => s + c.w * c.h, 0) / (gb.width * gb.height),
+               w: Math.round(gb.width) };
+    }""")
+
+
+@check("strip-layout", "P5", "the strip has no empty cell and its figures line up",
+       needs="fresh")
+def _strip_layout(r, page, errs, calls):
+    hop(page, f"#property?p={STHLM}:Test", 1300)
+    settle(page)
+    for w, h in [(1440, 900), (1366, 768), (390, 844)]:
+        page.set_viewport_size({"width": w, "height": h})
+        page.wait_for_timeout(450)
+        g = strip_geom(page)
+        r.ok(f"{w}×{h}: the strip is drawn", g is not None and len(g["cells"]) == 7,
+             str(len(g["cells"]) if g else "none"))
+        if not g:
+            continue
+        # every cell covers its share: a wrapped grid must not leave a hole where
+        # the hairline background reads as an empty grey box
+        r.ok(f"{w}×{h}: no empty cell in the grid", g["cover"] >= 0.97,
+             f'{g["cover"]:.3f} of the grid covered')
+        rows: dict = {}
+        for c in g["cells"]:
+            rows.setdefault(c["top"], []).append(c)
+        for top, cells in sorted(rows.items()):
+            tops = [c["vtop"] for c in cells]
+            r.ok(f"{w}×{h}: the figures in the row at {top} px share a baseline",
+                 max(tops) - min(tops) <= 2,
+                 ", ".join(f'{c["id"]}@{c["vtop"]}' for c in cells))
+        spill = [c for c in g["cells"] if c["over"] > 1]
+        r.ok(f"{w}×{h}: nothing spills out of its cell", not spill,
+             ", ".join(f'{c["id"]} +{c["over"]}px' for c in spill))
+        narrow = [c for c in g["cells"] if c["w"] < 120]
+        r.ok(f"{w}×{h}: no cell is squeezed under 120 px", not narrow,
+             ", ".join(f'{c["id"]} {c["w"]}px' for c in narrow))
+    page.set_viewport_size({"width": 1440, "height": 900})
+    r.ok("no page error while resizing", not js_errs(errs),
+         (js_errs(errs)[0] if js_errs(errs) else "")[:140])
+    errs.clear()
+
+
+@check("strip-listings-figures", "P5", "the listings items are the fixture's own figures",
+       needs="fresh")
+def _strip_listings(r, page, errs, calls):
+    lat, lon = (float(x) for x in STHLM.split(","))
+    for rad in (1000, 2000):
+        want = fixture_split(lat, lon, rad)
+        hop(page, f"#property?p={STHLM}:Test&rad={rad}", 1500)
+        settle(page)
+        by = {i["id"]: i for i in strip_items(page)}
+        r.ok(f"rad {rad}: the count is the fixture's {want['n']}",
+             digits(by["listings"]["value"]) == str(want["n"]),
+             f'page {by["listings"]["value"]!r}, fixture {want["n"]}')
+        r.ok(f"rad {rad}: the split under it reads {want['direct']} direct · {want['queue']} queue",
+             digits(by["listings"]["sub"]) == digits(f"{want['direct']} direct · {want['queue']} queue"),
+             by["listings"]["sub"])
+        med = want["median_direct"]
+        enough = want["n_direct_priced"] >= 3
+        if enough and med is not None:
+            r.ok(f"rad {rad}: the median is {round(med)} — over the direct listings only",
+                 digits(by["median"]["value"]) == digits(swedish_int(round(med))),
+                 f'page {by["median"]["value"]!r}, fixture {round(med)}')
+            r.ok(f"rad {rad}: and it is labelled advertised",
+                 "advertised" in by["median"]["sub"].lower(), by["median"]["sub"])
+            r.ok(f"rad {rad}: with the n it rests on",
+                 f'n={want["n_direct_priced"]}' in digits(by["median"]["sub"]).replace("·", " "),
+                 by["median"]["sub"])
+        else:
+            r.ok(f"rad {rad}: too few priced adverts, so no median is printed",
+                 by["median"]["value"] == "–", by["median"]["value"])
+    # the one that proves the exclusion: at 2 km the mixed median is a different
+    # number, and it is not the one on the page
+    want = fixture_split(lat, lon, 2000)
+    if want["queue"] and want["median_mixed"] != want["median_direct"]:
+        by = {i["id"]: i for i in strip_items(page)}
+        r.ok("the mixed direct+queue median is NOT what the page prints",
+             digits(by["median"]["value"]) != digits(swedish_int(round(want["median_mixed"]))),
+             f'page {by["median"]["value"]!r}, mixed {round(want["median_mixed"])}')
+    r.ok("no page error", not errs, (errs[0] if errs else "")[:140])
+    errs.clear()
+
+
+@check("strip-opens-its-section", "P5", "every item opens the section its figure comes from",
+       needs="fresh")
+def _strip_links(r, page, errs, calls):
+    # every section closed first, so "it opened" is an observation and not the default
+    hop(page, f"#property?p={STHLM}:Test&show=none", 1200)
+    settle(page)
+    open_now = page.eval_on_selector_all("[data-sec]", "e => e.filter(x => x.open).length")
+    r.ok("show=none really closes everything", open_now == 0, f"{open_now} open")
+    for sid, sec in STRIP:
+        page.click(f"[data-testid=strip-{sid}]")
+        page.wait_for_timeout(500)
+        is_open = page.eval_on_selector_all(
+            f"[data-sec={sec}]", "e => e.length ? e[0].open : null")
+        r.ok(f"{sid} → the {sec} section is open", is_open is True, str(is_open))
+        r.ok(f"and {sec} is in the shared link", f"show=" in page.evaluate("location.hash")
+             and sec in page.evaluate("location.hash"), page.evaluate("location.hash"))
+    r.ok("no page error while following the strip", not errs, (errs[0] if errs else "")[:140])
+    errs.clear()
+
+
+@check("strip-error-mode", "P5", "a failing gateway costs the strip one item, not the strip",
+       needs="error")
+def _strip_error(r, page, errs, calls):
+    hop(page, f"#property?p={STHLM}:Test", 1500)
+    page.wait_for_timeout(2500)
+    settle(page)
+    items = strip_items(page)
+    by = {i["id"]: i for i in items}
+    r.ok("the strip still has its seven items", len(items) == 7, str(len(items)))
+    r.ok("the listings item says unavailable", by["listings"]["value"] == "unavailable",
+         f'{by["listings"]["value"]!r} / {by["listings"]["sub"]!r}')
+    r.ok("and NOT 0", digits(by["listings"]["value"]) != "0", by["listings"]["value"])
+    r.ok("the median item is a dash, not 0", by["median"]["value"] == "–",
+         by["median"]["value"])
+    r.ok("and says why", "unavailable" in by["median"]["sub"].lower(), by["median"]["sub"])
+    # the other five are intact: a real answer, not "…" and not the error
+    for sid, _ in STRIP[:5]:
+        v = by[sid]["value"]
+        r.ok(f"{sid} is intact", v not in ("…", "unavailable", ""),
+             f"{sid} = {v!r} ({by[sid]['sub']!r})")
+    lat, lon = (float(x) for x in STHLM.split(","))
+    want = services_within(lat, lon, 500, "grocery")
+    r.ok("groceries are still counted off the files with the gateway down",
+         digits(by["grocery"]["value"]) == str(want), f'page {by["grocery"]["value"]!r}, files {want}')
+    r.ok("the section under it offers a Retry",
+         page.eval_on_selector_all("[data-testid=lst-retry]", "e => e.length") == 1)
+    r.ok("no thrown error on the error path", not js_errs(errs),
+         (js_errs(errs)[0] if js_errs(errs) else "")[:140])
+    errs.clear()
+
+
+@check("privacy-one-line", "P5", "the privacy position is one line with the rest a click away")
+def _privacy(r, page, errs, calls):
+    hop(page, f"#property?p={STHLM}:Test", 1000)
+    fold = page.evaluate("""() => {
+      const d = document.querySelector('[data-testid=privacy]');
+      if (!d) return null;
+      const s = d.querySelector('summary');
+      return { open: d.open, tag: d.tagName,
+               summary: s ? s.innerText.replace(/\\s+/g, ' ').trim() : '',
+               lines: s ? Math.round(s.getBoundingClientRect().height /
+                      parseFloat(getComputedStyle(s).lineHeight)) : 0,
+               /* textContent, not innerText: a closed <details> renders nothing,
+                  and the question here is what the DOM carries either way */
+               body: ((d.querySelector('.privbody') || {}).textContent || '')
+                       .replace(/\\s+/g, ' ').trim() };
+    }""")
+    r.ok("there is a privacy fold", fold is not None)
+    if not fold:
+        return
+    r.ok("it is closed to begin with", fold["open"] is False, str(fold["open"]))
+    r.ok("the visible line says what leaves the browser",
+         "Nothing leaves your browser except the listings request" in fold["summary"],
+         fold["summary"][:140])
+    r.ok("and it really is one line on a desktop", fold["lines"] <= 1, f'{fold["lines"]} lines')
+    r.ok("it offers the detail", "details" in fold["summary"].lower(), fold["summary"][:140])
+    r.ok("the whole position is in the DOM either way",
+         "never sent to a server" in fold["body"], fold["body"][:140])
+    r.ok("including what the one request sends",
+         "radius" in fold["body"] and "nothing else" in fold["body"], fold["body"][:200])
+    page.click("[data-testid=privacy] summary")
+    page.wait_for_timeout(300)
+    r.ok("and it opens", page.eval_on_selector("[data-testid=privacy]", "e => e.open"))
+    shown = page.eval_on_selector("[data-testid=privacy] .privbody",
+                                  "e => e.getBoundingClientRect().height > 20")
+    r.ok("with the paragraphs on screen", shown)
+    page.click("[data-testid=privacy] summary")
+    page.wait_for_timeout(200)
+
+
+@check("listings-direct-queue", "P5", "direct and queue supply are split, and never averaged together",
+       needs="fresh")
+def _direct_queue(r, page, errs, calls):
+    lat, lon = (float(x) for x in STHLM.split(","))
+    want = fixture_split(lat, lon, 2000)
+    r.ok("the fixture holds both kinds at 2 km",
+         want["direct"] > 0 and want["queue"] > 0, json.dumps(
+             {k: want[k] for k in ("n", "direct", "queue")}))
+    hop(page, f"#property?p={STHLM}:Test&rad=2000&show=listings", 1800)
+    settle(page)
+    split = page.inner_text("[data-testid=lst-split]").replace("\n", " ")
+    r.ok(f'the split names both sides ({want["direct"]} / {want["queue"]})',
+         "Direct / first come" in split and "Queue" in split, split[:140])
+    r.ok("with the fixture's own counts",
+         digits(split).find(f'come{want["direct"]}') >= 0 and digits(split).find(f'Queue{want["queue"]}') >= 0,
+         digits(split)[:160])
+    r.ok("and says the medians are over the direct ones",
+         "direct" in split.lower(), split[:160])
+    cap = page.inner_text("[data-testid=lst-med-cap]").replace("\n", " ")
+    r.ok("the medians caption says direct only, in so many words",
+         "direct listings only" in cap.lower(), cap[:200])
+    r.ok("and explains why a queue rent is not the same thing",
+         "queued time" in cap.lower(), cap[:200])
+
+    # the medians themselves, recomputed over the direct listings only
+    med = page.eval_on_selector_all("[data-testid=lst-medians] .m", "e => e.map(x => x.innerText)")
+    r.ok("there are room-count medians", len(med) >= 1, f"{len(med)} buckets")
+    r.ok("and every one is labelled advertised or says it is suppressed",
+         all(("advertised" in m) or ("too few" in m) for m in med), json.dumps(med)[:200])
+
+    # open the cards and check both blocks are there, with the queue one carrying
+    # the source's own queued-time figures
+    page.click("[data-testid=lst-show]")
+    page.wait_for_timeout(900)
+    for kind, n in (("direct", want["direct"]), ("queue", want["queue"])):
+        sel = f"[data-testid=lst-alloc-{kind}]"
+        r.ok(f"the {kind} block is on the page",
+             page.eval_on_selector_all(sel, "e => e.length") == 1)
+        cards = page.eval_on_selector_all(f"{sel} .lst-card", "e => e.length")
+        r.ok(f"and holds its {n} card(s)", cards == n, f"{cards} cards, fixture {n}")
+    d_head = page.inner_text("[data-testid=lst-alloc-direct] .lst-ahead").replace("\n", " ")
+    q_head = page.inner_text("[data-testid=lst-alloc-queue] .lst-ahead").replace("\n", " ")
+    r.ok("the direct block names HomeQ and the landlords' portals",
+         "HomeQ" in d_head and "portal" in d_head.lower(), d_head[:160])
+    r.ok("and says first come, first served", "first come" in d_head.lower(), d_head[:160])
+    r.ok("the queue block names Bostadsförmedlingen and Boplats",
+         "Bostadsförmedlingen" in q_head and "Boplats" in q_head, q_head[:160])
+    r.ok("and says the allocation is by queued time",
+         "queued time" in q_head.lower(), q_head[:160])
+    years = [y for y in want["queue_years"] if y[0] is not None and y[1] is not None]
+    if years:
+        lo, hi = median([y[0] for y in years]), median([y[1] for y in years])
+        r.ok(f"with the source's own queued-time figures ({lo:g}–{hi:g} years)",
+             f"{lo:g}–{hi:g} years" in q_head, q_head[:200])
+    else:
+        r.ok("or says the sources do not publish a queued time",
+             "not published" in q_head.lower(), q_head[:200])
+    r.ok("no queue card sits in the direct block",
+         page.eval_on_selector_all(
+             "[data-testid=lst-alloc-direct] .lst-bdg.queue", "e => e.length") == 0)
+    # the fixture's photos are example.invalid on purpose, so the cards' images
+    # cannot resolve — js_errs() keeps the assertion about thrown exceptions
+    r.ok("no thrown error with 28 cards open", not js_errs(errs),
+         (js_errs(errs)[0] if js_errs(errs) else "")[:140])
+    errs.clear()
+
+
+@check("prop-section-defaults", "P5", "Summary, Rental listings and Services open themselves",
+       needs="fresh")
+def _prop_defaults(r, page, errs, calls):
+    hop(page, f"#property?p={STHLM}:Test", 1300)
+    settle(page)
+    state = page.evaluate("""() => {
+      const o = {};
+      for (const d of document.querySelectorAll('[data-sec]')) o[d.dataset.sec] = d.open;
+      return o; }""")
+    r.ok("Rental listings is open", state.get("listings") is True, json.dumps(state))
+    r.ok("Services is open", state.get("services") is True, json.dumps(state))
+    r.ok("and the Summary strip needs no fold at all — it is always on screen",
+         page.eval_on_selector_all("[data-testid=prop-strip]", "e => e.length") == 1
+         and page.eval_on_selector_all("[data-sec=summary]", "e => e.length") == 0,
+         json.dumps(list(state)))
+    folded = [k for k, v in state.items() if not v]
+    r.ok("everything else is folded", set(folded) >= {"public", "schools", "infra", "safety",
+                                                      "climate", "figures", "sources"},
+         ", ".join(sorted(folded)))
+    # and the open state still travels in the URL
+    page.click("[data-sec=climate] summary")
+    page.wait_for_timeout(400)
+    r.ok("opening one writes it into the hash", "climate" in page.evaluate("location.hash"),
+         page.evaluate("location.hash"))
+    hop(page, f"#property?p={STHLM}:Test&show=none", 900)
+    n_open = page.eval_on_selector_all("[data-sec]", "e => e.filter(x => x.open).length")
+    r.ok("and show=none still closes them all", n_open == 0, f"{n_open} open")
+    r.ok("no page error", not errs, (errs[0] if errs else "")[:140])
+    errs.clear()
+
+
+@check("export-nearby-strip", "P5", "the Nearby export carries the strip, with its sources",
+       needs="fresh")
+def _export_nearby(r, page, errs, calls):
+    hop(page, f"#property?p={STHLM}:Test", 1600)
+    settle(page)
+    rows = page.evaluate("() => window.AM.exportRows('nearby')")
+    model = page.evaluate("() => window.AM.stripItems()")
+    r.ok("the schema is the documented one",
+         rows[0] == "kind;name;type;status;distance_m;rent;m2;rooms;source;source_url",
+         rows[0][:140])
+    body = [ln.split(";") for ln in rows[1:]]
+    summary = [c for c in body if c[0] == "summary"]
+    r.ok("seven summary rows", len(summary) == 7, f"{len(summary)} of {len(body)} rows")
+    r.ok("and they lead the file", [c[0] for c in body[:7]] == ["summary"] * 7,
+         ", ".join(c[0] for c in body[:9]))
+    r.ok("one per strip item, with the same labels",
+         [c[1].strip('"') for c in summary] == [i["label"] for i in model],
+         json.dumps([c[1] for c in summary])[:220])
+    r.ok("every one carries its figure in the status column",
+         all(len(c[3].strip('"')) > 1 for c in summary),
+         json.dumps([c[3] for c in summary])[:220])
+    r.ok("and every one names a source",
+         all(len(c[8].strip('"')) > 3 for c in summary),
+         json.dumps([c[8] for c in summary])[:260])
+    srcs = {c[1].strip('"'): c[8].strip('"') for c in summary}
+    r.ok("the OSM rows credit OpenStreetMap",
+         all("OpenStreetMap" in v for k, v in srcs.items() if "transport" in k.lower() or "Groceries" in k),
+         json.dumps(srcs, ensure_ascii=False)[:280])
+    r.ok("the school row credits Skolverket",
+         any("Skolverket" in v for k, v in srcs.items() if "year-9" in k), json.dumps(srcs, ensure_ascii=False)[:280])
+    r.ok("the police row credits Polismyndigheten",
+         any("Polis" in v for k, v in srcs.items() if "Police" in k), json.dumps(srcs, ensure_ascii=False)[:280])
+    # the two rows that are distances carry them as a number as well as in words
+    dist = {c[1].strip('"'): c[4] for c in summary}
+    r.ok("the distance rows carry a metre figure of their own",
+         sum(1 for v in dist.values() if re.fullmatch(r"\d+", v or "")) >= 1,
+         json.dumps(dist, ensure_ascii=False)[:220])
+    # and the working is still under them
+    kinds = {c[0] for c in body}
+    r.ok("the per-thing rows are still there under the summary",
+         {"service", "school"} <= kinds, ", ".join(sorted(kinds)))
+    bad = page.evaluate("window.AM.exportUnitProblems()")
+    r.ok("unit and magnitude still agree in every exported row", not bad, str(bad)[:140])
+    r.ok("no page error", not errs, (errs[0] if errs else "")[:140])
     errs.clear()
 
 

@@ -2097,6 +2097,67 @@ a.nav-item:hover .navext{opacity:.9}
 .anpin .anlab{flex:0 1 160px}
 .anpin .anerr{flex-basis:100%;color:#B0331B;font-size:11px;font-family:var(--mono);line-height:1.4}
 .anpriv{border-left:2px solid var(--line);padding-left:10px;margin-top:10px}
+/* the privacy position: one line, with the whole of it a click away (v2.1 P5) */
+.privfold{flex-basis:100%;margin-top:12px;border-left:2px solid var(--line);padding-left:10px}
+.privfold>summary{cursor:pointer;list-style:none;font-family:var(--mono);font-size:11px;
+  line-height:1.5;color:var(--ink2)}
+.privfold>summary::-webkit-details-marker{display:none}
+.privfold>summary b{color:var(--ink);font-weight:600}
+.privfold>summary i{font-style:normal;color:var(--muted);border-bottom:1px dotted var(--dim);margin-left:4px}
+.privfold>summary:hover i{color:var(--ink);border-bottom-color:var(--ink)}
+.privbody{margin-top:7px}
+.privbody p{font-family:var(--mono);font-size:10.5px;line-height:1.6;color:var(--muted);margin:0 0 6px;max-width:96ch}
+.privbody p:last-child{margin-bottom:0}
+.privbody b{color:var(--ink2)}
+
+/* ---- the summary strip (v2.1 P5) ----
+   Seven answers, each a button into the section that shows its working. Same
+   grid discipline as the headline row: one hairline background, the cells draw
+   themselves, nothing can read as an empty grey box. */
+.stripcard{padding:14px 16px 15px}
+.pstrip{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:1px;background:var(--line);
+  border:1px solid var(--line);border-radius:9px;overflow:hidden}
+.pst{background:var(--panel);border:0;text-align:left;padding:9px 11px 8px;cursor:pointer;font:inherit;
+  display:flex;flex-direction:column;gap:2px;min-width:0}
+.pst:hover{background:var(--panel2)}
+.pst:focus-visible{outline:2px solid var(--good);outline-offset:-2px}
+.pst .pstl{font-family:var(--mono);font-size:9px;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--muted);line-height:1.35;min-height:24px}
+.pst b{font-family:var(--disp);font-size:21px;letter-spacing:-.03em;line-height:1.15;font-weight:700}
+.pst em{font-style:normal;font-family:var(--mono);font-size:9.5px;line-height:1.4;color:var(--ink2);
+  overflow-wrap:anywhere}
+.pst.loading b,.pst.none b{color:var(--dim)}
+.pst.warn b{color:var(--warn)}
+.pst.err b{font-family:var(--mono);font-size:13px;color:var(--bad);font-weight:600}
+.pst.warn{box-shadow:inset 0 3px 0 var(--warn)}
+.pst.err{box-shadow:inset 0 3px 0 var(--bad)}
+/* Seven items in a grid that wraps, so the last one stretches across whatever is
+   left of its row. Without it a four- or two-column strip leaves the eighth cell
+   empty and the hairline background shows through as a grey box — the same
+   mistake v2.1 P1 took out of Data › National. */
+.pst:last-child{grid-column:7 / -1}
+@media (max-width:1320px){.pstrip{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .pst:last-child{grid-column:3 / -1}}
+@media (max-width:820px){.pstrip{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .pst:last-child{grid-column:1 / -1}}
+@media (max-width:420px){.pst b{font-size:19px}}
+
+/* ---- direct vs queue (v2.1 P5) ---- */
+.lst-split{display:flex;flex-wrap:wrap;gap:4px 14px;align-items:baseline;margin-top:7px;
+  font-family:var(--mono);font-size:11px;color:var(--ink2)}
+.lst-split span{border:1px solid var(--line);border-radius:999px;padding:2px 9px;background:var(--panel2)}
+.lst-split b{font-size:12px;color:var(--ink);margin-left:5px}
+.lst-split i{font-style:normal;color:var(--muted);font-size:10px}
+.lst-alloc{margin-top:14px;border-top:1px solid var(--line);padding-top:10px}
+.lst-ahead{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px}
+.lst-ahead h4{font-family:var(--disp);font-size:14px;font-weight:600;margin:0;letter-spacing:-.01em;
+  display:inline-flex;align-items:baseline;gap:7px}
+.lst-ahead h4 .n{font-family:var(--mono);font-size:11px;font-weight:500;color:var(--ink2);
+  border:1px solid var(--line);border-radius:999px;padding:1px 7px}
+.lst-awhy{font-family:var(--mono);font-size:10.5px;color:var(--muted);line-height:1.5}
+.lst-aq{flex-basis:100%;font-family:var(--mono);font-size:10.5px;color:var(--ink2)}
+.lst-aq i{font-style:normal;color:var(--muted)}
+.lst-alloc .lst-cards{margin:9px 0 10px}
 .anwhere{display:flex;flex-wrap:wrap;gap:6px 16px;font-family:var(--mono);font-size:12px;margin:4px 0 10px}
 .anwhere span em{font-style:normal;color:var(--muted);margin-right:5px}
 .ansep{font-family:var(--mono);font-size:10.5px;color:var(--muted);margin-top:10px;padding-top:8px;border-top:1px solid var(--line)}
@@ -4023,7 +4084,13 @@ const areaShowDefaults = () => (AR.type === "kommun" ? ["outlook"] : []);
 /* Test property: ONE pin at a time (the URL codec in route_core.js is
    list-capable so the "paste several links" idea needs no second format). */
 const PROP_RAD_DEFAULT = 1000;
-const PROP_SHOW_DEFAULTS = ["infra"];
+/* v2.1 P5: the two sections the summary strip's own figures come out of open
+   themselves, so a reader who follows a strip item straight down finds the
+   working already on screen. The Summary strip itself is not an accordion — it
+   is the page's first row and there is nothing to fold. Everything else
+   (Public buildings, Schools, Infrastructure, Safety, Climate, the area profile,
+   Sources) stays folded, and `show=` still overrides all of it. */
+const PROP_SHOW_DEFAULTS = ["listings", "services"];
 const PROP = { lat: null, lon: null, label: "", rad: PROP_RAD_DEFAULT,
                show: new Set(PROP_SHOW_DEFAULTS), res: null, resKey: "" };
 const UI = { indxOpen: false, menu: null, cardFold: false, legFold: {} };           /* fold states that survive a re-render */
@@ -4342,6 +4409,9 @@ window.AM = { get map() { return LF.map; }, get area() { return LF.amap; },
       RG.rings[k] = true; delete RG.ringFailed[k];
     }
   },
+  /* v2.1 P5: the summary strip's model, so a check can compare what the seven
+     items say with what the Nearby export writes without parsing either. */
+  stripItems: () => stripItems(),
   /* the export model, readable without downloading a file. `exportRowCount`
      skips the CSV serialisation — "All area data" is 556 000 rows, and a check
      that only wants the count should not build 150 MB of strings for it. */
@@ -4561,6 +4631,8 @@ document.addEventListener("click", e => {
   if (g("[data-back]")) { history.back(); return; }
   if ((el = g("[data-propclear]"))) { PROP.lat = PROP.lon = null; PROP.label = ""; PROP.res = null; PROP.resKey = "";
     syncHash(); renderKeep(); return; }
+  /* a summary-strip item opens the section its figure comes from and scrolls to it */
+  if ((el = g("[data-secgo]"))) { propGoSec(el.dataset.secgo); return; }
   if ((el = g("[data-layer]"))) { const k = el.dataset.layer;
     if (LAY.has(k)) LAY.delete(k); else LAY.add(k);
     LF[layKey(k) + "Drawn"] = false; syncHash(); renderKeep(); return; }
@@ -6277,6 +6349,244 @@ function schoolsNear() {
     <p class="cap">Straight-line distance, not walking distance, and neighbouring kommuner are included — the nearest school to a pin near a boundary is often across it. <b>Raw merit value, not SALSA-adjusted</b>: it tracks the intake as much as the teaching. Källa: Skolverket.</p>`;
 }
 
+/* ---------- the summary strip (v2.1 P5) ----------
+   Seven answers an asset manager wants before reading anything else, each one a
+   link into the section that shows its working. The strip is BUILT from the same
+   inputs those sections use — one model, `stripItems()`, read by the DOM and by
+   the Nearby export — so it cannot say one thing while the table under it says
+   another.
+
+   Two rules the whole strip turns on:
+     · an input that has not arrived yet makes the item say "…", never 0. A count
+       of 0 is a statement about the place; "…" is a statement about the fetch,
+       and v2.0 shipped the first one for months ("Grocery 0" beside 31 shops).
+     · a hazard layer that never surveyed this spot reads "not mapped", which is
+       not "clear". 0 % means surveyed and found clear; null means nobody looked.
+
+   The strip reaches further than the sections do — a transport stop out to 2 km
+   whatever the pin's radius, groceries at the brief's fixed 500 m — so it has
+   its own kommun set and its own waiting predicate. Reusing srvWaiting() here
+   would let it print a count off a file that was still on the way. */
+const STRIP_GROCERY_M = 500;        /* the brief's own radius, not the reader's */
+const STRIP_STOP_M = 2000;          /* a stop further out than this is not "nearby" */
+const STRIP_WAIT = "…";
+const stripReach = () => Math.max(PROP.rad + 500, STRIP_STOP_M, STRIP_GROCERY_M);
+const stripKommuner = () => nearKommuner(stripReach() - PROP.rad);
+const stripSrvWaiting = () => stripKommuner().some(c => SRV["_l_" + c] || (SRV_IDX[c] && !Array.isArray(SRV[c])));
+/* every OSM point of these categories within `reach` metres, nearest first */
+function stripPoints(cats, reach) {
+  if (PROP.lat == null) return [];
+  const codes = stripKommuner();
+  codes.forEach(srvLoad);                             /* also starts the fetches */
+  const out = [];
+  for (const code of codes) {
+    if (!Array.isArray(SRV[code])) continue;
+    for (const [cat, lat, lon, nm, tag] of SRV[code]) {
+      if (!cats.includes(cat)) continue;
+      const m = havM(PROP.lat, PROP.lon, lat, lon);
+      if (m > reach) continue;
+      out.push({ cat, name: nm, tag, m: Math.round(m) });
+    }
+  }
+  out.sort((a, b) => a.m - b.m);
+  return out;
+}
+/* Which mapped hazard layers this spot is inside, which mapped it and found it
+   clear, and which never covered it. Three answers, never folded into two. */
+function stripClimate() {
+  const zones = [], clear = [], unmapped = [];
+  for (const key of CLIM_KEYS) {
+    const i = indOf(key); if (!i) continue;
+    const got = propVal(key);
+    if (!got || got.v == null) { unmapped.push(i); continue; }
+    if (got.v > 0) zones.push({ i, v: got.v }); else clear.push(i);
+  }
+  return { zones, clear, unmapped, n: CLIM_KEYS.length };
+}
+/* The police designation, read at the finest level that carries one. It never
+   inherits, so a kommun figure is not an answer about this spot. */
+function stripUso() {
+  const e = propEntity(); if (!e) return null;
+  const lvl = e.deso ? "DeSO" : e.regso ? "RegSO" : "kommun";
+  const o = (e.deso && e.deso.vulnerable_area_share != null) ? e.deso
+    : (e.regso && e.regso.vulnerable_area_share != null) ? e.regso : null;
+  if (!o) return { inside: false, lvl };
+  return { inside: o.vulnerable_area_share > 0, share: o.vulnerable_area_share,
+           cls: o.vulnerable_area_share_class || "utsatt",
+           lvl: o === e.deso ? "DeSO" : "RegSO" };
+}
+/* The listings figures the strip shows. It does NOT start the request — the
+   section below does that on the same render — so "nothing has come back yet"
+   is `pinDone`, not an empty array. An empty array once the answer is in is a
+   real zero and says so. */
+function stripListings() {
+  if (LST.error) return { error: LST.error };
+  if (!LST.pinDone.has(lstPinKey())) return { loading: true };
+  const near = lstNearPin(LST.rows);
+  const shown = LV.applyFilters ? LV.applyFilters(near, LST.filters) : near;
+  const direct = shown.filter(l => !lstIsQueue(l));
+  const vals = direct.map(l => LV.sekPerM2Year(l)).filter(v => v != null);
+  const minN = LV.MIN_N || 3;
+  return { n: shown.length, direct: direct.length, queue: shown.length - direct.length,
+           med: vals.length >= minN ? LV.median(vals) : null, medN: vals.length, minN };
+}
+/* The publisher and the page that reproduces a figure, off the indicator
+   registry rather than written out a second time here. */
+function stripSrcOf(key, fallback) {
+  const i = indOf(key) || {}, v = ((i.src_verify || [])[0]) || {};
+  return [v.label || i.source || fallback, v.page || ""];
+}
+const OSM_SRC = ["OpenStreetMap contributors (ODbL)", "https://www.openstreetmap.org/copyright"];
+const SKV_SRC = ["Skolverket", "https://www.skolverket.se/"];
+
+function stripItems() {
+  if (PROP.lat == null || !propEntity()) return [];
+  const haveOsm = Object.keys(SRV_IDX).length > 0;
+  /* the point scans start the fetches, so they run before the waiting question */
+  const stops = haveOsm ? stripPoints(["transport"], STRIP_STOP_M) : [];
+  const groc = haveOsm ? stripPoints(["grocery"], STRIP_GROCERY_M) : [];
+  const srvWait = haveOsm && stripSrvWaiting();
+  const sch = Object.keys(SCH_IDX).length ? propSchoolsNear(1) : [];
+  const schWait = Object.keys(SCH_IDX).length > 0 && schWaiting();
+  const clim = stripClimate();
+  const uso = stripUso();
+  const lst = stripListings();
+  const it = [];
+
+  /* 1 — the nearest public transport stop */
+  if (!haveOsm) it.push({ id: "transport", sec: "services", label: "Nearest transport stop",
+    value: "–", sub: "not covered yet", state: "none", src: OSM_SRC[0], src_url: OSM_SRC[1] });
+  else if (srvWait) it.push({ id: "transport", sec: "services", label: "Nearest transport stop",
+    value: STRIP_WAIT, sub: "Loading the OpenStreetMap points…", state: "loading",
+    src: OSM_SRC[0], src_url: OSM_SRC[1] });
+  else it.push({ id: "transport", sec: "services", label: "Nearest transport stop",
+    value: stops.length ? distTxt(stops[0].m) : "–",
+    sub: stops.length ? `${stops[0].name || "unnamed stop"} · ${stops[0].tag}`
+                      : `none within ${radTxt(STRIP_STOP_M)}`,
+    state: stops.length ? "ok" : "none", dist: stops.length ? stops[0].m : null,
+    src: OSM_SRC[0], src_url: OSM_SRC[1] });
+
+  /* 2 — groceries within 500 m, whatever the reader's radius is set to */
+  if (!haveOsm) it.push({ id: "grocery", sec: "services", label: `Groceries within ${radTxt(STRIP_GROCERY_M)}`,
+    value: "–", sub: "not covered yet", state: "none", src: OSM_SRC[0], src_url: OSM_SRC[1] });
+  else if (srvWait) it.push({ id: "grocery", sec: "services", label: `Groceries within ${radTxt(STRIP_GROCERY_M)}`,
+    value: STRIP_WAIT, sub: "Loading the OpenStreetMap points…", state: "loading",
+    src: OSM_SRC[0], src_url: OSM_SRC[1] });
+  else it.push({ id: "grocery", sec: "services", label: `Groceries within ${radTxt(STRIP_GROCERY_M)}`,
+    value: nf(groc.length, 0),
+    sub: groc.length ? `nearest ${distTxt(groc[0].m)} · ${groc[0].name || "unnamed"}`
+                     : `none within ${radTxt(STRIP_GROCERY_M)}`,
+    state: groc.length ? "ok" : "none", src: OSM_SRC[0], src_url: OSM_SRC[1] });
+
+  /* 3 — the nearest year 9, and its merit value */
+  const s0 = sch[0];
+  if (!Object.keys(SCH_IDX).length) it.push({ id: "school", sec: "schools", label: "Nearest year-9 merit",
+    value: "–", sub: "not covered yet", state: "none", src: SKV_SRC[0], src_url: SKV_SRC[1] });
+  else if (schWait) it.push({ id: "school", sec: "schools", label: "Nearest year-9 merit",
+    value: STRIP_WAIT, sub: "Loading the schools around the pin…", state: "loading",
+    src: SKV_SRC[0], src_url: SKV_SRC[1] });
+  else it.push({ id: "school", sec: "schools", label: "Nearest year-9 merit",
+    value: s0 && s0.s.merit != null ? nf(s0.s.merit, 1) : "–",
+    sub: s0 ? `${s0.s.name} · ${distTxt(s0.m)}${s0.s.merit == null ? " · merit not published" : ""}`
+            : "no year 9 within 8 km",
+    state: s0 ? (s0.s.merit != null ? "ok" : "none") : "none",
+    dist: s0 ? Math.round(s0.m) : null, src: SKV_SRC[0], src_url: SKV_SRC[1] });
+
+  /* 4 — in any mapped hazard zone, and which */
+  const cSrc = stripSrcOf("flood100", "MCF, SMHI och SGU");
+  it.push({ id: "climate", sec: "climate", label: "In a mapped hazard zone",
+    value: clim.zones.length ? "Yes" : clim.clear.length ? "No" : "Not mapped",
+    sub: clim.zones.length
+      ? clim.zones.map(z => z.i.short || z.i.label).join(", ")
+      : clim.clear.length
+        ? `${clim.clear.length} of ${clim.n} layers cover this spot and none includes it`
+        : `none of the ${clim.n} hazard layers covers this spot`,
+    state: clim.zones.length ? "warn" : clim.clear.length ? "ok" : "none",
+    src: cSrc[0], src_url: cSrc[1] });
+
+  /* 5 — police-designated area */
+  const uSrc = stripSrcOf("vulnerable_area_share", "Polismyndigheten");
+  it.push({ id: "police", sec: "safety", label: "Police-designated area",
+    value: uso && uso.inside ? "Yes" : "No",
+    sub: uso && uso.inside
+      ? `${USO_LABEL[uso.cls] || uso.cls} · ${nf(uso.share, 1)} % of this ${uso.lvl}`
+      : `no designation in this pin's ${(uso && uso.lvl) || "area"}`,
+    state: uso && uso.inside ? "warn" : "ok", src: uSrc[0], src_url: uSrc[1] });
+
+  /* 6 — the live adverts inside the reader's radius */
+  it.push({ id: "listings", sec: "listings", label: `Live listings within ${radTxt(PROP.rad)}`,
+    value: lst.error ? "unavailable" : lst.loading ? STRIP_WAIT : nf(lst.n, 0),
+    sub: lst.error ? "gateway error — open the section to retry"
+       : lst.loading ? "Loading the listings gateway…"
+       : `${nf(lst.direct, 0)} direct · ${nf(lst.queue, 0)} queue`,
+    state: lst.error ? "err" : lst.loading ? "loading" : lst.n ? "ok" : "none",
+    src: "Third-party adverts, live through this project's gateway", src_url: "" });
+
+  /* 7 — and what they ask, over the direct ones only */
+  it.push({ id: "median", sec: "listings", label: "Median advertised",
+    value: lst.error ? "–" : lst.loading ? STRIP_WAIT : lst.med != null ? nf(lst.med, 0) : "–",
+    sub: lst.error ? "listings unavailable"
+       : lst.loading ? "Loading the listings gateway…"
+       : lst.med != null ? `SEK/m²/yr · n=${lst.medN} direct · advertised`
+       : `n=${lst.medN} direct · too few to publish (n ≥ ${lst.minN})`,
+    state: lst.error ? "err" : lst.loading ? "loading" : lst.med != null ? "ok" : "none",
+    src: "Third-party adverts, live through this project's gateway", src_url: "" });
+
+  return it;
+}
+const STRIP_CAP = `<p class="cap">Each answer links to the section that shows its working.
+  Straight-line distances from OpenStreetMap points, the nearest year 9 from Skolverket, the
+  hazard layers from MCF/SMHI/SGU and the designation from Polismyndigheten.
+  <b>An item still fetching says "…", never 0</b>, and a hazard layer that never surveyed this
+  spot reads "not mapped" — which is not the same as surveyed and clear. The median is over
+  <b>direct listings only</b> and is an advertised rent, not a contract rent.</p>`;
+function propStripInner() {
+  const items = stripItems();
+  if (!items.length) return "";
+  return `<div class="pstrip" data-testid="prop-strip">${items.map(it =>
+    `<button class="pst ${esc(it.state)}" data-testid="strip-${esc(it.id)}" data-secgo="${esc(it.sec)}"
+      title="${esc(`${it.label} — ${it.src}. Click to open the section it comes from.`)}">
+      <span class="pstl">${esc(it.label)}</span>
+      <b>${esc(it.value)}</b>
+      <em>${esc(it.sub)}</em></button>`).join("")}</div>
+  ${STRIP_CAP}`;
+}
+/* the listings items arrive after the first paint, and lstSectionRefresh() only
+   redraws the section — the strip has to be told too */
+function propStripRefresh() {
+  const el = document.getElementById("propstrip");
+  if (el && S.view === "property" && PROP.lat != null) el.innerHTML = propStripInner();
+}
+/* ---------- the privacy position ----------
+   One line, because that is the sentence a reader needs, with the whole of it a
+   click away. v2.0 printed the full paragraph above every pin, which pushed the
+   first real figure below the fold and got skipped by exactly the readers it was
+   written for. Both halves stay in the DOM whether the fold is open or not, so
+   the page never has to be trusted on this. */
+const PRIVACY_FOLD = `<details class="privfold" data-testid="privacy">
+  <summary><b>Nothing leaves your browser except the listings request.</b> <i>details</i></summary>
+  <div class="privbody">
+    <p>The link is parsed here, the point is tested against boundary files this page already
+      serves, and the coordinate lives only in this page's address bar — the part after the #
+      is <b>never sent to a server</b>. A short goo.gl link cannot be read without following
+      it, so it is refused rather than resolved on your behalf.</p>
+    <p>The one request that does leave is the rental-listings query, to this project's own
+      gateway. It sends the point and the radius and nothing else: no label, no identifier,
+      and nothing about you. Nothing is stored — the adverts are read live and kept only in
+      this tab. Every other file this page fetches (boundaries, OpenStreetMap points, schools,
+      hazard layers) comes from the same address as the page itself.</p>
+  </div></details>`;
+/* a strip item opens its section and takes the reader to it */
+function propGoSec(id) {
+  showSet().add(id);
+  syncHash();
+  renderKeep();
+  setTimeout(() => {
+    const el = document.querySelector(`[data-sec="${id}"]`);
+    if (el && el.scrollIntoView) el.scrollIntoView({ block: "start", behavior: "smooth" });
+  }, 40);
+}
+
 function vProperty() {
   setTimeout(propMapInit, 0);
   const pinned = PROP.lat != null;
@@ -6311,11 +6621,7 @@ function vProperty() {
       <button class="lk" data-copylink>Copy link</button>
     </div>` : ""}
     ${e ? headlineTiles(e) : ""}
-    <p class="cap anpriv"><b>Nothing leaves your browser.</b> The link is parsed here, the point is tested against
-      boundary files this page already serves, and the coordinate lives only in this page's address bar — the part
-      after the # is never sent to a server. A short goo.gl link cannot be read without following it, so it is
-      refused rather than resolved on your behalf. The listings section below is the one thing that does make a
-      request, to this project's own gateway, and it sends the radius and the point and nothing else.</p>
+    ${PRIVACY_FOLD}
   </div>`;
   if (!pinned) {
     return head + `<div class="card" data-testid="state-empty"><p class="empty">Paste a Google Maps link above — right-click a spot in Google Maps and copy the coordinates it offers, or copy the full URL from the address bar. For example
@@ -6323,8 +6629,8 @@ function vProperty() {
   }
   if (r.error) return head + `<div class="card"><p class="empty">${esc(r.error)}</p></div>`;
   if (!e) return head + `<div class="card"><p class="empty">Locating…</p></div>`;
-  const nList = lstNearPin(LST.rows).length;
   return head + `
+  <div class="card stripcard" id="propstrip">${propStripInner()}</div>
   <div class="card tools-card">
     <div class="tools">${indPicker("map")}${periodControl()}${layersMenuHtml()}</div>
     ${indQuick()}
@@ -7659,6 +7965,10 @@ const LST = {
      remembered. The pin waits for the reader's Retry; a map box gets ONE
      automatic retry after a backoff and then waits too. */
   pinFails: new Set(),  /* (pin, radius) keys that failed */
+  /* (pin, radius) keys that came BACK. The summary strip is built before the
+     listings section on the same render, so "no rows" and "nothing has answered
+     yet" are two different states and only this set can tell them apart. */
+  pinDone: new Set(),
   boxFails: [],         /* [{ box, tries }] for the map's viewport queries */
   open: false,          /* the Test property section's "show the full module" state */
   sort: "dist",
@@ -7778,6 +8088,10 @@ function lstRetry() {
 }
 
 /* --- what is on screen --- */
+/* Queue supply is decided by `allocation`, through listings/view.js's own group
+   rule, so a new municipal queue source joins the right side without a list of
+   names here. */
+const lstIsQueue = l => (LV.groupOf ? LV.groupOf(l) === "queue" : !!(l && l.allocation === "queue"));
 const lstShown = () => (LV.applyFilters ? LV.applyFilters(LST.rows, LST.filters) : LST.rows);
 const lstInBox = (rows, box) => rows.filter(l =>
   l.lat != null && l.lon != null && l.lat >= box.s && l.lat <= box.n && l.lon >= box.w && l.lon <= box.e);
@@ -7959,6 +8273,7 @@ async function lstFetchPin(k) {
       if (LST.seen.has(key)) continue;
       LST.seen.add(key); LST.rows.push(l);
     }
+    LST.pinDone.add(k);
   } catch (err) {
     /* the key stays in `pins` AND goes into `pinFails`: the refresh below runs
        lstSectionBody again, and both sets have to say "do not ask" */
@@ -7975,29 +8290,83 @@ async function lstFetchPin(k) {
 function lstSectionRefresh() {
   const el = document.getElementById("lstsec");
   if (el && S.view === "property") el.innerHTML = lstSectionBody();
+  /* two of the strip's seven items are listings figures, and this is the only
+     path a gateway answer takes on the pin view */
+  propStripRefresh();
 }
 
 const LST_COLS = [["src", "Source", 0], ["address", "Address", 0], ["area_name", "Area", 0],
                   ["rooms", "Rooms", 1], ["size", "m²", 1], ["rent", "SEK/mån", 1],
                   ["m2yr", "SEK/m²/yr", 1], ["dist", "m", 1], ["available_from", "From", 0]];
 
-function lstSummary(rows) {
+function lstSummary(rows, nDirect, nQueue) {
   const c = lstGroupCounts(rows);
   const radTxt = PROP.rad < 1000 ? `${PROP.rad} m` : `${PROP.rad / 1000} km`;
   return `<div class="lst-sum">
     <b>${nf(rows.length, 0)}</b> live listings within ${radTxt}
     ${(LV.GROUPS || []).map(g => `<span>${esc(g.label)} <b>${nf(c[g.key] || 0, 0)}</b></span>`).join("")}
-    <span class="st">${esc(lstStatusLine())}</span></div>`;
+    <span class="st">${esc(lstStatusLine())}</span></div>
+    <div class="lst-split" data-testid="lst-split">
+      <span>Direct / first come <b>${nf(nDirect, 0)}</b></span>
+      <span>Queue <b>${nf(nQueue, 0)}</b></span>
+      <i>the medians below are over the direct listings only</i></div>`;
 }
 /* Medians only where at least three adverts back the figure, and labelled
    advertised every time: a median of two adverts is not a market rate, and an
-   advertised rent is not a contract rent. */
+   advertised rent is not a contract rent.
+
+   v2.1 P5: the rows handed in here are the DIRECT ones only. A queue advert's
+   rent is what the flat will cost whoever reaches the front of the queue after
+   several years of queuing; a direct advert's is what it costs whoever applies
+   first. Pooling them would put two different allocation systems into one
+   figure, so the caller splits them and the caption says so. */
 function lstMedians(rows) {
   const med = LV.mediansByRooms ? LV.mediansByRooms(rows) : [];
-  if (!med.length) return `<div class="lst-med"><div class="m sup"><b>–</b><span>nothing to summarise yet</span></div></div>`;
+  const cap = `<p class="cap" data-testid="lst-med-cap">Over <b>direct listings only</b> —
+    queue listings are never mixed in, because a queue rent is allocated by queued time and a
+    direct rent by who applies first. Advertised, not contract rents, and only where at least
+    ${LV.MIN_N || 3} adverts back the room count.</p>`;
+  if (!med.length) return `<div class="lst-med" data-testid="lst-medians"><div class="m sup"><b>–</b><span>no direct listing with both a rent and a size</span></div></div>${cap}`;
   return `<div class="lst-med" data-testid="lst-medians">${med.map(m => m.suppressed
     ? `<div class="m sup"><b>–</b><span>${esc(m.rooms)} rum · n=${m.n}, too few to publish</span></div>`
-    : `<div class="m"><b>${nf(m.median, 0)}</b><span>${esc(m.rooms)} rum · n=${m.n} · advertised SEK/m²/yr</span></div>`).join("")}</div>`;
+    : `<div class="m"><b>${nf(m.median, 0)}</b><span>${esc(m.rooms)} rum · n=${m.n} · advertised SEK/m²/yr</span></div>`).join("")}</div>${cap}`;
+}
+/* --- direct vs queue ---
+   The two ways a Swedish rental is allocated, and the difference is the whole
+   answer for a reader deciding whether a figure is reachable: a direct advert is
+   applied for first come, first served, a queue advert goes to whoever has
+   queued longest. The queue block carries the source's OWN queued-time figures
+   where it publishes them and says "not published" where it does not — no
+   estimate is made here. */
+const QUEUE_LEAD = "Bostadsförmedlingen, Boplats and the other municipal queues";
+const DIRECT_LEAD = "HomeQ and the landlords' own portals";
+function lstQueueYears(rows) {
+  const q1 = rows.map(l => l.queue_years_q1).filter(v => Number.isFinite(v));
+  const q3 = rows.map(l => l.queue_years_q3).filter(v => Number.isFinite(v));
+  if (!q1.length || !q3.length) return null;
+  return { lo: LV.median(q1), hi: LV.median(q3), n: Math.min(q1.length, q3.length) };
+}
+function lstAllocBlock(kind, rows, all) {
+  const direct = kind === "direct";
+  const qy = direct ? null : lstQueueYears(rows);
+  const head = `<div class="lst-ahead">
+      <h4>${direct ? "Direct / first come" : "Queue"}<span class="n">${nf(rows.length, 0)}</span></h4>
+      <span class="lst-awhy">${direct
+        ? `${esc(DIRECT_LEAD)} · applied for first come, first served`
+        : `${esc(QUEUE_LEAD)} · allocated by queued time, not by who applies first`}</span>
+      ${!direct ? `<span class="lst-aq">${qy
+        ? `queued time ${nf(qy.lo, 0)}–${nf(qy.hi, 0)} years <i>(the sources' own q1–q3, ${qy.n} advert${qy.n === 1 ? "" : "s"})</i>`
+        : `queued time <i>not published by these sources</i>`}</span>` : ""}
+    </div>`;
+  if (!rows.length) {
+    return `<div class="lst-alloc ${esc(kind)}" data-testid="lst-alloc-${esc(kind)}">${head}
+      <p class="empty">No ${direct ? "direct" : "queue"} listing within ${radTxt(PROP.rad)} in this answer.</p></div>`;
+  }
+  /* the direct block keeps the plain `lst-cards` / `lst-table` ids: it is the one
+     a reader lands on and the one v2.0's checks already read */
+  return `<div class="lst-alloc ${esc(kind)}" data-testid="lst-alloc-${esc(kind)}">${head}
+    <div class="lst-cards" data-testid="lst-cards${direct ? "" : "-queue"}">${rows.map(l => lstCard(l)).join("")}</div>
+    ${lstTable(rows, direct ? "" : "-queue")}</div>`;
 }
 function lstFilterBar(all) {
   const f = LST.filters;
@@ -8022,10 +8391,10 @@ function lstFilterBar(all) {
       tog(!f.sources || f.sources.includes(src), `data-lstsrc="${esc(src)}"`, `${esc(src)} ${bySrc[src]}`)).join("")}</div>
   </div>`;
 }
-function lstTable(rows) {
+function lstTable(rows, suffix) {
   const sorted = LV.sortListings ? LV.sortListings(rows, LST.sort, LST.desc) : rows;
   const col = LST_COL();
-  return `<div class="lst-scroll"><table class="lst-tbl" data-testid="lst-table"><thead><tr>${LST_COLS.map(([k, label, num]) =>
+  return `<div class="lst-scroll"><table class="lst-tbl" data-testid="lst-table${esc(suffix || "")}"><thead><tr>${LST_COLS.map(([k, label, num]) =>
     `<th class="${num ? "num" : ""}" data-lstsort="${k}">${esc(label)}${LST.sort === k ? (LST.desc ? " ▾" : " ▴") : ""}</th>`).join("")}</tr></thead>
     <tbody>${sorted.map(l => { const m2 = LV.sekPerM2Year(l);
       return `<tr data-lstrow="${esc(l.src)}:${esc(l.id)}">
@@ -8051,15 +8420,19 @@ function lstSectionBody() {
   const near = lstNearPin(LST.rows);
   const shown = LV.applyFilters ? LV.applyFilters(near, LST.filters) : near;
   if (LST.loading && !near.length) return `<p class="empty">Asking the listings gateway…</p>`;
-  return `${lstSummary(shown)}
-    ${lstMedians(shown)}
+  /* the split is made once, here, and everything below reads it: the counts, the
+     medians (direct only) and the two card blocks */
+  const direct = shown.filter(l => !lstIsQueue(l));
+  const queue = shown.filter(lstIsQueue);
+  return `${lstSummary(shown, direct.length, queue.length)}
+    ${lstMedians(direct)}
     <div class="tools" style="margin-top:10px">
       <button class="lk ${LST.open ? "primary" : ""}" data-lstshow data-testid="lst-show">${LST.open ? "Hide listings" : `Show listings (${shown.length})`}</button>
       ${LST.open ? `<button class="lk mini" data-lstcsv>⤓ CSV</button>` : ""}
     </div>
     ${LST.open ? `${lstFilterBar(near)}
-      <div class="lst-cards" data-testid="lst-cards">${shown.map(l => lstCard(l)).join("") || `<p class="empty">Nothing matches these filters.</p>`}</div>
-      ${shown.length ? lstTable(shown) : ""}` : ""}
+      ${shown.length ? `${lstAllocBlock("direct", direct)}${lstAllocBlock("queue", queue)}`
+        : `<p class="empty">Nothing matches these filters.</p>`}` : ""}
     ${LST_CAVEAT}`;
 }
 const LST_CAVEAT = `<p class="lst-caveat">Advertised rent ≠ contract rent · a count of adverts ≠ vacancy · queue listings are allocated by queued time, not first come first served · medians only at n ≥ 3 · third-party adverts, read live through the gateway and stored nowhere.</p>`;
@@ -8885,6 +9258,20 @@ function rowsProperty() {
   }
   return out;
 }
+/* The summary strip, as rows — the same `stripItems()` model the page draws, so
+   the file and the screen cannot disagree. They lead the Nearby file because they
+   are the answers, and the thousand rows under them are the working.
+   `status` carries the figure in words (the strip's own value and sub, which is
+   where "Not mapped", "too few to publish" and "unavailable" live — none of which
+   is a number), and `distance_m` is filled only where the figure IS a distance. */
+function rowsStrip() {
+  return stripItems().map(it => ({
+    kind: "summary", name: it.label, type: "summary strip",
+    status: it.sub ? `${it.value} — ${it.sub}` : it.value,
+    distance_m: it.dist != null ? it.dist : "",
+    rent: "", m2: "", rooms: "", source: it.src, source_url: it.src_url || "",
+  }));
+}
 /* everything the pin can see around it, one row per thing, with its distance */
 function rowsNearby() {
   if (PROP.lat == null) return [];
@@ -8918,7 +9305,8 @@ function rowsNearby() {
     rent: l.rent_sek_mo != null ? l.rent_sek_mo : "", m2: l.size_m2 != null ? l.size_m2 : "",
     rooms: l.rooms != null ? l.rooms : "", source: `advertised, ${l.src_label || l.src}`, source_url: l.url || "" });
   out.sort((a, b) => (a.distance_m || 0) - (b.distance_m || 0));
-  return out;
+  /* the strip's seven rows first, in the order the page shows them */
+  return rowsStrip().concat(out);
 }
 
 const EXPORTS = {
