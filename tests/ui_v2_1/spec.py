@@ -63,6 +63,11 @@ SHOT_ROUTES = {
     "maponly": ("#map?ind=none", None),
     "maponly-kommun": ("#map/0180?ind=none", None),
     "maponly-area": ("#area/kommun/0180?ind=none", None),
+    # P3 — Sweden fit: the kommun-only map, the area page's six tiles, Charts on open
+    "komonly-regso": ("#map/0180?ind=rent", None),
+    "komonly-deso": ("#map/0180/deso?ind=rent", None),
+    "area-regso": (f"#area/regso/{'0180R001_RegSO2025'}", None),
+    "charts-default": ("#charts", None),
 }
 SHOT_SIZES = [(1440, 900), (1366, 768), (390, 844)]
 
@@ -386,7 +391,9 @@ def _crime_quarter_render(r, page, errs, calls):
         "() => ((window.AM.D.indicators.find(i => i.key === 'crime_1000') || {}).q_periods || []).slice(-1)[0]")
     hop(page, f"#map/0180?ind=crime_1000&fq=q&y={q}", 900)
     tiles = page.eval_on_selector_all("[data-testid=area-card] [data-testid^=tile-]", "e => e.length")
-    r.ok("the five headline tiles survive a quarter", tiles == 5, f"{tiles} tiles with y={q}")
+    # P3 made the row five local figures plus at most one kommun-only (rent), so the
+    # count is 5 or 6; what this check is about is that a quarter does not blank it.
+    r.ok("the headline tiles survive a quarter", 5 <= tiles <= 6, f"{tiles} tiles with y={q}")
     badge = page.inner_text("[data-testid=level-badge]") if page.eval_on_selector_all(
         "[data-testid=level-badge]", "e => e.length") else ""
     asof = sel_text(page, ".indx summary .dim")
@@ -913,6 +920,294 @@ def _maponly_tables(r, page, errs, calls):
 
 # --------------------------------------------------------------------------- #
 # screenshots
+# --------------------------------------------------------------------------- #
+# P3 — Sweden fit: levels, vocabulary, defaults, search
+# --------------------------------------------------------------------------- #
+
+# The five figures SCB publishes below kommun, in the order the row reads them, and
+# the one kommun-only figure that follows. Spelled out here rather than read off the
+# page, so a quiet reordering in app.js is a failure and not a new expectation.
+HL_LOCAL = ["growth", "income_med", "renters", "higher_ed", "employment"]
+HL_MUNI = "rent"
+REGSO_STHLM = "0180R001_RegSO2025"          # Abrahamsberg — a RegSO with figures of its own
+
+# What "nothing below kommun is coloured in" means in the DOM for a kommun-only
+# indicator: the kommun carries the choropleth fill (.ko-fill) and every sub-area is a
+# .ko-outline whose fill-opacity is zero. Same reasoning as PATHS_JS above — the
+# outlines keep a transparent fill so Leaflet still hit-tests their interior, so the
+# opacity is what is asserted and never the presence of the attribute.
+KO_JS = """sel => {
+  const all = [...document.querySelectorAll(sel + ' .leaflet-overlay-pane path')];
+  const filled = p => { const f = (p.getAttribute('fill') || '').toLowerCase();
+    const o = parseFloat(p.getAttribute('fill-opacity') ?? '1');
+    return !!f && f !== 'none' && o > 0; };
+  return { paths: all.length,
+           outlines: all.filter(p => p.classList.contains('ko-outline')).length,
+           komFill: all.filter(p => p.classList.contains('ko-fill')).length,
+           filled: all.filter(filled).length,
+           filledOutlines: all.filter(p => p.classList.contains('ko-outline') && filled(p)).length };
+}"""
+
+
+def ko_paths(page, sel="#lfmap") -> dict:
+    return page.evaluate(KO_JS, sel)
+
+
+def tile_keys(page, scope="") -> list[str]:
+    return page.eval_on_selector_all(
+        f"{scope} [data-testid^=tile-]".strip(),
+        "e => e.map(x => x.getAttribute('data-arind'))")
+
+
+def tile_text(page, key: str, scope="") -> str:
+    el = page.query_selector(f"{scope} [data-testid=tile-{key}]".strip())
+    return el.inner_text() if el else ""
+
+
+def search_rows(page, query: str) -> list[str]:
+    """Type into the map's search box and read what the dropdown offers."""
+    page.fill("#areaq", query)
+    page.wait_for_timeout(220)
+    return page.eval_on_selector_all("#sdrop .srow b", "e => e.map(x => x.innerText.trim())")
+
+
+@check("headline-tiles", "P3", "the headline row leads with what is published below kommun")
+def _headline_tiles(r, page, errs, calls):
+    want = HL_LOCAL + [HL_MUNI]
+
+    hop(page, "#map/0180", 1200)
+    settle(page)
+    got = tile_keys(page, "[data-testid=area-card]")
+    r.ok("the map card shows the five local figures then rent", got == want, ", ".join(got))
+
+    hop(page, f"#area/regso/{REGSO_STHLM}", 1100)
+    settle(page)
+    got = tile_keys(page)
+    r.ok("a RegSO page shows the same set", got == want, ", ".join(got))
+    rent = tile_text(page, HL_MUNI)
+    r.ok("and rent is labelled a municipality figure there",
+         "municipality figure" in rent, rent.replace("\n", " ")[:90])
+    local_marked = [k for k in HL_LOCAL if "municipality figure" in tile_text(page, k)]
+    r.ok("while the five local ones are the area's own",
+         not local_marked, ", ".join(local_marked))
+
+    hop(page, f"#property?p={STHLM}:Test", 1400)
+    settle(page)
+    got = tile_keys(page)
+    r.ok("Test property shows the same set", got == want, ", ".join(got))
+    rent = tile_text(page, HL_MUNI)
+    r.ok("and marks rent as the municipality's there too",
+         "municipality figure" in rent, rent.replace("\n", " ")[:90])
+    r.ok("no page error while the tiles were built", not errs, (errs[0] if errs else "")[:140])
+    errs.clear()
+
+
+@check("kommun-only-map", "P3", "a kommun-only indicator is not painted on every sub-area")
+def _kommun_only_map(r, page, errs, calls):
+    # the baseline: an indicator published per RegSO fills the RegSO, and nothing on
+    # that map is an outline — otherwise the check below would pass on a broken map
+    hop(page, "#map/0180?ind=growth", 1400)
+    base = ko_paths(page)
+    r.ok("with a RegSO-level indicator the RegSO are filled", base["filled"] > 100,
+         f'{base["filled"]} filled of {base["paths"]}')
+    r.ok("and nothing is drawn as a kommun-only outline", base["outlines"] == 0, str(base["outlines"]))
+    r.ok("and no kommun fill is laid under them", base["komFill"] == 0, str(base["komFill"]))
+
+    hop(page, "#map/0180?ind=rent", 1400)
+    got = ko_paths(page)
+    r.ok("rent draws every RegSO as an outline", got["outlines"] > 100, f'{got["outlines"]} outlines')
+    r.ok("not one RegSO carries the choropleth fill", got["filledOutlines"] == 0,
+         f'{got["filledOutlines"]} filled outlines')
+    r.ok("the kommun itself is the one thing filled",
+         got["komFill"] == 1 and got["filled"] == 1, f'{got["filled"]} filled, {got["komFill"]} kommun')
+
+    t = text(page)
+    r.ok("the info strip says published per kommun only", "published per kommun only" in t)
+    note = page.query_selector("[data-testid=kommun-only-note]")
+    r.ok("and it is its own strip, not buried in a caption", note is not None)
+    r.ok("which names the indicator and the kommun",
+         note is not None and "Rent" in note.inner_text() and "Stockholm" in note.inner_text(),
+         (note.inner_text().replace("\n", " ")[:120] if note else ""))
+    leg = legend_state(page, "[data-testid=legend]")
+    r.ok("the legend says it too", "published per kommun only" in leg["text"].lower(),
+         leg["text"].replace("\n", " ")[:120])
+
+    # clicking a RegSO still opens it, and the figure is there marked as the kommun's
+    popup = open_area_popup(page, byname := "Abrahamsberg")
+    r.ok("a RegSO still opens its popup", bool(popup), byname)
+    r.ok("and the kommun's rent is on it, marked as the kommun's",
+         "muni" in popup.lower() if popup else False, popup.replace("\n", " ")[:120])
+
+    # the brief spells this route `#map/0180?ind=rent&lvl=regso`; v2.0 put the level in
+    # the path instead (`map/0180` is RegSO, `map/0180/deso` is DeSO), so the literal
+    # link is checked too — an unknown key must not change what is drawn
+    hop(page, "#map/0180?ind=rent&lvl=regso", 1400)
+    lit = ko_paths(page)
+    r.ok("the brief's own link draws the same map",
+         lit["outlines"] > 100 and lit["filledOutlines"] == 0 and lit["komFill"] == 1,
+         f'{lit["outlines"]} outlines, {lit["filled"]} filled')
+
+    hop(page, "#map/0180/deso?ind=rent", 2200)
+    d = ko_paths(page)
+    r.ok("the same at DeSO level", d["outlines"] > 100 and d["filledOutlines"] == 0,
+         f'{d["outlines"]} outlines, {d["filledOutlines"]} filled')
+    r.ok("with the kommun still the only filled shape", d["komFill"] == 1 and d["filled"] == 1,
+         f'{d["filled"]} filled')
+    r.ok("no page error on a kommun-only map", not errs, (errs[0] if errs else "")[:140])
+    errs.clear()
+
+
+@check("kommun-only-minimaps", "P3", "the area and pin mini-maps follow the same rule")
+def _kommun_only_minimaps(r, page, errs, calls):
+    hop(page, f"#area/regso/{REGSO_STHLM}?ind=rent", 1500)
+    settle(page)
+    got = ko_paths(page, "#armap")
+    r.ok("the area mini-map outlines the RegSO", got["outlines"] > 100, str(got["outlines"]))
+    r.ok("and fills only the kommun", got["komFill"] == 1 and got["filled"] == 1,
+         f'{got["filled"]} filled')
+    note = page.query_selector("[data-testid=minimap] [data-testid=kommun-only-note]")
+    # the note is set in small caps by CSS, so innerText comes back upper-cased
+    r.ok("with the note on the map",
+         note is not None and "published per kommun only" in note.inner_text().lower(),
+         (note.inner_text()[:90] if note else ""))
+
+    hop(page, f"#property?p={STHLM}:Test&ind=rent", 1600)
+    settle(page)
+    got = ko_paths(page, "#propmap")
+    r.ok("the pin mini-map does the same", got["outlines"] > 50 and got["filledOutlines"] == 0,
+         f'{got["outlines"]} outlines, {got["filledOutlines"]} filled')
+    r.ok("no page error on either mini-map", not errs, (errs[0] if errs else "")[:140])
+    errs.clear()
+
+
+@check("tenure-vocabulary", "P3", "hyresrätt, bostadsrätt, äganderätt — glossed once")
+def _tenure(r, page, errs, calls):
+    hop(page, "#map/0180?ind=renters", 1100)
+    t = settle(page)
+    r.ok("the tenure indicator is called hyresrätt", "Hyresrätt" in t, "")
+    r.ok("and never 'Rented dwellings'", "Rented dwellings" not in t, "")
+
+    page.click("[data-testid=ind-picker-btn]")
+    page.wait_for_timeout(350)
+    help_el = page.query_selector("[data-testid=picker-help]")
+    r.ok("the picker carries the help", help_el is not None)
+    if help_el:
+        page.eval_on_selector("[data-testid=picker-help]", "e => { e.open = true; }")
+        page.wait_for_timeout(120)
+        h = help_el.inner_text()
+        for w in ["hyresrätt", "bostadsrätt", "äganderätt", "allmännytta"]:
+            r.ok(f"it glosses {w}", w in h.lower(), "")
+        r.ok("and says K/T-tal is not a price per m²",
+             "K/T-tal" in h and "not" in h and "price per m²" in h, h.replace("\n", " ")[:140])
+    # the gloss is given once: the words are not re-explained on every tile
+    hop(page, "#map/0180?ind=renters", 900)
+    tiles = page.inner_text("[data-testid=tiles]") if page.query_selector("[data-testid=tiles]") else ""
+    r.ok("the tiles use the word without re-explaining it",
+         "rented" not in tiles.lower() and "co-op" not in tiles.lower(), tiles.replace("\n", " ")[:90])
+
+    hop(page, "#map/0180?ind=kt_tal", 1000)
+    line = page.inner_text("[data-testid=level-badge]") if page.query_selector("[data-testid=level-badge]") else ""
+    ind_line = page.inner_text(".indx summary") if page.query_selector(".indx summary") else ""
+    r.ok("K/T-tal is a ratio, not a price per m²",
+         "K/T-tal" in ind_line and "per m²" not in ind_line,
+         ind_line.replace("\n", " ")[:120])
+    r.ok("no page error", not errs, (errs[0] if errs else "")[:140])
+    errs.clear()
+
+
+@check("charts-default", "P3", "Charts opens with something on it", needs="fresh")
+def _charts_default(r, page, errs, calls):
+    hop(page, "#charts", 1500)
+    t = settle(page)
+    r.ok("it does not open empty", "Nothing to plot" not in t, "")
+    chips = page.inner_text(".chips") if page.query_selector(".chips") else ""
+    for name in ["Stockholm", "Göteborg", "Malmö", "Uppsala"]:
+        r.ok(f"{name} is selected on open", name in chips, chips.replace("\n", " ")[:120])
+    r.ok("a chart is actually drawn",
+         page.eval_on_selector_all(".chartbox svg", "e => e.length") == 1)
+    svg = page.inner_text(".chartbox") if page.query_selector(".chartbox") else ""
+    r.ok("and the Sweden median is one of the series", "median of kommuner" in svg.lower(),
+         svg.replace("\n", " ")[:140])
+    # The default is not written into the hash on arrival — `#charts` stays `#charts`,
+    # which is what keeps the plain link meaning "open Charts" rather than freezing
+    # today's default into every link ever shared. It IS written the moment the reader
+    # changes the set, and that is what has to survive a reload.
+    r.ok("a plain #charts link stays plain", page.evaluate("location.hash") == "#charts",
+         page.evaluate("location.hash")[:120])
+    page.click('[data-chrm="kommun:1280"]')
+    page.wait_for_timeout(700)
+    h = page.evaluate("location.hash")
+    r.ok("removing one writes the rest into the link",
+         "a=kommun:0180,kommun:1480,kommun:0380" in h.replace("%3A", ":"), h[:140])
+    r.ok("and Malmö is gone from the chips", "Malmö" not in page.inner_text(".chips"),
+         page.inner_text(".chips").replace("\n", " ")[:120])
+
+    # an explicit empty set is still reachable, and still says so
+    hop(page, "#charts?a=-", 1000)
+    t = text(page)
+    r.ok("an explicit empty set is still possible from the URL", "Nothing to plot" in t, "")
+    r.ok("and it offers the default back",
+         page.query_selector("[data-testid=chart-default]") is not None)
+    page.click("[data-testid=chart-default]")
+    page.wait_for_timeout(700)
+    r.ok("which restores the four", "kommun:0180" in page.evaluate("location.hash"),
+         page.evaluate("location.hash")[:120])
+    r.ok("no page error on Charts", not errs, (errs[0] if errs else "")[:140])
+    errs.clear()
+
+
+@check("search-diacritics", "P3", "the search box needs no å ä ö")
+def _search(r, page, errs, calls):
+    hop(page, "#map", 900)
+    for q, want in [("goteborg", "Göteborg"), ("malmo", "Malmö"), ("umea", "Umeå"),
+                    ("sodermalm", "Södermalm")]:
+        rows = search_rows(page, q)
+        r.ok(f"“{q}” finds {want}", bool(rows) and rows[0].startswith(want),
+             ", ".join(rows[:3]))
+    for q, want in [("sthlm", "Stockholm"), ("Gbg", "Göteborg"),
+                    ("Stockholms stad", "Stockholm"), ("Malmö stad", "Malmö")]:
+        rows = search_rows(page, q)
+        r.ok(f"“{q}” finds {want}", bool(rows) and rows[0] == want, ", ".join(rows[:3]))
+    rows = search_rows(page, "0180R001")
+    r.ok("a RegSO code still works", bool(rows), ", ".join(rows[:3]))
+    rows = search_rows(page, "zzzznotaplace")
+    r.ok("and a miss is a miss", not rows, ", ".join(rows[:3]))
+    page.fill("#areaq", "")
+    page.wait_for_timeout(150)
+    r.ok("no page error while searching", not errs, (errs[0] if errs else "")[:140])
+    errs.clear()
+
+
+@check("tile-units", "P3", "a figure on a tile carries its unit, and ± explains itself")
+def _tile_units(r, page, errs, calls):
+    hop(page, "#map/0180", 1200)
+    settle(page)
+    scope = "[data-testid=area-card]"
+    # the figure and its unit are two lines on a tile — "1 710 SEK" over "/m²/yr ±28" —
+    # so the unit is checked against the tile with its whitespace collapsed away
+    def flat(s: str) -> str:
+        return re.sub(r"\s+", "", s)
+
+    rent = tile_text(page, HL_MUNI, scope)
+    r.ok("the rent tile says SEK/m²/yr", "SEK/m²/yr" in flat(rent), rent.replace("\n", " ")[:90])
+    growth = tile_text(page, "growth", scope)
+    r.ok("the growth tile says /yr", "%/yr" in flat(growth), growth.replace("\n", " ")[:90])
+    inc = tile_text(page, "income_med", scope)
+    r.ok("the income tile says kSEK/yr", "kSEK/yr" in flat(inc), inc.replace("\n", " ")[:90])
+
+    tip = page.eval_on_selector_all(
+        f"{scope} [data-testid=tile-{HL_MUNI}] [data-testid=moe]",
+        "e => e.map(x => x.getAttribute('title'))")
+    r.ok("the ± is on the rent tile", bool(tip), str(tip))
+    r.ok("and its hover explains what it is",
+         bool(tip) and "margin of error" in (tip[0] or "") and "SCB" in (tip[0] or ""),
+         (tip[0] if tip else "")[:120])
+    r.ok("no bare ± is left without an explanation",
+         page.eval_on_selector_all(".moe:not([title])", "e => e.length") == 0)
+    r.ok("no page error", not errs, (errs[0] if errs else "")[:140])
+    errs.clear()
+
+
 # --------------------------------------------------------------------------- #
 
 def shots(browser, url, out: pathlib.Path) -> None:

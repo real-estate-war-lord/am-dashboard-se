@@ -232,3 +232,111 @@ No v2.0 check was changed — the 169 still pass as written.
   popup through Leaflet instead of clicking a pixel. Reuse them.
 * Three screenshot routes were added (`maponly`, `maponly-kommun`,
   `maponly-area`), so `--shots` now writes 36 files per run.
+
+---
+
+## P3 — Sweden fit: levels, vocabulary, defaults, search
+
+Gate green: `make validate`, `make build`, `make test` (smoke + `node --test`, now
+113 unit tests), `tests/ui_v2/spec.py --upto P11` (169/169), `tests/ui_v2_1/spec.py
+--upto P3` (206/206 — P1+P2's 135 plus 71 new).
+
+### Built
+
+**The headline row leads with what exists below kommun.** `HL_LOCAL` is
+`growth`, `income_med`, `renters`, `higher_ed`, `employment` — five figures SCB
+publishes at DeSO and RegSO — and `rent` follows as the one kommun-only figure,
+marked "municipality figure" wherever it is not the area's own. Six tiles, the same
+six on the map's area card, on every area page and on Test property. `HL_SPARE`
+only backfills a slot where one of the five is missing for that area.
+
+Making that true on Test property meant fixing `eVal()`: it inherited the kommun's
+figure for a RegSO and **not** for a DeSO, so rent was a dash on a DeSO page while
+the map painted that same DeSO with the kommun's rent. `subKommun(e)` is the one
+predicate now — `eVal`, `eYears` and the chart series read it, and `no_inherit`
+still wins over all of it.
+
+**A kommun-only indicator is no longer painted on every sub-area.** `#map/0180?ind=rent`
+draws Stockholm filled with its own value against the national scale and its 127
+RegSO as white outlines on top; `#map/0180/deso?ind=rent` does the same with 569
+DeSO. The kommun polygon is `interactive: false`, so every click still belongs to
+the sub-area under the cursor, and its popup still shows the kommun's rent marked
+`muni`. The figure is printed **once**, on the kommun's own label. Three places say
+why: an amber strip under the indicator line (`[data-testid=kommun-only-note]`), the
+legend note, and the mini-map's own badge. The area page and Test property mini-maps
+follow the same rule through `areaKomOnly()` / `komFillPoly()`.
+
+**Tenure vocabulary.** `TENURE_WORDS` in `app.js` renames `renters` to "Hyresrätt
+share" / "Hyresrätt", `new_rental`'s short to "New hyresrätt", and `rent_owner` to
+name allmännytta and private — once, at load, so every surface including the CSV
+export reads the same words. The English gloss is given exactly once, in a folded
+help block in the indicator picker, together with the sentence that K/T-tal is the
+purchase price divided by the assessed value and **not** a price per m².
+
+**Charts opens with a chart.** Stockholm, Göteborg, Malmö and Uppsala against the
+Sweden median, from `CH_DEFAULT_AREAS`. An explicit empty set is still reachable —
+`clear`, or `#charts?a=-` — and the empty state now offers "+ the default four"
+back. A plain `#charts` link is left plain rather than rewritten with today's
+default.
+
+**Search needs no å ä ö.** `src/search_core.js` (IIFE, `window.SEARCH_CORE`, 12 node
+tests) folds diacritics through NFD plus a hand table for ø æ œ ß đ ð ł þ, derives
+"<name>s stad" / "<name> kommun" for all 290 kommuner rather than curating them, and
+ranks exact › prefix › word start › anywhere with the pool's order inside a rank.
+The hand-written alias table is nine entries (sthlm, gbg, gothenburg, malmoe, lkpg,
+nkpg, jkpg, hbg, vsts). RegSO names and both spellings of a RegSO/DeSO code are
+searchable. The chart's "add an area" box goes through the same matcher.
+
+**Units and the ±.** A tile prints the part of the unit `fmtOf` does not — "1 710
+SEK" over "/m²/yr", "385 kSEK" over "/yr", "81,1 %" over "of population 20–64" — on
+its own line, because inline it broke between a number and its own unit. The margin
+of error's hover now reads "±28 = SCB margin of error (SEK/m²/yr)" instead of
+nothing at all.
+
+### Deviations
+
+Fourteen, all in `docs/v2_1/DECISIONS.md`. The four to read before touching this:
+the row is **six** tiles and three older checks were updated to say so; `eVal` now
+inherits for DeSO; the mini-maps got the kommun-only treatment the brief only asked
+of the big map; and `lvl=regso` is not a real key — the level is in the path.
+
+Three checks were **updated, never deleted** — `tests/ui_v2/spec.py` P5 and P7, and
+this spec's own P1 quarter check — all three from "exactly five tiles" to "five plus
+at most one kommun-only".
+
+### Known issues, not fixed here
+
+* The **Data › Areas** table still shows a kommun-only indicator on RegSO/DeSO rows
+  as the kommun's value with a `muni` tag, one row per area. That is the same
+  one-figure-many-rows shape the map just stopped doing, but a table row is a row
+  about an area and the tag is on every one of them, so it is honest as it stands.
+  Worth revisiting if a later phase touches that table.
+* The area mini-map fits to the page's own area, so on a kommun-only indicator most
+  of the frame is one fill with faint outlines. Pre-existing fit behaviour.
+* `indExplain`'s "as of" at RegSO/DeSO still falls back to the kommun stamp (P1's
+  known issue, untouched).
+* `CHANGELOG.md` still has no v2.1 section. P1, P2 and P3 all skipped it; whoever
+  writes the release notes now has three phases to cover.
+
+### What the next phase must know
+
+* **The headline row is six tiles, and `headlineInds()` is where the set lives.** It
+  is `HL_LOCAL` + `HL_SPARE` (backfill only) + `HL_MUNI`. Adding a seventh headline
+  means changing the grid too — `.hl.n6` is an explicit six-column rule.
+* **`subKommun(e)` is the inheritance predicate.** Do not write a fresh
+  `e.type === "regso"` test; DeSO inherits now as well.
+* **Three maps, one kommun-only rule.** `kommunOnlyMap()` for the big map,
+  `arKomOnly()` / `propKomOnly()` for the mini-maps, both through `areaKomOnly()`.
+  A new choropleth path needs one of them, or it will paint a kommun figure across
+  every sub-area again.
+* **`mapLevelKey()` is the zoomend rebuild key.** A new map mode that changes which
+  polygons are drawn must be part of it.
+* **Indicator wording is `TENURE_WORDS` in `app.js`, not `config/`.** Add to that
+  table; `make validate` checks codes against SCB metadata and will not see labels.
+* `src/search_core.js` is inlined between `route_core.js` and `listings/view.js`
+  (`scripts/build_dashboard.py` `JS_FILES`, `src/index.html`, and `tests/smoke.js`'s
+  sandbox — all three have to agree, and smoke.js fails loudly if they do not).
+* `CH_EMPTY` is `"-"`. Any other view that wants a linkable empty collection should
+  copy the pattern rather than rely on an empty value surviving `buildHash()`.
+* Four screenshot routes were added (`komonly-regso`, `komonly-deso`, `area-regso`,
+  `charts-default`), so `--shots` now writes 48 files per run.

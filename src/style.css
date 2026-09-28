@@ -1442,12 +1442,26 @@ a.nav-item:hover .navext{opacity:.9}
 .hlc.on{background:#F0F4EE;box-shadow:inset 0 3px 0 var(--ink)}
 .hlc span{font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hlc b{font-family:var(--disp);font-size:26px;letter-spacing:-.03em;line-height:1.1;font-weight:700}
+/* The unit tail the figure does not already print — "1 710 SEK" + "/m²/yr". Mono and
+   small so it reads as the unit of the number above it, never as part of it. Inline in
+   the area page's hero line, which has the width for it; its own line on a tile, which
+   does not — there it broke between the number and its unit and read as two figures. */
+.hlu{font-family:var(--mono);font-size:11px;font-style:normal;font-weight:500;letter-spacing:0;color:var(--muted);margin-left:.35em;white-space:nowrap}
+.hlu.t{margin-left:.06em}
+.hlc .hlsub{font-family:var(--mono);font-size:10.5px;letter-spacing:0;text-transform:none;
+  color:var(--muted);white-space:normal;overflow:visible;text-overflow:clip;line-height:1.3}
+.hlc .hlsub .moe{margin-left:.45em}
+/* Six tiles: five published below kommun plus the one kommun-only figure. */
+.hl.n6{grid-template-columns:repeat(6,minmax(0,1fr))}
+.hl.n6 .hlc b{font-size:23px}
+.acard .hl.n6 .hlc b{font-size:19px}
+.hl.n6 .hlc .hlsub{font-size:10px}
 .hlc em{font-style:normal;font-family:var(--mono);font-size:10.5px;color:var(--ink2)}
 .hlc em i{font-style:normal;font-weight:600}
 .hlc .up{color:var(--good)}.hlc .dn{color:var(--bad)}
 .arhead h2{margin-top:0}
-@media (max-width:1180px){.hl{grid-template-columns:repeat(3,minmax(0,1fr))}}
-@media (max-width:820px){.hl{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:1180px){.hl,.hl.n6{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:820px){.hl,.hl.n6{grid-template-columns:repeat(2,minmax(0,1fr))}}
 /* tiles: one context line, chart link in the corner */
 .hero .tile .tm{display:flex;flex-wrap:wrap;gap:2px 10px}
 .hero .tile{position:relative}
@@ -1782,6 +1796,16 @@ td.dim .moe{color:inherit}
 .pickerpop{width:min(440px,92vw);max-height:70vh;padding:8px}
 .pickerpop #indsearch{width:100%;margin-bottom:6px}
 .pkbody{overflow:auto;max-height:58vh;display:flex;flex-direction:column;gap:2px}
+/* the Swedish terms, glossed once — folded, so it is there for whoever needs it and
+   costs one line to everyone else */
+.pkhelp{margin:0 0 6px;border:1px solid var(--line);border-radius:7px;background:var(--panel2)}
+.pkhelp>summary{cursor:pointer;padding:4px 9px;font-family:var(--mono);font-size:10px;
+  letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.pkhelp>summary:hover{color:var(--ink)}
+.pkhelp p{margin:0;padding:0 9px 7px;font-size:11.5px;line-height:1.5;color:var(--ink2)}
+.pkhelp p+p{padding-top:0}
+.pkhelp b{color:var(--ink)}
+.pickerpop .pkbody{max-height:52vh}
 .pkglab{font-family:var(--mono);font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--muted);padding:9px 8px 3px;display:flex;gap:8px;align-items:baseline}
 .pkglab em{font-style:normal;letter-spacing:0;text-transform:none;font-size:10px;color:var(--dim)}
 .pkrow{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:baseline;width:100%;
@@ -1886,6 +1910,17 @@ tr.inh td.num{color:var(--ink2)}
 .indx.monly b{font-family:var(--disp);font-size:14px}
 .indx.monly .dim{font-family:var(--mono);font-size:10.5px;margin-left:auto;white-space:nowrap}
 #mapcard>.indx.monly{margin:6px 0 0}
+/* "published per kommun only" — the same strip, one slot lower, in the amber the rest
+   of the page uses for "read this before you read the number" (the prel. badge). */
+.indx.konly{display:grid;grid-template-columns:auto minmax(0,1fr);gap:3px 9px;align-items:baseline;
+  padding:8px 12px;font-size:12.5px;border-color:#E0CFA4;background:#FCF7EC;margin:6px 0 0}
+.indx.konly b{font-family:var(--disp);font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:#7A5A15}
+.indx.konly span{min-width:0}
+/* its own row, always: beside the sentence it either crowded it or ran off the side */
+.indx.konly .dim{grid-column:1/-1;font-family:var(--mono);font-size:10.5px;margin:0}
+/* the kommun's own label on a kommun-only map: the one figure, once, where it belongs */
+.lflab-kom b{font-size:13px}
+.lflab-kom{font-size:12px;font-weight:600}
 /* With nothing coloured in, the basemap may come up a step so the place names under
    the outlines are readable. A step, not a different basemap. */
 .mapwrap.maponly .basemap{filter:saturate(.55) brightness(1.02)}
@@ -1895,8 +1930,13 @@ tr.inh td.num{color:var(--ink2)}
   background:rgba(255,255,255,.94);border:1px solid var(--line);border-radius:8px;
   padding:5px 9px;font-family:var(--mono);font-size:10px;line-height:1.35;color:var(--ink2);
   pointer-events:none;box-shadow:0 2px 8px rgba(20,28,24,.10)}
+/* the kommun-only note shares the mini-map with a legend in the opposite corner, so it
+   says the short version and the rest is on its hover */
+.mapwrap .monote.ko{max-width:46%;pointer-events:auto;text-transform:uppercase;letter-spacing:.04em;
+  font-size:9.5px;color:#7A5A15;border-color:#E0CFA4;background:rgba(252,247,236,.96)}
 @media (max-width:700px){
   .indx.monly .dim{margin-left:0;white-space:normal}
+  .indx.konly{grid-template-columns:minmax(0,1fr)}
 }
 
 /* ============================================================================

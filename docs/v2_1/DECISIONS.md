@@ -75,3 +75,67 @@ front. A reader should be able to reverse any of them from this file alone.
   an empty big row would read as a missing value rather than as no question asked.
 - **P2** — a Chart link out of Map only (`↗ Chart`, the area card, the popups) names
   the first available headline indicator rather than passing `none` to an axis.
+- **P3** — the headline row is **five figures published below kommun plus one
+  kommun-only figure**, six tiles, not five. The brief's "five … plus at most one
+  kommun-only figure (rent)" reads as six, and rent is the question a housing
+  dashboard is opened with. The final set: `growth`, `income_med`, `renters`
+  (hyresrätt share), `higher_ed`, `employment`, then `rent`. `HL_SPARE`
+  (`unemp`, `young`, `flats`, `single`, `income`) only fills a slot where one of the
+  five has no value for that particular area — it is not a seventh headline. Two v2.0
+  checks were **updated, not deleted**, from `== 5` to `5 <= n <= 6` (P5 "five
+  headline figures in one row", P7 "always five headline tiles"), and so was P1's
+  "the five headline tiles survive a quarter".
+- **P3** — `eVal()` now inherits the kommun's figure for a **DeSO** as well as a
+  RegSO. It did not, which is why rent was blank on a DeSO area page and on a pin
+  that landed in one — while the map had always tinted that same DeSO with the
+  kommun's value. One of the two had to be wrong, and the map was right: the figure
+  does describe the ground the DeSO is on. `subKommun(e)` is the single predicate
+  now, used by `eVal`, `eYears` and the chart series, and it still respects
+  `no_inherit` (the police designation is never inherited anywhere).
+- **P3** — a kommun-only indicator drilled into RegSO/DeSO draws the **kommun polygon
+  filled** under **white sub-area outlines** (`.ko-fill` / `.ko-outline`), not a flat
+  wash. White rather than Map only's dark green: these sit on a filled kommun that can
+  be any shade of the ramp, and a mid-grey line vanishes on the dark end of it — white
+  is also what every other choropleth boundary here uses. The kommun polygon is
+  `interactive: false`, so the outlines over it keep every click, and a sub-area popup
+  still carries the kommun's figure marked `muni`.
+- **P3** — the same rule is applied to the **area page and Test property mini-maps**,
+  which the brief did not name. It had to be: the new rent tile puts a kommun-only
+  indicator one click away on every RegSO and DeSO page, and a mini-map answering it
+  with a flat wash would undo on the small map exactly what the big one stopped doing.
+  `areaKomOnly()` and `komFillPoly()` are shared by all three.
+- **P3** — the brief's route `#map/0180?ind=rent&lvl=regso` does not exist as written:
+  v2.0 put the level in the **path** (`map/0180` is RegSO, `map/0180/deso` is DeSO) and
+  `route_core.js` owns that spelling, so inventing an `lvl=` key would be a second way
+  to say one thing. The spec checks the path form **and** the brief's literal link,
+  which must draw the same map with the unknown key ignored.
+- **P3** — the tenure wording is overridden in `app.js` (`TENURE_WORDS`), not in
+  `config/indicators.json`: the registry is generated from and validated against SCB's
+  table metadata, and `config/` is forbidden to this phase anyway. `renters` becomes
+  "Hyresrätt share" / "Hyresrätt", `new_rental`'s short becomes "New hyresrätt", and
+  `rent_owner` names allmännytta and private. One override table, applied once at load,
+  so the picker, chips, tiles, popups, tables, chart titles and the CSV export cannot
+  drift apart.
+- **P3** — the English gloss is a **folded help block in the indicator picker**, not a
+  tooltip on every tile. Glossing hyresrätt on each of six tiles would say the page is
+  apologising for the word; the picker is where a reader who does not know it is already
+  looking things up. It carries the K/T-tal sentence too.
+- **P3** — Charts' default set is written into `CH.areas` at load, and an emptied set is
+  spelled `a=-` in the hash. `buildHash()` drops an empty value, so `a=` could not
+  survive a reload and `clear` would silently come back as the default four; `a=` typed
+  by hand still means the same thing. A plain `#charts` link is **not** rewritten with
+  the default on arrival — freezing today's default into every shared link is not what
+  "opens with" means.
+- **P3** — the RegSO literally named "Södermalm" is in **Umeå** (2481R006), not
+  Stockholm, whose Södermalm is cut into RegSO with other names. The brief's
+  "sodermalm → Södermalm RegSO" is satisfied and the search test asserts the Umeå one;
+  nothing is wrong, but the next reader of that test should not be surprised.
+- **P3** — the unit and the ± sit on **their own line under the figure** on a tile, and
+  inline only in the area page's hero. Inline on a 180 px tile the line broke between
+  the number and its own unit — "1 710" over "SEK/m²/yr" — which reads as two figures.
+  `tileUnit()` prints only the part `fmtOf` does not ("1 710 SEK" + "/m²/yr", never
+  "1 710 SEK SEK/m²/yr").
+- **P3** — `mapLevelKey()` is now used on **both** sides of the zoomend rebuild test. It
+  was spelled out inline there without the mode suffix, so every zoom step in Map only
+  rebuilt the polygon layer and closed any open popup. Not in the brief; found while
+  adding the `:ko` suffix.

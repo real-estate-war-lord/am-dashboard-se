@@ -34,7 +34,8 @@ def load(p: pathlib.Path):
 # scope, so a top-level `const` in two of them is a SyntaxError that blanks the
 # page with nothing in the build log. `node --check` per file costs 0.2 s and
 # turns that into a build failure. Skipped silently where node is absent.
-JS_FILES = ("testprop.js", "route_core.js", "listings/view.js", "export_core.js", "app.js")
+JS_FILES = ("testprop.js", "route_core.js", "search_core.js", "listings/view.js",
+            "export_core.js", "app.js")
 
 
 def check_js() -> None:
@@ -89,6 +90,7 @@ def main() -> int:
                 # logic in an IIFE exposing one window global, unit-tested offline.
                 .replace("{{TESTPROP_JS}}", (SRC / "testprop.js").read_text(encoding="utf-8"))
                 .replace("{{ROUTE_JS}}", (SRC / "route_core.js").read_text(encoding="utf-8"))
+                .replace("{{SEARCH_JS}}", (SRC / "search_core.js").read_text(encoding="utf-8"))
                 .replace("{{LISTINGS_VIEW_JS}}", (SRC / "listings" / "view.js").read_text(encoding="utf-8"))
                 .replace("{{EXPORT_JS}}", (SRC / "export_core.js").read_text(encoding="utf-8"))
                 .replace("{{APP_JS}}", (SRC / "app.js").read_text(encoding="utf-8"))

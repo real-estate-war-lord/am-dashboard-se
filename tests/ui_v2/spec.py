@@ -375,8 +375,11 @@ def phase5(r: Report, page, errs) -> None:
         return
     t = page.inner_text("[data-testid=area-card]")
     r.ok("it names the kommun, its län and its size", "Stockholm" in t and "inhabitants" in t)
+    # v2.1 P3 superseded the flat "five": the row is five figures published below kommun
+    # plus at most one kommun-only figure (rent), so 5 or 6 — never a seventh, and never
+    # fewer than five where five exist. The kommun-only one is checked in the v2.1 spec.
     tiles = page.eval_on_selector_all("[data-testid=area-card] [data-testid^=tile-]", "e => e.length")
-    r.ok("five headline figures in one row", tiles == 5, str(tiles))
+    r.ok("five headline figures in one row, plus at most one kommun-only", 5 <= tiles <= 6, str(tiles))
     page.click("[data-testid=area-card] [data-testid^=tile-]")
     page.wait_for_timeout(450)
     r.ok("clicking a figure selects that indicator", "ind=" in page.evaluate("location.hash"))
@@ -447,7 +450,8 @@ def phase7(r: Report, page, errs, calls) -> None:
     hop(page, f"#property?p={STHLM}")
     page.wait_for_timeout(900)
     tiles = page.eval_on_selector_all("[data-testid=tiles] > *", "e => e.map(x => x.innerText.trim())")
-    r.ok("always five headline tiles", len(tiles) == 5, str(len(tiles)))
+    # same v2.1 P3 change as the map card above: five local figures + at most one kommun-only
+    r.ok("always five headline tiles, plus at most one kommun-only", 5 <= len(tiles) <= 6, str(len(tiles)))
     r.ok("and none of them is an empty filler", all(t for t in tiles))
     r.ok("the study row is the same component as the area page's",
          page.eval_on_selector_all("[data-testid=study-row] [data-testid=chart-panel]", "e => e.length") == 1

@@ -34,6 +34,21 @@
 "use strict";
 const D = window.DATA || {};
 const IND = D.indicators || [];
+/* ---------- the Swedish tenure words ----------
+   hyresrätt, bostadsrätt, äganderätt and allmännytta are the legal forms, and they are
+   what a lease, a broker's listing and SCB's own tables say. "Rented dwellings" is an
+   approximation that loses the form, and on a Swedish dashboard it is the reader who
+   pays for the translation. config/indicators.json is built from SCB's table metadata
+   and validated against it, so it is not the place to make a wording decision: the
+   display labels are overridden here, once, and the picker, the chips, the tiles, the
+   popups, the tables, the chart titles and the CSV export all read the same words.
+   The English gloss is given exactly once, in the picker's help line. */
+const TENURE_WORDS = {
+  renters: { label: "Hyresrätt share", short: "Hyresrätt" },
+  new_rental: { short: "New hyresrätt" },
+  rent_owner: { label: "Rent by landlord: allmännytta or private", short: "Rent, allmännytta/private" },
+};
+IND.forEach(i => { const w = TENURE_WORDS[i.key]; if (w) Object.assign(i, w); });
 const MUNI = D.kommuner || [];
 const AREAS = D.regso || [];
 const LOCALE = "sv-SE";
@@ -76,6 +91,20 @@ const fmtOf = i => {
   return FMT[i.fmt] || FMT.int;
 };
 const isPct = i => (i.fmt || "").startsWith("pct") || i.fmt === "signpct1";
+/* ---------- units on a figure ----------
+   "1 710 SEK" is not a rent anyone can act on: per month or per year, per flat or
+   per square metre? The registry knows — `unit` is "SEK / m² / yr" — so the tiles
+   print the part of it the number does not already carry. `fmtOf` writes the leading
+   token itself (sek0 → "1 710 SEK"), so printing the unit whole would read
+   "1 710 SEK SEK/m²/yr"; UNIT_IN_FMT is what each format already says. */
+const unitTight = u => String(u == null ? "" : u).replace(/\s*\/\s*/g, "/").trim();
+const UNIT_IN_FMT = { pct0: "%", pct1: "%", pct2: "%", signpct1: "%", ksek: "kSEK",
+                      sek0: "SEK", m2: "m²", per1000: "‰", per10k: "/10k" };
+function tileUnit(i) {
+  const u = unitTight(i && i.unit); if (!u) return "";
+  const own = UNIT_IN_FMT[i.fmt];
+  return (own && u.indexOf(own) === 0) ? u.slice(own.length).trim() : u;
+}
 /* ---------- direction ----------
    Every indicator declares `direction` in config/indicators.json:
    higher_better | lower_better | neutral. It decides three things and nothing
@@ -139,7 +168,15 @@ const PROP = { lat: null, lon: null, label: "", rad: PROP_RAD_DEFAULT,
                show: new Set(PROP_SHOW_DEFAULTS), res: null, resKey: "" };
 const UI = { indxOpen: false, menu: null, cardFold: false, legFold: {} };           /* fold states that survive a re-render */
 const MKT = { src: false };                                                        /* market: sources panel open */
-const CH = { ind: (IND[0] || {}).key, areas: [], y0: "", y1: "", median: true, title: "", mode: "auto", dist: "age", fq: "year" };   /* chart generator; fq = yearly | quarterly */
+/* Charts opens with a chart on it. "Nothing to plot yet" was the first thing a reader
+   saw who followed the nav rather than a ↗ link, and an empty frame teaches nothing
+   about what the page can do. The default is the three storstäder plus Uppsala — the
+   four kommuner every Swedish housing conversation starts from — against the Sweden
+   median, which is the `median` checkbox and is on. An empty chart is still reachable:
+   `clear`, and `#charts?a=-` in a link. */
+const CH_DEFAULT_AREAS = ["0180", "1480", "1280", "0380"].filter(c => byCode[c]).map(c => "kommun:" + c);
+const CH_EMPTY = "-";                                                              /* "no areas" spelled in the hash, so `clear` is linkable */
+const CH = { ind: (IND[0] || {}).key, areas: CH_DEFAULT_AREAS.slice(), y0: "", y1: "", median: true, title: "", mode: "auto", dist: "age", fq: "year" };   /* chart generator; fq = yearly | quarterly */
 const T = { q: "", level: "kommun", lan: "", minPop: 0, cols: "headline" };                           /* table view filters */
 const LAN = { "01": "Stockholm", "03": "Uppsala", "04": "Södermanland", "05": "Östergötland", "06": "Jönköping",
   "07": "Kronoberg", "08": "Kalmar", "09": "Gotland", "10": "Blekinge", "12": "Skåne", "13": "Halland",
@@ -152,8 +189,25 @@ const LF = { map: null, center: [62.5, 16.5], zoom: 5 };
 /* every indicator is defined the same way at every level, so an area may always
    be compared with its kommun */
 const muniCmp = (e, key) => !!e.kommun;
-/* headline figures (area page header, map popups, kommun strip) — the first five available, in this order */
-const HL_KEYS = ["growth", "income_med", "rent", "unemp", "renters", "higher_ed", "young", "kt_tal", "flats"];
+/* ---------- the headline figures ----------
+   Sweden's strength is what SCB publishes below kommun, and the headline row leads with
+   it: five figures that exist at DeSO and RegSO — population growth, median disposable
+   income, the hyresrätt share, post-secondary education and the employment rate — in
+   that order, on the map's area card, on every area page and on Test property.
+
+   Rent is the sixth and the only kommun-only figure promoted here, because "what does it
+   cost to rent here" is the question a housing dashboard is opened with. On a sub-area it
+   is the kommun's number and the tile says so in words. Nothing else kommun-only earns a
+   slot: six municipal figures on a RegSO page would be a page about the kommun wearing
+   the area's name.
+
+   HL_SPARE is not a sixth, seventh and eighth headline — it only keeps the row at five
+   where one of the five has no value for this particular area. */
+const HL_LOCAL = ["growth", "income_med", "renters", "higher_ed", "employment"];
+const HL_MUNI = ["rent"];
+const HL_SPARE = ["unemp", "young", "flats", "single", "income"];
+/* the order the map popups and the table's headline columns read, longest first */
+const HL_KEYS = HL_LOCAL.concat(HL_MUNI, HL_SPARE);
 /* quick-pick indicator chips next to the indicator select */
 const QUICK_KEYS = ["growth", "income_med", "rent", "unemp", "renters", "kt_tal", "crime_1000"];
 /* link into the chart generator with one area pre-selected */
@@ -275,7 +329,9 @@ function hashFor() {
   else if (S.view === "market") { p = MKT.src ? "data/sources" : "data/national"; }
   else if (S.view === "pipeline") { p = "data/projects"; if (PIPE.type) q.t = PIPE.type; if (PIPE.status) q.s = PIPE.status; }
   else if (S.view === "charts") {
-    p = "charts"; q.ind = CH.ind; q.a = CH.areas.join(",");
+    /* buildHash drops an empty value, so an emptied set has to be spelled out or the
+       link would reopen with the default four and `clear` would not survive a reload */
+    p = "charts"; q.ind = CH.ind; q.a = CH.areas.length ? CH.areas.join(",") : CH_EMPTY;
     if (CH.y0) q.y0 = CH.y0; if (CH.y1) q.y1 = CH.y1;
     q.med = CH.median ? "1" : "0";
     if (CH.mode !== "auto") q.mode = CH.mode;
@@ -349,7 +405,10 @@ function parseHash() {
     /* `ind=none` is Map only — a chart axis cannot be nothing, so it is ignored
        here as well as stripped from the hash by route_core.js */
     S.view = "charts"; CH.ind = (q.ind && q.ind !== IND_NONE) ? q.ind : CH.ind;
-    CH.areas = q.a ? q.a.split(",").filter(Boolean) : (q.a === "" ? [] : CH.areas);
+    /* `a=-` and `a=` are both an explicit empty set; no `a=` at all leaves whatever is
+       already selected, which on a cold open is CH_DEFAULT_AREAS */
+    CH.areas = (q.a === "" || q.a === CH_EMPTY) ? []
+      : q.a ? q.a.split(",").filter(Boolean) : CH.areas;
     CH.y0 = q.y0 || ""; CH.y1 = q.y1 || "";
     CH.median = q.med !== "0"; CH.mode = q.mode || "auto";
     CH.dist = q.dist || CH.dist; CH.fq = q.fq === "q" ? "q" : "year";
@@ -835,6 +894,73 @@ const moStyle = w => ({ className: "mo-outline", color: MO_LINE, weight: w, opac
   fill: true, fillColor: MO_LINE, fillOpacity: 0, smoothFactor: 0.25 });
 const moHover = w => ({ color: MO_HOVER, weight: Math.max(2, w * 2.6), opacity: 1, fillOpacity: 0 });
 
+/* ---------- a kommun-only indicator, drilled into RegSO or DeSO ----------
+   Rent, K/T-tal, sales, completions, forced sales and reported offences are published
+   per kommun and nowhere finer. The v2.0 map tinted all 127 Stockholm RegSO with the
+   same colour and marked each one °, which draws one number 127 times and reads as 127
+   local measurements — the single most misleading thing a Swedish map of this data can
+   do, because the areas people care about are exactly the ones the figure is not about.
+
+   So the kommun is drawn as itself, filled with its own value against the national
+   scale, and its sub-areas go on top as neutral outlines. Nothing is hidden: clicking a
+   sub-area still opens it, and its popup still carries the kommun's figure, marked as
+   the kommun's. The legend and the strip above the map both say "published per kommun
+   only" in those words.
+
+   The outline is WHITE, not Map only's dark green. Map only's outlines sit on the bare
+   basemap; these sit on a filled kommun that can be any shade of the ramp, and a mid-grey
+   line disappears on the dark end of it. White is also what every other boundary on a
+   choropleth in this dashboard is drawn in, so the picture stays one picture. */
+const KO_LINE = "#FFFFFF";
+const KOMMUN_ONLY_LINE = "published per kommun only";
+const koWeight = sub => (sub === "deso" ? 0.5 : 0.8);
+const koStyle = w => ({ className: "ko-outline", color: KO_LINE, weight: w, opacity: .85,
+  fill: true, fillColor: KO_LINE, fillOpacity: 0, smoothFactor: 0.25 });
+const koHover = w => ({ color: MO_HOVER, weight: Math.max(1.8, w * 2.4), opacity: 1, fillOpacity: 0 });
+/* the sub-level the big map is drilled to, or null when the 290 kommuner are drawn */
+const drillSub = () => (MK.kommun ? (desoMode() ? "deso" : "regso") : null);
+/* Is the selected indicator published only for the kommun we are inside? An indicator
+   that refuses inheritance is not this case — it has nothing to put on the kommun
+   either, and its sub-areas are correctly blank. */
+function kommunOnlyMap() {
+  const sub = drillSub(); if (!sub || mapOnly()) return false;
+  const i = curInd();
+  return !(i.levels || []).includes(sub) && !noInherit(i);
+}
+/* The same question for a mini-map, which knows its level from the entity rather than
+   from MK: would this map be painting one kommun figure across every sub-area? Shared
+   by studyRow (which writes the note) and by both mini-map builders (which draw it), so
+   the note and the picture cannot disagree. Returns { lvl, kom } or null. */
+function areaKomOnly(e, i, lvl) {
+  if (!e || !i || !lvl || lvl === "kommun" || mapOnly()) return null;
+  if ((i.levels || []).includes(lvl) || noInherit(i)) return null;
+  const kom = e.type === "kommun" ? e.o : e.kommun;
+  return kom && (kom.rings || []).length ? { lvl, kom } : null;
+}
+/* Each mini-map decides its own level, so each gets its own thin wrapper rather than one
+   guess that would be right for one of them. A kommun page showing the 290 kommuner is
+   already the right picture — `kommun` is excluded above. */
+function arKomOnly(e, i) {
+  const { useQ, sind, kommuneLevel } = arMapMode(e, i);
+  return areaKomOnly(e, sind, e.type === "kommun" ? (useQ ? "deso" : kommuneLevel ? "kommun" : "regso") : e.type);
+}
+const propKomOnly = (e, i) => areaKomOnly(e, i, e.type === "kommun" ? "regso" : e.type);
+/* The kommun polygon, filled with its own value against the national scale — the one
+   shape a kommun-only indicator is about. Non-interactive: it covers exactly the ground
+   all the outlines over it cover, and they are what a click belongs to. */
+function komFillPoly(kom, i) {
+  const sc = scaleOf(MUNI, m => V(m, i.key), null, i);
+  const t = sc.t(V(kom, i.key));
+  return { sc, poly: L.polygon(kom.rings, { className: "ko-fill", color: "#FFFFFF", weight: 1.6,
+    fillColor: t == null ? "#C4CBC4" : (sc.color ? sc.color(t) : mkShade(t, i.key, sc)),
+    fillOpacity: .72, smoothFactor: .25, interactive: false }) };
+}
+/* "the polygons on screen are a different set now". Both sides of the zoomend
+   comparison spell it through this one helper — they did not, so every zoom step in
+   Map only rebuilt the layer and closed whatever popup was open. */
+const mapLevelKey = () => (drillSub() || "national") + (MK.kommun || "")
+  + (mapOnly() ? ":only" : kommunOnlyMap() ? ":ko" : "");
+
 function legendHtml(sc, ind, key, note) {
   /* class-break legend drawn on top of the map (bottom right) */
   const f = fmtOf(ind); const b = sc.breaks || []; const n = sc.classes || 0;
@@ -988,6 +1114,15 @@ function pickerRows(sc) {
   if (!out.length) return `<div class="snone">No indicator matches “${esc(UI.pickQ || "")}”.</div>`;
   return out.join("");
 }
+/* The one place the Swedish words are glossed. Once, where a reader who does not know
+   them is already looking for an indicator — not on every tile, which would turn the
+   terms into something the page is apologising for. */
+const PICKER_HELP = `<details class="pkhelp" data-testid="picker-help"><summary>Swedish terms used here</summary>
+  <p><b>hyresrätt</b> rented · <b>bostadsrätt</b> tenant-owned (co-op) · <b>äganderätt</b> owner-occupied
+  · <b>allmännytta</b> the municipal housing company · <b>bruksvärde</b> the negotiated-rent system.
+  They are kept because they are the legal forms, and a translation would lose which one a figure is about.</p>
+  <p><b>K/T-tal</b> is the purchase price divided by the assessed value — <b>not</b> a price per m².
+  Sweden publishes no open realised price per m² at any geography. Rents are <b>SEK/m²/yr</b>.</p></details>`;
 function indPicker(scope) {
   const sc = scope || "map";
   const i = pickerCur(sc);
@@ -1000,6 +1135,7 @@ function indPicker(scope) {
     ${open ? `<div class="menupop pickerpop" role="dialog" aria-label="Indicator" data-testid="ind-picker-pop">
       <input id="indsearch" data-testid="ind-search" class="indsel" placeholder="Search indicators…" autocomplete="off"
         value="${esc(UI.pickQ || "")}" data-pickscope="${sc}">
+      ${PICKER_HELP}
       <div class="pkbody" id="pkbody" role="listbox">${pickerRows(sc)}</div>
     </div>` : ""}</span>`;
 }
@@ -1040,13 +1176,18 @@ function indQuick() {
 
    The privacy sentence that used to run across every map lives on the ? here and
    on the Test property page, where the pin actually is. */
+/* The keys every row is matched on come from src/search_core.js, which folds the
+   diacritics away (goteborg → Göteborg, sodermalm → Södermalm) and derives the forms
+   nobody would curate 290 times ("Stockholms stad"). The keys are never shown — `t`
+   is, with its diacritics intact. */
+const SC = window.SEARCH_CORE;
 const AREA_OPTS = [];
 MUNI.slice().sort((a, b) => a.name.localeCompare(b.name, LOCALE)).forEach(m => AREA_OPTS.push(
   { t: m.name, sub: `Kommun · ${lanName(m.lan) || m.lan || ""}`, h: `map/${m.code}`,
-    k: [m.name.toLowerCase(), m.code] }));
+    k: SC.keysFor("kommun", m.name, m.code) }));
 AREAS.slice().sort((a, b) => (a.name || "").localeCompare(b.name || "", LOCALE)).forEach(a => AREA_OPTS.push(
   { t: a.name, sub: `RegSO · ${(byCode[a.kommun] || {}).name || ""}`, h: `area/regso/${a.code}`,
-    k: [(a.name || "").toLowerCase(), a.code.toLowerCase(), a.code.split("_")[0].toLowerCase()] }));
+    k: SC.keysFor("regso", a.name, a.code) }));
 /* DeSO has codes and no names, and its files arrive per kommun, so only the
    kommuner already opened contribute — which is honest: the rest are not in
    memory to be searched. */
@@ -1054,7 +1195,7 @@ const desoOpts = () => {
   const out = [];
   for (const kom in DESO) for (const d of DESO[kom]) out.push(
     { t: d.code.split("_")[0], sub: `DeSO · ${(byRegso[d.regso] || {}).name || (byCode[kom] || {}).name || ""}`,
-      h: `area/deso/${d.code}`, k: [d.code.toLowerCase(), d.code.split("_")[0].toLowerCase()] });
+      h: `area/deso/${d.code}`, k: SC.keysFor("deso", d.code.split("_")[0], d.code) });
   return out;
 };
 const SR = { q: "", open: false, sel: 0 };
@@ -1072,15 +1213,10 @@ function searchResults(q) {
               sub: "a coordinate is a point, not an area — it opens as a pin",
               h: `property?p=${ll}` }];
   }
-  const ql = s.toLowerCase();
-  const pool = AREA_OPTS.concat(desoOpts());
-  const starts = [], has = [];
-  for (const o of pool) {
-    if (o.k.some(k => k === ql || k.startsWith(ql))) starts.push(o);
-    else if (o.k.some(k => k.indexOf(ql) >= 0)) has.push(o);
-    if (starts.length >= SR_MAX) break;
-  }
-  return starts.concat(has).slice(0, SR_MAX);
+  /* the ranking lives in src/search_core.js and is unit-tested there: exact, then
+     prefix, then word start, then anywhere, and the pool's own order inside a rank —
+     which is kommuner before RegSO before DeSO, each alphabetical */
+  return SC.match(AREA_OPTS.concat(desoOpts()), s, SR_MAX);
 }
 const PRIVACY_TIP = "A pasted Google Maps link or coordinate is parsed in your browser and tested "
   + "against boundary files this page already serves. It lives only in this page's address bar — the "
@@ -1101,7 +1237,7 @@ function searchDropHtml() {
   const rows = res.length
     ? res.map((o, k) => `<button class="srow ${k === SR.sel ? "on" : ""}"${o.coord ? ' data-testid="search-coord"' : ""}
         data-searchgo="${esc(o.h)}" role="option"><b>${esc(o.t)}</b><em>${esc(o.sub)}</em></button>`).join("")
-    : SR.q ? `<div class="snone">No area matches “${esc(SR.q)}” — try a kommun name, a RegSO or DeSO code, or a coordinate.</div>` : "";
+    : SR.q ? `<div class="snone">No area matches “${esc(SR.q)}” — try a kommun name, a RegSO name, a RegSO or DeSO code, or a coordinate. <em>å ä ö are optional: goteborg finds Göteborg.</em></div>` : "";
   return jumps + rows;
 }
 function searchRefresh() {
@@ -1291,6 +1427,18 @@ function mapOnlyStrip() {
     <span>— pick an indicator to colour the areas</span>
     <span class="dim">boundaries only · click an area for its figures · key 0</span></div>`;
 }
+/* The strip that sits under the indicator line when the figure on screen belongs to the
+   kommun and not to the areas drawn inside it. It names the indicator, because the map
+   looks different from the one the reader just had and the reason has to be on the page
+   rather than only in the legend. */
+function kommunOnlyStrip(i) {
+  const m = MK.kommun ? byCode[MK.kommun] : null;
+  const sub = drillSub() === "deso" ? "DeSO" : "RegSO";
+  return `<div class="indx konly" data-testid="kommun-only-note"><b>${esc(KOMMUN_ONLY_LINE)}</b>
+    <span>— ${esc(i.label)} is published per kommun and no finer, so ${esc(m ? m.name : "the kommun")} is
+      filled with its own figure and its ${sub} areas are drawn as outlines, not coloured in.</span>
+    <span class="dim">clicking one still opens it — the kommun's figure is on it, marked as the kommun's</span></div>`;
+}
 function periodControl() {
   const i = curInd();
   /* nothing is drawn from a period, so there is no period to choose */
@@ -1374,13 +1522,17 @@ function rankOf(o, key, peers, per) {
    footnote somewhere else on the page. An empty slot is not rendered: a grey
    filler is visual noise that means nothing. */
 function headlineInds(e) {
-  return HL_KEYS.map(k => e.inds.find(i => i.key === k))
-    .filter(i => i && eVal(e, i.key, periodFor(i)).v != null).slice(0, 5);
+  const has = k => { const i = e.inds.find(x => x.key === k); return (i && eVal(e, i.key, periodFor(i)).v != null) ? i : null; };
+  const local = HL_LOCAL.map(has).filter(Boolean);
+  const spare = local.length < 5 ? HL_SPARE.map(has).filter(Boolean).slice(0, 5 - local.length) : [];
+  /* at most one, and always last, so the row reads "five about here, then the kommun's" */
+  const muni = HL_MUNI.map(has).filter(Boolean).slice(0, 1);
+  return local.concat(spare).slice(0, 5).concat(muni);
 }
 function headlineTiles(e) {
   const inds = headlineInds(e);
   if (!inds.length) return "";
-  return `<div class="hl" data-testid="tiles">${inds.map(i => {
+  return `<div class="hl${inds.length > 5 ? " n6" : ""}" data-testid="tiles">${inds.map(i => {
     const s = tileStats(e, i);
     const inh = !s.cur.own;
     const proj = isOutlook(i);
@@ -1388,7 +1540,12 @@ function headlineTiles(e) {
       data-testid="tile-${esc(i.key)}" data-arind="${esc(i.key)}"
       title="${esc(i.desc || i.label)} — click to read it in the chart and on the map">
       <span>${esc(i.short || i.label)}${isPrel(i, s.per) ? ` <i class="prel" title="${esc(PREL_TIP)}">prel.</i>` : ""}</span>
-      <b>${fmtOf(i)(s.cur.v)}${moeSpan(i, s.cur.v, moeOf(i, inh ? e.kommun : e.o, s.per))}</b>
+      <b>${fmtOf(i)(s.cur.v)}</b>
+      ${(() => { const u = tileUnit(i), m = moeSpan(i, s.cur.v, moeOf(i, inh ? e.kommun : e.o, s.per));
+        /* the unit and the ± on their own line under the figure. Inline they broke a
+           narrow tile between the number and its own unit — "1 710" over "SEK/m²/yr" —
+           which reads as two figures rather than one. */
+        return (u || m) ? `<span class="hlsub">${u ? esc(u) : ""}${m}</span>` : ""; })()}
       <em>${inh ? `<i class="inh">municipality figure</i>`
         : proj ? `<i class="projpill">Projection</i>`
         : `${s.yoy != null ? `<i class="${cls(s.yoy, i.key)}">${signed(s.yoy, 1, deltaUnit(i))}</i> y/y` : ""}${s.rk ? `${s.yoy != null ? " · " : ""}#${s.rk.r} of ${s.rk.n}` : ""}`}</em></button>`;
@@ -1450,6 +1607,7 @@ function vMakro() {
       <div class="tools" data-testid="map-toolbar" data-row="1">${areaSearch()}${layersMenuHtml()}${indPicker("map")}${periodControl()}${subToggle()}</div>
       <div class="chiprow" data-row="2">${indQuick()}</div></div>
     ${mapOnly() ? mapOnlyStrip() : indExplain(ind)}
+    ${kommunOnlyMap() ? kommunOnlyStrip(ind) : ""}
     ${muni ? mapAreaCard(muni) : ""}
     <div class="mapwrap${mapOnly() ? " maponly" : ""}"><div id="lfmap" data-testid="map"></div>
       <div class="maplegs" data-testid="legends">
@@ -1505,9 +1663,17 @@ function exportMenuHtml() {
    is the easy mistake with this source. */
 function moeOf(i, o, y) { return i && i.moe && o ? MOE(o, i.key, y) : null; }
 function moeWide(i, v, m) { return i && i.moe_rel != null && v && m != null && Math.abs(m / v) > i.moe_rel; }
+/* A bare grey "±28" beside a rent is a riddle. The hover says what it is, who
+   published it and in what unit — "±28 = SCB margin of error (SEK/m²/yr)" — because
+   TAB4590 is a ~16 000-apartment sample survey and the interval is the honest part
+   of the figure, not a footnote. */
 function moeSpan(i, v, m) {
   if (m == null) return "";
-  return `<span class="moe${moeWide(i, v, m) ? " wide" : ""}" title="margin of error, ±${nf(m, 0)} ${esc(i.unit || "")}${moeWide(i, v, m) ? " — wider than the indicator allows, read with care" : ""}">±${nf(m, 0)}</span>`;
+  const who = /^SCB/.test(i.source || "") ? "SCB" : (String(i.source || "").split(/[,(]/)[0].trim() || "the publisher");
+  const u = unitTight((i.moe && i.moe.unit) || i.unit);
+  const tip = `±${nf(m, 0)} = ${who} margin of error${u ? ` (${u})` : ""}`
+    + (moeWide(i, v, m) ? " — wider than this indicator allows, read with care" : "");
+  return `<span class="moe${moeWide(i, v, m) ? " wide" : ""}" data-testid="moe" title="${esc(tip)}" aria-label="${esc(tip)}">±${nf(m, 0)}</span>`;
 }
 function fmtCell(i, v, fallback, o, y) {
   if (v == null || isNaN(v)) return `<td class="num">–</td>`;
@@ -1625,9 +1791,14 @@ function areaEntity() {
    `no_inherit` is blank where it has no value of its own. */
 const noInherit = i => !!(i && i.no_inherit);
 const canInherit = k => !noInherit(indOf(k));
+/* The kommun a sub-area falls back to, or null for a kommun. BOTH sub-levels: the map
+   has always tinted a DeSO with its kommun's value for a kommun-only indicator, and a
+   DeSO page that answered "–" to the same question was the one place that disagreed —
+   which is why rent was missing from a DeSO area page and from a pin that landed in one. */
+const subKommun = e => (e && (e.type === "regso" || e.type === "deso") && e.kommun) || null;
 /* value for the entity: its own figure, or the kommun's (inherited, °) for sub-areas */
-function eVal(e, k, y) { const own = V(e.o, k, y); if (own != null) return { v: own, own: true }; if (canInherit(k) && e.type === "regso" && e.kommun) { const mv = V(e.kommun, k, y); if (mv != null) return { v: mv, own: false }; } return { v: null, own: false }; }
-function eYears(e, k) { return histYears(k, e.type === "regso" && V(e.o, k) == null ? MUNI : e.peers); }
+function eVal(e, k, y) { const own = V(e.o, k, y); if (own != null) return { v: own, own: true }; const m = subKommun(e); if (canInherit(k) && m) { const mv = V(m, k, y); if (mv != null) return { v: mv, own: false }; } return { v: null, own: false }; }
+function eYears(e, k) { return histYears(k, subKommun(e) && V(e.o, k) == null ? MUNI : e.peers); }
 /* everything a tile, headline cell or popup needs about one indicator for one area */
 function tileStats(e, i) {
   /* `per` rather than MK.year throughout: on the map a quarter can be selected
@@ -2211,22 +2382,30 @@ function propMapInit() {
   const ind = curInd();
   const only = mapOnly();
   if (e && e.ctx && e.ctx.length) {
-    const vk = a => (only ? null : V(a, ind.key) ?? (canInherit(ind.key) && a.kommun ? V(byCode[a.kommun], ind.key) : null));
-    const sc = only ? MO_SCALE : scaleOf(e.ctx.filter(a => vk(a) != null), vk, null, ind);
+    /* the same kommun-only rule as the big map and the area page: one kommun figure is
+       drawn once, on the kommun, and the sub-areas around the pin are outlines */
+    const kof = only ? null : (() => { const k = propKomOnly(e, ind); return k ? Object.assign(komFillPoly(k.kom, ind), k) : null; })();
+    const vk = a => (only || kof ? null : V(a, ind.key) ?? (canInherit(ind.key) && a.kommun ? V(byCode[a.kommun], ind.key) : null));
+    const sc = only ? MO_SCALE : kof ? kof.sc : scaleOf(e.ctx.filter(a => vk(a) != null), vk, null, ind);
+    if (kof) kof.poly.addTo(m);
     e.ctx.forEach(a => {
       const own = e.own.includes(a); const t = sc.t(vk(a));
-      const w = only ? (own ? 2.4 : moWeight("regso")) : null;
+      const w = only ? (own ? 2.4 : moWeight("regso")) : kof ? (own ? 2.2 : koWeight("regso")) : null;
       const p = only
         ? L.polygon(a.rings, Object.assign(moStyle(w), own ? { color: MO_HOVER, opacity: 1 } : {}))
+        : kof
+        ? L.polygon(a.rings, Object.assign(koStyle(w), own ? { color: MO_HOVER, opacity: 1 } : {}))
         : L.polygon(a.rings, { color: own ? "#141C18" : "#FFFFFF", weight: own ? 2.4 : 0.8,
         fillColor: t == null ? "#C4CBC4" : (sc.color ? sc.color(t) : mkShade(t, ind.key, sc)),
         fillOpacity: own ? .5 : .42, smoothFactor: .25 });
       p.bindTooltip(`<b>${esc(a.name || a.code.split("_")[0])}</b>${vk(a) != null ? `<br>${esc(ind.short || ind.label)}: ${fmtOf(ind)(vk(a))}` : ""}`);
       if (!own) { p.on("click", () => go(withQ(pageOf(a))));
-        if (only) { p.on("mouseover", () => p.setStyle(moHover(w))); p.on("mouseout", () => p.setStyle(moStyle(w))); } }
+        if (only) { p.on("mouseover", () => p.setStyle(moHover(w))); p.on("mouseout", () => p.setStyle(moStyle(w))); }
+        else if (kof) { p.on("mouseover", () => p.setStyle(koHover(w))); p.on("mouseout", () => p.setStyle(koStyle(w))); } }
       p.addTo(m);
     });
-    if (!only) setLegend("proplegend", sc, ind, ind.key, e.typeLabel);
+    if (!only) setLegend("proplegend", sc, ind, ind.key,
+      kof ? `<b>${esc(KOMMUN_ONLY_LINE)}</b> · ${esc(kof.kom.name)} filled` : e.typeLabel);
   }
   L.circleMarker([PROP.lat, PROP.lon], { radius: 8, color: "#1C6B5C", weight: 3,
     fillColor: "#fff", fillOpacity: .95 }).addTo(m)
@@ -2263,7 +2442,7 @@ function panelHead(e, i) {
   const med = median(e.peers.map(p => V(p, i.key)));
   const inh = !s.cur.own;
   return `<div class="pnhead">
-    <b>${fmtOf(i)(s.cur.v)}${moeSpan(i, s.cur.v, moeOf(i, inh ? e.kommun : e.o))}</b>
+    <b>${fmtOf(i)(s.cur.v)}${(() => { const u = tileUnit(i); return u ? `<i class="hlu${u.charAt(0) === "/" ? " t" : ""}">${esc(u)}</i>` : ""; })()}${moeSpan(i, s.cur.v, moeOf(i, inh ? e.kommun : e.o))}</b>
     ${inh ? `<span class="inh">${esc(e.kommun ? e.kommun.name : "municipality")} — municipality figure</span>` : ""}
     ${s.yoy != null ? `<span><i class="${cls(s.yoy, i.key)}">${signed(s.yoy, 1, deltaUnit(i))}</i> y/y</span>` : ""}
     ${s.rk ? `<span title="among the ${s.rk.n} ${esc(e.peerLabel)} with a figure${lowerBetter(i) ? ", lowest first" : s.rk.neutral ? ", highest first — this indicator has no better end" : ", highest first"}">#${s.rk.r} of ${s.rk.n}</span>` : ""}
@@ -2359,13 +2538,17 @@ function chartPanel(e, i) {
    of dashes. The note says what the reader is looking at and how to leave it. */
 function studyRow(e, i, key) {
   const only = mapOnly();
+  const ko = only ? null : (key === "area" ? arKomOnly(e, i) : propKomOnly(e, i));
   return `<div class="studyrow${only ? " maponly" : ""}" data-testid="study-row">
     ${only ? "" : chartPanel(e, i)}
     <div class="card mapwrap minicard${only ? " maponly" : ""}" data-mini="${esc(key)}" data-testid="minimap">
       <div id="${key === "area" ? "armap" : "propmap"}"></div>
       <button class="mfull" data-minifull="${esc(key)}" data-testid="minimap-full" title="Full screen (Esc closes)">⤢</button>
       <div class="maplegend small" id="${key === "area" ? "arlegend" : "proplegend"}"></div>
-      ${only ? `<div class="monote" data-testid="maponly-note">${esc(MAP_ONLY_LINE)}</div>` : ""}
+      ${only ? `<div class="monote" data-testid="maponly-note">${esc(MAP_ONLY_LINE)}</div>`
+        : ko ? `<div class="monote ko" data-testid="kommun-only-note"
+            title="${esc(`${i.label} is published per kommun and no finer. ${ko.kom.name} is filled with its own figure; its ${ko.lvl === "deso" ? "DeSO" : "RegSO"} areas are drawn as outlines.`)}"
+            >${esc(KOMMUN_ONLY_LINE)}</div>` : ""}
     </div>
   </div>`;
 }
@@ -2428,35 +2611,46 @@ function arMapInit() {
   /* Built from vk, the same accessor the fill uses. Building it from the areas'
      OWN values instead left a RegSO page showing a kommun-level indicator with a
      legend that said "no data" over polygons that were all drawn in one colour. */
-  const sc = kommuneLevel ? scaleOf(MUNI, m => V(m, sind.key), null, sind)
+  /* a kommun-only indicator with sub-areas on screen: the kommun is filled with its own
+     figure and they are outlines over it, exactly as on the big map */
+  const only = mapOnly();
+  const kof = only ? null : (() => { const k = arKomOnly(e, ind); return k ? Object.assign(komFillPoly(k.kom, sind), k) : null; })();
+  const sc = kof ? kof.sc
+    : kommuneLevel ? scaleOf(MUNI, m => V(m, sind.key), null, sind)
     : scaleOf(ctx.filter(a => vk(a) != null), vk, null, sind);
+  if (kof) kof.poly.addTo(map);
   const own = e.type === "kommun" ? e.ctx : e.own;
   const outline = e.type !== "kommun";
   /* Map only on a mini-map: the same outlines, and the area the page is about keeps
      its heavier stroke so the reader can still see which one it is. `sind` is null
      for Map only, so the legend below is skipped on its own. */
-  const only = mapOnly();
   ctx.forEach(a => {
     const isOwn = own.includes(a); const t = sc.t(vk(a));
     /* "own" on a kommun page is every sub-area of the kommun, so the heavier
        stroke is only for the page of ONE area — giving 127 RegSO a 2.6 px outline
        turns the city into a black mesh. */
     const heavy = isOwn && e.type !== "kommun";
-    const w = only ? (heavy ? 2.4 : moWeight(useQ ? "deso" : "regso")) : null;
+    const w = only ? (heavy ? 2.4 : moWeight(useQ ? "deso" : "regso"))
+      : kof ? (heavy ? 2.2 : koWeight(useQ ? "deso" : "regso")) : null;
     const p = only
       ? L.polygon(a.rings, Object.assign(moStyle(w), heavy ? { color: MO_HOVER, opacity: 1 } : {}))
+      : kof
+      ? L.polygon(a.rings, Object.assign(koStyle(w), heavy ? { color: MO_HOVER, opacity: 1 } : {}))
       : L.polygon(a.rings, { color: isOwn && (outline || kommuneLevel) ? "#141C18" : "#FFFFFF", smoothFactor: 0.25, weight: isOwn && outline ? 2.6 : isOwn && kommuneLevel ? 1.2 : kommuneLevel ? 1.5 : useQ ? 0.4 : 0.8,
       fillColor: t == null ? "#C4CBC4" : (sc.color ? sc.color(t) : mkShade(t, ind.key, sc)), fillOpacity: isOwn ? .85 : kommuneLevel ? .35 : .45 });
     const v = vk(a); const native = kommuneLevel || (sind && V(a, sind.key) != null);
     const label = kommuneLevel ? (byCode[a.kommun] || {}).name : a.name;
-    p.bindTooltip(`<b>${esc(label)}</b>${!only && v != null ? `<br>${esc(sind.short || sind.label)}: ${fmtOf(sind)(v)}${native ? "" : " °"}` : ""}`);
+    /* no value in the tooltip where the value would be the kommun's, repeated per area */
+    p.bindTooltip(`<b>${esc(label)}</b>${!only && !kof && v != null ? `<br>${esc(sind.short || sind.label)}: ${fmtOf(sind)(v)}${native ? "" : " °"}` : ""}`);
     if (!isOwn) { p.on("click", () => go(withQ(kommuneLevel ? pageOf(byCode[a.kommun]) : pageOf(a))));
-      p.on("mouseover", () => p.setStyle(only ? moHover(w) : { weight: 2.2, color: "#141C18" }));
-      p.on("mouseout", () => p.setStyle(only ? moStyle(w) : { weight: kommuneLevel ? 0.6 : 1, color: "#FFFFFF" })); }
+      p.on("mouseover", () => p.setStyle(only ? moHover(w) : kof ? koHover(w) : { weight: 2.2, color: "#141C18" }));
+      p.on("mouseout", () => p.setStyle(only ? moStyle(w) : kof ? koStyle(w) : { weight: kommuneLevel ? 0.6 : 1, color: "#FFFFFF" })); }
     else if (e.type === "kommun" && !kommuneLevel) { p.on("click", () => go(withQ(pageOf(a)))); }
     p.addTo(map);
   });
-  if (sind && !only) setLegend("arlegend", sc, sind, ind.key, kommuneLevel ? "kommuner" : useQ ? "DeSO" : "RegSO");
+  if (sind && !only) setLegend("arlegend", sc, sind, ind.key,
+    kof ? `<b>${esc(KOMMUN_ONLY_LINE)}</b> · ${esc(kof.kom.name)} filled`
+      : kommuneLevel ? "kommuner" : useQ ? "DeSO" : "RegSO");
   const b = boundsOf(own); if (b) map.fitBounds(b, { padding: kommuneLevel ? [90, 90] : e.type === "kommun" ? [10, 10] : [70, 70], maxZoom: kommuneLevel ? 9 : 13 });
 }
 
@@ -2541,15 +2735,28 @@ function lfLayers() {
   const sub = drill && desoMode() ? "deso" : drill ? "regso" : null;
   const shapes = !drill ? MUNI : muniAreas(MK.kommun);
   const hasOwn = !sub || (ind.levels || []).includes(sub);
-  /* Map only is part of the level key: switching the fill off has to rebuild the
-     polygons, not just relabel them. */
-  LF.level = (sub || "national") + (MK.kommun || "") + (only ? ":only" : "");
+  /* a kommun-level figure with sub-areas on screen: the kommun is filled, they are not */
+  const komOnly = kommunOnlyMap();
+  /* Map only and kommun-only are part of the level key: switching the fill off, or
+     over to the kommun, has to rebuild the polygons, not just relabel them. */
+  LF.level = mapLevelKey();
   if (LF.areaG) LF.map.removeLayer(LF.areaG);
   if (LF.labG) LF.map.removeLayer(LF.labG);
   const vk = o => V(o, ind.key);
   const scalePool = !drill ? MUNI : shapes.filter(a => hasOwn && vk(a) != null);
+  /* kommun-only reads its colour off the 290 kommuner, which is the comparison the
+     one figure on screen actually belongs to */
   const sc = only ? MO_SCALE : scaleOf(scalePool.length ? scalePool : MUNI, vk, null, ind);
   const polys = [];
+  const kom = drill ? byCode[MK.kommun] : null;
+  if (komOnly && kom && (kom.rings || []).length) {
+    const kt = sc.t(vk(kom));
+    /* first into the group, so the outlines above take the clicks; `interactive:false`
+       because this polygon covers exactly the same ground as all of them together */
+    polys.push(L.polygon(kom.rings, { className: "ko-fill", color: "#FFFFFF", weight: 1.6,
+      fillColor: kt == null ? "#C4CBC4" : (sc.color ? sc.color(kt) : mkShade(kt, ind.key, sc)),
+      fillOpacity: .72, smoothFactor: 0.25, interactive: false }));
+  }
   shapes.forEach(a => {
     const m = drill ? byCode[a.kommun] : a;
     /* falling back to the kommun's value tints every sub-area with it; an
@@ -2559,27 +2766,30 @@ function lfLayers() {
     const t = src ? sc.t(vk(src)) : null;
     /* thinner the finer the level: a 1.5 px stroke that reads as a border between
        kommuner turns into a white haze over a kommun's worth of DeSO. */
-    const w = only ? moWeight(sub) : (!drill ? 1.5 : sub === "deso" ? 0.4 : 0.8);
+    const w = only ? moWeight(sub) : komOnly ? koWeight(sub) : (!drill ? 1.5 : sub === "deso" ? 0.4 : 0.8);
     const fill = t == null ? "#C4CBC4" : (sc.color ? sc.color(t) : mkShade(t, ind.key, sc));
     /* smoothFactor is Leaflet dropping vertices within N screen pixels. At the
        default 1 it undoes the simplification budget the geometry was built to,
        and the angularity shows at close zoom. */
     const p = only ? L.polygon(a.rings, moStyle(w))
+      : komOnly ? L.polygon(a.rings, koStyle(w))
       : L.polygon(a.rings, { color: "#FFFFFF", weight: w, fillColor: fill, fillOpacity: .72, smoothFactor: 0.25 });
     p.bindPopup(() => drill ? lfPopup(a, m) : lfKommunPopup(a), { maxWidth: 560, maxHeight: 560, autoPanPadding: [24, 24] });
-    p.on("mouseover", () => p.setStyle(only ? moHover(w) : { weight: Math.max(2.2, w * 2), color: "#141C18" }));
-    p.on("mouseout", () => p.setStyle(only ? moStyle(w) : { weight: w, color: "#FFFFFF" }));
+    p.on("mouseover", () => p.setStyle(only ? moHover(w) : komOnly ? koHover(w) : { weight: Math.max(2.2, w * 2), color: "#141C18" }));
+    p.on("mouseout", () => p.setStyle(only ? moStyle(w) : komOnly ? koStyle(w) : { weight: w, color: "#FFFFFF" }));
     polys.push(p);
   });
   LF.areaG = L.layerGroup(polys).addTo(LF.map);
-  LF.ctx = { shapes, sc, sub, drill, hasOwn, ind, vk, only };
+  LF.ctx = { shapes, sc, sub, drill, hasOwn, ind, vk, only, komOnly, kom };
   lfLabels();
   /* No indicator, no key. The box is emptied rather than left standing, and
      `.maplegend:empty` in style.css is what keeps it from showing as a white bar. */
   if (only) { const el = document.getElementById("maplegend"); if (el) el.innerHTML = ""; ovLegends(); }
   else setLegend("maplegend", sc, ind, ind.key,
     !drill ? "kommuner · open one for its RegSO"
-           : sub === "deso" ? "DeSO" : (hasOwn ? "RegSO" : "RegSO · ° all take the kommun value"));
+      : komOnly ? `<b>${esc(KOMMUN_ONLY_LINE)}</b> · ${esc(kom ? kom.name : "the kommun")} is filled, its ${sub === "deso" ? "DeSO" : "RegSO"} are outlines`
+      : !hasOwn ? `not published per ${sub === "deso" ? "DeSO" : "RegSO"}`
+      : sub === "deso" ? "DeSO" : "RegSO");
   if (LF.ownG) { LF.map.removeLayer(LF.ownG); LF.ownG = null; }
   if (MK.own && D.portfolio) {
     const marks = D.portfolio.properties.filter(p => p.lat != null).map(p => {
@@ -2654,7 +2864,7 @@ function lfKommunPopup(m) {
 function lfLabels() {
   /* labels are rebuilt on every zoom step: a name is shown only when its polygon is wide enough on screen */
   if (!LF.map || !LF.ctx) return;
-  const { shapes, sc, sub, drill, hasOwn, ind, vk, only } = LF.ctx; const zoom = LF.map.getZoom(); const labs = [];
+  const { shapes, sc, sub, drill, hasOwn, ind, vk, only, komOnly, kom } = LF.ctx; const zoom = LF.map.getZoom(); const labs = [];
   if (LF.labG) LF.map.removeLayer(LF.labG);
   const px = ring => { const xs = [], ys = []; ring.forEach(q => { const c = LF.map.latLngToContainerPoint(q); xs.push(c.x); ys.push(c.y); }); return [Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)]; };
   if (drill) {
@@ -2664,7 +2874,10 @@ function lfLabels() {
       /* Map only: the name and nothing else. There is no value to print, and
          printing the dash a missing value renders as would be a figure that is not
          missing — it is not asked for. */
-      if (only) { labs.push(L.marker(centroid(mainRing(a)), { interactive: false,
+      /* kommun-only: the same, and for the same reason. Repeating one kommun figure
+         on forty sub-area labels is the misreading the mode exists to prevent; the
+         kommun's own value is printed once, on the kommun, below. */
+      if (only || komOnly) { labs.push(L.marker(centroid(mainRing(a)), { interactive: false,
         icon: L.divIcon({ className: "lflab", iconSize: null, html: `<b>${esc(a.name)}</b>` }) })); return; }
       const m = byCode[a.kommun]; const own = hasOwn && vk(a) != null;
       const v = own ? vk(a) : (noInherit(ind) ? null : (m ? vk(m) : null));
@@ -2672,6 +2885,13 @@ function lfLabels() {
       const name = w >= 120 && h >= 36 ? `<b>${esc(a.name)}</b><br>` : "";
       labs.push(L.marker(centroid(mainRing(a)), { interactive: false, icon: L.divIcon({ className: "lflab" + (dark ? " lflab-dark" : ""), iconSize: null, html: name + val }) }));
     });
+    /* the one figure there is, on the one area it is about, last so it sits on top */
+    if (komOnly && kom && mainRing(kom).length) {
+      const kv = vk(kom), kt = sc.t(kv), kdark = !sc.cats && kt != null && kt > .55;
+      labs.push(L.marker(centroid(mainRing(kom)), { interactive: false,
+        icon: L.divIcon({ className: "lflab lflab-kom" + (kdark ? " lflab-dark" : ""), iconSize: null,
+          html: `<b>${esc(kom.name)}</b><br>${kv != null ? fmtOf(ind)(kv) : "–"}` }) }));
+    }
   } else {
     /* kommuner: the 12 largest by name at the national zoom, the 40 largest with values once zoomed in */
     const big = MUNI.slice().sort((a, b) => (b.pop || 0) - (a.pop || 0)).slice(0, zoom < 6 ? 12 : 40);
@@ -4020,11 +4240,12 @@ function lfInit() {
     el.querySelectorAll("details").forEach(d => d.addEventListener("toggle", () => { const pp = ev.popup; if (pp._updateLayout) { pp._updateLayout(); pp._updatePosition(); pp._adjustPan(); } })); });
   map.on("zoomend", () => {
     /* rebuild polygons only when the display level changes — rebuilding on every pan would kill open popups */
-    const lvl = (MK.kommun ? (desoMode() ? "deso" : "regso") : "national") + (MK.kommun || "");
     /* `fine` was a variable in the zoom-decides-the-level code that v1.0 replaced;
        the reference survived, so every zoomend threw and labels stopped being
-       rebuilt. Labels are sized against the screen, so they are always redone. */
-    if (lvl !== LF.level) lfLayers(); else lfLabels();
+       rebuilt. Labels are sized against the screen, so they are always redone.
+       The key comes from mapLevelKey() on both sides — spelling it out here without
+       the mode suffix made every zoom step in Map only rebuild the polygons. */
+    if (mapLevelKey() !== LF.level) lfLayers(); else lfLabels();
     lfOverlays();
   });
   /* one canvas renderer per map, in its own pane under the popups — a thousand
@@ -4076,11 +4297,13 @@ function chEntity(id) {
   const [t, c] = id.split(":");
   if (t === "kommun" && byCode[c]) return { id, type: t, o: byCode[c], name: byCode[c].name, inds: IND, peers: MUNI, peerLabel: "municipalities" };
   if (t === "regso" && byRegso[c]) return { id, type: t, o: byRegso[c], name: byRegso[c].name, inds: IND, peers: AREAS, peerLabel: "RegSO areas", kommun: byCode[byRegso[c].kommun] };
-  if (t === "deso" && byDeso[c]) return { id, type: t, o: byDeso[c], name: byDeso[c].code.split("_")[0], inds: IND, peers: desoAreas(byDeso[c].kommun), peerLabel: "DeSO areas" };
+  if (t === "deso" && byDeso[c]) return { id, type: t, o: byDeso[c], name: byDeso[c].code.split("_")[0], inds: IND, peers: desoAreas(byDeso[c].kommun), peerLabel: "DeSO areas", kommun: byCode[byDeso[c].kommun] };
   return null;
 }
 function chartAdd(id, text) {
-  if (!id && text) { const q = text.trim(); const o = AREA_OPTS.find(x => x.t === q) || AREA_OPTS.find(x => x.k.some(k => k === q.toLowerCase())) || AREA_OPTS.find(x => x.k.some(k => k.startsWith(q.toLowerCase())));
+  /* the datalist offers the exact name, so that is tried first; anything else goes
+     through the same ranked, diacritic-insensitive match the search box uses */
+  if (!id && text) { const q = text.trim(); const o = AREA_OPTS.find(x => x.t === q) || SC.match(AREA_OPTS, q, 1)[0];
     if (!o) return; id = o.h.startsWith("map/") ? "kommun:" + o.h.slice(4) : o.h.replace("area/", "").replace("/", ":"); }
   if (!id || CH.areas.includes(id) || CH.areas.length >= 8) return;
   CH.areas.push(id); syncHash(); renderKeep();
@@ -4151,8 +4374,8 @@ function chartSeries() {
   }
   const series = ents.map((e, k) => { const own = e.inds.some(i => i.key === ind.key);
     const val = y => { if (q) return chQVal(e.o, ind.key, y);
-      const v = V(e.o, ind.key, y); if (v != null) return v; return e.type === "regso" && e.kommun ? V(e.kommun, ind.key, y) : null; };
-    return { name: e.name, color: CH_COLORS[k % CH_COLORS.length], pts: ys.map(y => ({ y, v: own ? val(y) : null })), inherited: e.type === "regso" && V(e.o, ind.key) == null && e.kommun && V(e.kommun, ind.key) != null }; });
+      const v = V(e.o, ind.key, y); if (v != null) return v; const m = subKommun(e); return m && canInherit(ind.key) ? V(m, ind.key, y) : null; };
+    return { name: e.name, color: CH_COLORS[k % CH_COLORS.length], pts: ys.map(y => ({ y, v: own ? val(y) : null })), inherited: !!subKommun(e) && V(e.o, ind.key) == null && V(subKommun(e), ind.key) != null }; });
   if (CH.median) { const pool = ents.length && ents.every(e => e.type === "deso") ? allDeso() : ents.length && ents.every(e => e.type === "regso") ? AREAS : MUNI;
     series.push({ name: pool === MUNI ? "Sweden — median of kommuner" : pool === AREAS ? "Sweden — median of RegSO" : "Median of DeSO", color: "#8A8C81", dash: true,
       pts: ys.map(y => ({ y, v: median(pool.map(p => q ? chQVal(p, ind.key, y) : V(p, ind.key, y))) })) }); }
@@ -4304,8 +4527,8 @@ function vCharts() {
     <div class="chips">${ents.map((e, k) => `<span class="chip" style="border-color:${CH_COLORS[k % CH_COLORS.length]}"><i style="background:${CH_COLORS[k % CH_COLORS.length]}"></i>${esc(e.name)}${!e.inds.some(i => i.key === ind.key) ? ' <em title="indicator not available at this level">n/a</em>' : ""}<button data-chrm="${esc(e.id)}" title="remove">×</button></span>`).join("")}</div>
     <div class="tfilters"><label class="hint" style="flex:1;display:flex;gap:8px;align-items:center">title <input id="chtitle" type="text" value="${esc(CH.title)}" placeholder="${esc(chartAutoTitle())}" style="flex:1;min-width:200px"></label>
       <button class="lk primary" data-chpng>⤓ Download PNG</button><button class="lk" data-chcsv>⤓ Data CSV</button><span class="hint">link: copy the address bar — it holds the whole setup</span></div>
-    <div class="chartbox">${ents.length ? chartSvg(true) : `<div class="chempty"><b>Nothing to plot yet</b><p>Type a kommun or RegSO in the box above (up to 8), or start with a set:</p>
-      <div class="tools">${quick.map(([l, ids]) => `<button class="lk" data-chadd="${ids.join("|")}">+ ${l}</button>`).join("")}</div>
+    <div class="chartbox">${ents.length ? chartSvg(true) : `<div class="chempty" data-testid="chart-empty"><b>Nothing to plot</b><p>The selection is empty. Type a kommun or RegSO in the box above (up to 8), or start with a set:</p>
+      <div class="tools"><button class="lk primary" data-chadd="${CH_DEFAULT_AREAS.join("|")}" data-testid="chart-default">+ the default four</button>${quick.map(([l, ids]) => `<button class="lk" data-chadd="${ids.join("|")}">+ ${l}</button>`).join("")}</div>
       <p class="dim">Tip: every area page and table row has a ↗ that opens it here with the indicator pre-selected.</p></div>`}</div>
     <p class="cap">${esc(ind.desc || "")} ${ind.warn ? "⚠ " + esc(ind.warn) : ""} Same sub-period each year (e.g. Q3 or July); values are those shown in the dashboard.</p>
   </div>

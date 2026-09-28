@@ -35,6 +35,9 @@ const tpJs = fs.readFileSync(path.join(ROOT, "src", "testprop.js"), "utf8");
    page, in that order, and app.js reads window.ROUTE_CORE at module scope — so
    the sandbox has to load them in the same order. */
 const routeJs = fs.readFileSync(path.join(ROOT, "src", "route_core.js"), "utf8");
+/* search_core.js is inlined between them (v2.1 P3): app.js builds AREA_OPTS through
+   window.SEARCH_CORE.keysFor at module scope, so it has to be in the sandbox first. */
+const searchJs = fs.readFileSync(path.join(ROOT, "src", "search_core.js"), "utf8");
 const viewJs = fs.readFileSync(path.join(ROOT, "src", "listings", "view.js"), "utf8");
 const exportJs = fs.readFileSync(path.join(ROOT, "src", "export_core.js"), "utf8");
 
@@ -115,6 +118,7 @@ const EXPORTS = "\n;globalThis.__app = { D, S, MK, AR, T, CH, PROP, LAY, DT, vMa
 try {
   vm.runInContext(tpJs, sandbox, { filename: "testprop.js" });
   vm.runInContext(routeJs, sandbox, { filename: "route_core.js" });
+  vm.runInContext(searchJs, sandbox, { filename: "search_core.js" });
   vm.runInContext(viewJs, sandbox, { filename: "listings/view.js" });
   vm.runInContext(exportJs, sandbox, { filename: "export_core.js" });
   vm.runInContext(appJs + EXPORTS, sandbox, { filename: "app.js" });
