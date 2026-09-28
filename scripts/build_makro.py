@@ -364,10 +364,60 @@ def polisen_uso() -> dict:
     return dict(out)
 
 
+# Which periods Brå has published as preliminary, per file, filled by bra_csv().
+# A separate dict rather than a sixth element on every tuple: the flag is a
+# property of the PERIOD, not of one kommun's value, and it travels to the page
+# as a list so the UI can badge the option and the "as of" line with "prel.".
+BRA_PREL: dict[str, set[str]] = {}
+
+
+def infra_payload() -> dict:
+    """The curated project list, plus WHY a blank budget is blank.
+
+    A blank budget_msek in data/external/infra_se.csv is deliberate — the four
+    nya tunnelbanan extensions are funded as one 55.5 bn SEK programme and no
+    per-line figure exists anywhere. The page used to render that as a bare "–",
+    which reads as a hole in this dashboard rather than as a fact about the
+    source. data/external/infra_budget_state.csv says which of the two it is, per
+    project, with the sentence the source's own page supports; nothing is
+    invented, apportioned or converted. A project with a blank budget and no row
+    there defaults to `not_published`."""
+    ip = PROC / "infra_index.json"
+    if not ip.exists():
+        return {"projects": []}
+    payload = json.loads(ip.read_text(encoding="utf-8"))
+    state: dict[str, tuple[str, str]] = {}
+    sp = EXT / "infra_budget_state.csv"
+    if sp.exists():
+        with sp.open(encoding="utf-8") as fh:
+            for line in fh:
+                line = line.rstrip("\n")
+                if not line or line.startswith("#") or line.startswith("id;"):
+                    continue
+                parts = line.split(";")
+                if len(parts) >= 2:
+                    state[parts[0].strip()] = (parts[1].strip(), ";".join(parts[2:]).strip())
+    unknown = sorted(set(state) - {p.get("id") for p in payload.get("projects") or []})
+    if unknown:
+        warn(f"infra_budget_state.csv names project(s) that do not exist: {unknown}")
+    for p in payload.get("projects") or []:
+        if p.get("budget_msek") is not None:
+            continue
+        st, note = state.get(p.get("id"), ("not_published", ""))
+        if st not in ("programme", "not_published"):
+            warn(f"{p.get('id')}: budget state '{st}' is not programme|not_published")
+            st = "not_published"
+        p["budget_state"] = st
+        p["budget_note"] = note or (p.get("notes") or "")
+    return payload
+
+
 def bra_csv(name: str) -> dict:
     """data/external/<name>.csv -> {key: {period: {kommun: (count, per100k)}}}."""
     p = EXT / f"{name}.csv"
     out: dict = collections.defaultdict(lambda: collections.defaultdict(dict))
+    prel: set = set()
+    BRA_PREL[name] = prel
     if not p.exists():
         return {}
     with p.open(encoding="utf-8") as fh:
@@ -377,6 +427,8 @@ def bra_csv(name: str) -> dict:
             if len(r) < 5:
                 continue
             code, period, key, cnt, rate = (x.strip() for x in r[:5])
+            if len(r) > 5 and r[5].strip():
+                prel.add(period)
             try:
                 c = float(cnt)
             except ValueError:
@@ -863,6 +915,14 @@ def main() -> int:
             m = meta_of(ind, {"kommun": last}, {y: {"kommun": y} for y in years})
             if qper:
                 m["q_periods"] = qper
+                # every quarter is ONE quarter, never a rolling four-quarter sum
+                m["q_kind"] = "single"
+                prel = sorted(BRA_PREL.get("bra_crime_quarterly", set()) & set(qper))
+                if prel:
+                    m["q_prel"] = prel
+            yprel = sorted(BRA_PREL.get("bra_crime", set()) & set(years))
+            if yprel:
+                m["prel_periods"] = yprel
             if calc == "bra_per_1000_dwellings":
                 m["denominator"] = f"SCB TAB824 dwelling stock, {dw_year}"
             indicators_out.append(m)
@@ -1089,8 +1149,7 @@ def main() -> int:
         },
         "indicators": indicators_out,
         # Pipeline and the Infrastructure overlay read this list directly
-        "infra": (json.loads((PROC / "infra_index.json").read_text(encoding="utf-8"))
-                  if (PROC / "infra_index.json").exists() else {"projects": []}),
+        "infra": infra_payload(),
         # the Services / Public buildings overlays
         "services_meta": (json.loads((PROC / "services.json").read_text(encoding="utf-8"))
                           if (PROC / "services.json").exists() else {}),
@@ -1102,9 +1161,13 @@ def main() -> int:
                           if (PROC / "schools.json").exists() else {}).get("index", {}),
         "schools_meta": (json.loads((PROC / "schools.json").read_text(encoding="utf-8"))
                          if (PROC / "schools.json").exists() else {}).get("meta", {}),
-        # shared by every verify-at-source link on a monthly or quarterly table:
-        # a year is not a Tid code there, so the page needs the real period codes
-        "src_periods": src_periods,
+        # Shared by every verify-at-source link on a monthly or quarterly table:
+        # a year is not a Tid code there, so the page needs the real period codes.
+        # srcPeriods() in app.js only ever matches a period against a year the
+        # reader can select, so the lists are cut to the years this build holds —
+        # CPI's ran monthly back to 1980M01 and 45 years of it were dead weight.
+        "src_periods": {t: [p for p in codes if p[:4] >= years_sorted[0]]
+                        for t, codes in src_periods.items()},
         "kommuner": sorted(kommuner.values(), key=lambda m: -(m.get("pop") or 0)),
         "regso": sorted(regso.values(), key=lambda a: a["code"]),
         "deso_index": index,
@@ -1116,6 +1179,40 @@ def main() -> int:
     for w in warnings:
         print("  ⚠", w)
     return 0
+
+
+# SCB marks a not-yet-final period in prose only: a table-level note that either
+# names the year it starts ("The figures from 2026 are preliminary.") or says the
+# whole table is preliminary ("… Preliminary statistics. Month 2020M01-2026M06").
+# Both are read off the metadata the fetcher recorded — never inferred from how
+# new a period looks — and travel to the page, which badges the period "prel.".
+PREL_FROM = re.compile(r"figures\s+from\s+(\d{4})\s+are\s+preliminary", re.I)
+PREL_ALL = re.compile(r"preliminary statistics", re.I)
+
+
+def ind_prel(ind: dict) -> dict:
+    """-> {"prel": {geo: "all" | "<first preliminary year>"}} or {}.
+
+    Per geography, because an indicator is often two tables: unemployment is
+    preliminary at kommun (TAB6260, "Preliminary statistics") and final at
+    RegSO/DeSO (TAB6680). Badging the whole indicator would put "prel." on a
+    figure that is not."""
+    out: dict[str, str] = {}
+    for s in ind.get("sources") or []:
+        if s.get("db") not in (None, "scb") or s.get("role") == "denominator":
+            continue
+        t = s.get("table")
+        if not t:
+            continue
+        geo = s.get("geo") or ind.get("level") or "kommun"
+        m = table_meta(t)
+        blob = " ".join([str(m.get("label") or "")] + [str(x) for x in (m.get("note") or [])])
+        hit = PREL_FROM.search(blob)
+        if hit:
+            out[geo] = hit.group(1)
+        elif PREL_ALL.search(blob):
+            out[geo] = "all"
+    return {"prel": out} if out else {}
 
 
 def meta_of(ind: dict, asof: dict, hist_asof: dict) -> dict:
@@ -1136,6 +1233,7 @@ def meta_of(ind: dict, asof: dict, hist_asof: dict) -> dict:
                 "note": ind.get("note", ""), "moe": bool(ind.get("moe")),
                 "moe_rel": (ind.get("moe") or {}).get("suppress_if_rel_gt"),
                 "asof": asof, "hist_asof": hist_asof})
+    out.update(ind_prel(ind))
     return out
 
 

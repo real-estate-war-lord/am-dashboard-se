@@ -62,8 +62,9 @@ menu, two pages became one Test property, and four exporters became one schema.
   a different claim about the same number.
 - **One period control**, in whichever of four modes the indicator needs, and labelled
   with **its** latest period rather than the dashboard's. The quarterly toggle is real:
-  reported offences are published as a rolling four-quarter sum, and `y=2025K4` is a
-  period like any other.
+  reported offences are published per quarter — each point is one quarter as Brå wrote
+  it, never a rolling sum — and `y=2025K4` is a period like any other. A quarter the
+  publisher has not finalised is badged **prel.**
 - **The area page is a study row** — the chart panel and a draggable mini-map, same
   height, one indicator at a time — with the 13-group KEY FIGURES block gone and four
   toggles whose open state is in the URL. Below kommun level an inherited figure says

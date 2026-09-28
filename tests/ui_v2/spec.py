@@ -497,9 +497,12 @@ def phase7(r: Report, page, errs, calls) -> None:
 
 def phase8(r: Report, page, errs) -> None:
     r.head("P8", "one export model")
+    # v2.1 P1 inserted `value_label` after `value` so a coded indicator (Boverket
+    # BME) exports −1/0/1 AND Shortage/Balance/Surplus. Logged in
+    # docs/v2_1/DECISIONS.md; tests/export.test.js asserts the same order.
     LONG = ("level;code;name;parent_code;parent_name;lan;population;indicator;label;unit;period;"
-            "period_type;value;margin_of_error;value_type;inherited_from;direction;source;table_id;"
-            "source_url;as_of;fetched;licence")
+            "period_type;value;value_label;margin_of_error;value_type;inherited_from;direction;"
+            "source;table_id;source_url;as_of;fetched;licence")
     hop(page, "#data/areas/kommun")
     open_menu(page, "export-btn")
     items = page.eval_on_selector_all("[data-testid=export-menu] [data-export]",

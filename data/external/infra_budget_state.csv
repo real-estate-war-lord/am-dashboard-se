@@ -1,0 +1,18 @@
+id;state;note
+# Why a project in infra_se.csv has a blank budget_msek. The blank is deliberate:
+# no figure is invented, apportioned or converted anywhere in this pipeline. Two
+# states only —
+#   programme      the project is funded inside a larger programme and the source
+#                  publishes no cost for it on its own
+#   not_published  the source states no cost at all
+# A project with a blank budget and no row here defaults to not_published.
+# Hand-curated alongside infra_se.csv; the note is what the source's own page says.
+# `;` is the separator, so a note never contains one.
+hogdalsdepan;programme;Enabling works for the metro extensions. Region Stockholm publishes no cost for the depot on its own — it sits inside the 55.5 bn SEK (2016 price level) nya tunnelbanan programme.
+tunnelbana-akalla-barkarby;programme;The project page states no per-line budget. The 55.5 bn SEK (2016 price level) figure covers all of nya tunnelbanan.
+tunnelbana-kungstradgarden-nacka;programme;Funded inside the 55.5 bn SEK (2016 price level) nya tunnelbanan programme. Nacka and Söderort share one project page and no per-line cost is published.
+tunnelbana-odenplan-arenastaden;programme;Funded inside the 55.5 bn SEK (2016 price level) nya tunnelbanan programme. No per-line cost is published.
+tunnelbana-soderort;programme;Funded inside the 55.5 bn SEK (2016 price level) nya tunnelbanan programme. No per-line cost is published.
+karlstad-c-ombyggnad;not_published;Trafikverket's project page states no cost for the rebuild.
+uppsala-sparvag;not_published;The overview page states no cost. Uppsala kommun's decisions carry figures for phases, not one project total, and none is published on the page this row cites.
+vastlanken;not_published;Trafikverket's project page states no cost. The programme figures that circulate come from other documents and are in other price bases.

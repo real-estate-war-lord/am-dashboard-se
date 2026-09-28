@@ -44,8 +44,15 @@ const nf = (n, d = 1) => (n == null || isNaN(n)) ? "–" : Number(n).toLocaleStr
    once (so a format that prints its own sign cannot produce "++6,8 %"), and the
    unit comes after it: `+0,4 pp`, `−5,9 %`. `pp` for a change in a share, `%`
    for a change in a level — the caller picks, `unitFor` below decides. */
-const signed = (v, d = 1, unit = "") => v == null || isNaN(v) ? "–"
-  : (v > 0 ? "+" : v < 0 ? "−" : "") + nf(Math.abs(v), d) + (unit ? " " + unit : "");
+const signed = (v, d = 1, unit = "") => {
+  if (v == null || isNaN(v)) return "–";
+  const a = Math.abs(v);
+  /* A change that rounds to zero at this precision is not "−0,0". The sign
+     claims a direction the printed number does not support, and "−0,0 %"
+     appeared on the National tiles for a series that had barely moved. */
+  const zero = a < 0.5 / Math.pow(10, d);
+  return (zero ? "" : v > 0 ? "+" : "−") + nf(a, d) + (unit ? " " + unit : "");
+};
 /* the unit a y/y or "since" change is expressed in for this indicator */
 const deltaUnit = i => (isPct(i) ? "pp" : "%");
 const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -152,8 +159,9 @@ const chartLink = (key, type, code) => `charts?ind=${encodeURIComponent(key)}&a=
 /* value of indicator k for kommun/area o in the selected year (latest = live field, else history) */
 const V = (o, k, y) => {
   const yr = y || MK.year; if (!o) return null;
-  /* a quarter reads the rolling four-quarter series, a year the yearly one —
-     the period carries its own kind, so nothing else has to branch */
+  /* a quarter reads the quarterly series, a year the yearly one — the period
+     carries its own kind, so nothing else has to branch. Each quarterly point is
+     ONE quarter as Brå publishes it, never a rolling four-quarter sum. */
   if (yr && /K\d/.test(yr)) { const q = o.q && o.q[k]; return q && q[yr] != null ? q[yr] : null; }
   if (!yr || yr === LATEST) return o[k] ?? null;
   const h = o.hist && o.hist[k]; return h && h[yr] != null ? h[yr] : null;
@@ -303,7 +311,7 @@ function parseHash() {
   }
   if (!curInds().some(i => i.key === MK.ind)) MK.ind = (curInds()[0] || {}).key;
   if (MK.fq === "q" && !quarterly(curInd())) MK.fq = "year";
-  if (!curPeriods().includes(MK.year)) MK.year = LATEST;
+  if (!curPeriods().includes(MK.year)) MK.year = newestPeriod();
   if (S.view === "makro") {
     /* an explicit camera in the hash wins over the automatic fit */
     const cc = (q.c || "").split(",").map(Number);
@@ -412,6 +420,31 @@ function render() {
 }
 function renderKeep() { const m = document.getElementById("main"), y = m.scrollTop; render(); m.scrollTop = y; }
 
+/* ---------- what to do when a lazily loaded file arrives ----------
+   Two kinds of view read these files. A map view draws them as layers, so the
+   overlays and their legends are repainted and the page is left alone. Test
+   property reads them as TEXT — the Services table, the six nearest schools, the
+   Infrastructure rows — which is built during render, so the page itself has to
+   be rendered again or the section stays on "Loading…" for ever.
+
+   This is one helper, called from every loader, because v2.0 renamed the pin view
+   from "analysis" to "property" and left four `S.view === "analysis"` checks
+   behind: Schools and Infrastructure never left "Loading…", and Services showed
+   0 in every category on a pin that has 31 groceries within a kilometre.
+
+   The re-render is coalesced: a pin near a kommun boundary loads up to a dozen
+   files and each one would otherwise rebuild the whole page. */
+const isPinView = () => S.view === "property";
+let LAZY_T = null;
+function afterLazyLoad() {
+  if (!isPinView()) { lfOverlays(); ovLegends(); return; }
+  if (LAZY_T) return;
+  LAZY_T = setTimeout(() => {
+    LAZY_T = null;
+    if (isPinView()) renderKeep(); else { lfOverlays(); ovLegends(); }
+  }, 120);
+}
+
 /* ---------- the Leaflet teardown registry ----------
    Every map this app creates is registered here and every one of them is removed
    before #body is replaced. Without it a map whose DOM is gone keeps receiving
@@ -517,7 +550,7 @@ document.addEventListener("click", e => {
   if ((el = g("[data-zones]"))) { ZN.off = !ZN.off; LF.climDrawn = false; syncHash(); renderKeep(); return; }
   if ((el = g("[data-lstgroup]"))) { lstToggle(LST.filters.groups, el.dataset.lstgroup); return; }
   if (g("[data-lstretry]")) { lstRetry(); return; }
-  if (g("[data-lstretrypin]")) { LST.error = null; LST.pins.clear(); lstSectionRefresh(); return; }
+  if (g("[data-lstretrypin]")) { LST.error = null; LST.pins.clear(); LST.pinFails.clear(); lstSectionRefresh(); return; }
   if (g("[data-lstshow]")) { LST.open = !LST.open; syncHash(); lstSectionRefresh(); return; }
   if (g("[data-lstcsv]")) { lstCsv(); return; }
   if ((el = g("[data-lstalloc]"))) { lstToggle(LST.filters.allocation, el.dataset.lstalloc); return; }
@@ -555,13 +588,13 @@ document.addEventListener("click", e => {
   if ((el = g("[data-arsub]"))) { AR.sub = el.dataset.arsub; syncHash(); renderKeep(); return; }
   if ((el = g("[data-indq]"))) { MK.ind = el.dataset.indq;
     if (MK.fq === "q" && !quarterly(curInd())) MK.fq = "year";
-    if (!curPeriods().includes(MK.year)) MK.year = LATEST; syncHash(); renderKeep(); return; }
+    if (!curPeriods().includes(MK.year)) MK.year = newestPeriod(); syncHash(); renderKeep(); return; }
   if ((el = g("[data-pick]"))) { const [sc, ...rest] = el.dataset.pick.split(":"); pickerPick(sc, rest.join(":")); return; }
-  if ((el = g("[data-fq]"))) { MK.fq = el.dataset.fq; MK.year = LATEST; syncHash(); renderKeep(); return; }
+  if ((el = g("[data-fq]"))) { MK.fq = el.dataset.fq; MK.year = newestPeriod(); syncHash(); renderKeep(); return; }
   if (g("[data-mftoggle]")) { UI.mfOpen = !UI.mfOpen; const p = document.getElementById("mfpanel"), b = g("[data-mftoggle]"); if (p) p.style.display = UI.mfOpen ? "" : "none"; if (b) b.classList.toggle("on", UI.mfOpen); return; }
   if ((el = g("[data-arind]"))) { MK.ind = el.dataset.arind;
     if (MK.fq === "q" && !quarterly(curInd())) MK.fq = "year";
-    if (!curPeriods().includes(MK.year)) MK.year = LATEST; syncHash(); renderKeep(); return; }
+    if (!curPeriods().includes(MK.year)) MK.year = newestPeriod(); syncHash(); renderKeep(); return; }
   if ((el = g(".im"))) { tipToggle(el); return; }
   tipHide();
 });
@@ -888,7 +921,7 @@ function pickerRefresh() {
 function pickerPick(sc, key) {
   UI.menu = null; UI.pickQ = "";
   if (sc === "chart") CH.ind = key;
-  else { MK.ind = key; if (!curPeriods().includes(MK.year)) MK.year = LATEST; }
+  else { MK.ind = key; if (!curPeriods().includes(MK.year)) MK.year = newestPeriod(); }
   syncHash(); renderKeep();
 }
 function pickerEnter() {
@@ -992,7 +1025,12 @@ function searchEnter() {
   const res = searchResults(SR.q);
   if (res.length) searchGo(res[Math.min(SR.sel, res.length - 1)].h);
 }
+/* The selected quarter IS the as-of. hist_asof is keyed by year, so a quarter
+   fell through to the yearly stamp and the card said "2025" under a 2026K2 map. */
+const asofOne = i => (isQuarter(MK.year) && qPeriodsOf(i).includes(MK.year)) ? MK.year : null;
 function asofText(i) {
+  const q = asofOne(i);
+  if (q) return `kommuner: ${esc(q)}`;
   const asofSrc = (MK.year !== LATEST && i.hist_asof && i.hist_asof[MK.year]) ? i.hist_asof[MK.year] : i.asof;
   return asofSrc ? Object.entries(asofSrc).map(([g, p]) => `${g === "regso" ? "RegSO" : g === "deso" ? "DeSO" : "kommuner"}: ${esc(p)}`).join(" · ") : "";
 }
@@ -1053,15 +1091,42 @@ function indSrcLink(i, level, code, year) {
     title="${esc(e.label)} — ${what}">Verify at source ↗</a>`;
 }
 
+/* ---------- which level is actually on screen ----------
+   Not the finest level the indicator is published at — the level the reader is
+   looking at. Data › Areas at Kommuner used to badge growth "DeSO level" because
+   growth IS published down to DeSO, which told the reader the 290 rows in front
+   of them were something they are not. Where the drawn level has no figure of
+   its own the badge says both: "RegSO rows · kommun figures". */
+const LEVEL_WORD = { kommun: "kommun", regso: "RegSO", deso: "DeSO", sweden: "national" };
+const LEVEL_RANK = { sweden: 0, kommun: 1, regso: 2, deso: 3 };
+function drawnLevel() {
+  if (S.view === "table") return T.level;
+  if (S.view === "area") { const e = areaEntity(); return e ? e.type : "kommun"; }
+  if (S.view === "property") { const e = propArea(); return e ? e.type : "kommun"; }
+  if (S.view === "market") return "sweden";
+  return desoMode() ? "deso" : (MK.kommun ? "regso" : "kommun");
+}
+function levelBadge(i) {
+  if (i.level === "none") return "national";
+  const at = drawnLevel(), word = LEVEL_WORD[at] || at;
+  const pub = i.level || "kommun";
+  /* finer than the publisher goes: the rows are this level, the figures are not.
+     `levels` lists where the indicator can be SHOWN, inheritance included, so it
+     is `level` — the finest level actually published — that decides this. */
+  if ((LEVEL_RANK[at] || 0) > (LEVEL_RANK[pub] || 0)) return `${word} rows · ${LEVEL_WORD[pub] || pub} figures`;
+  if (!(i.levels || [pub]).includes(at)) return `not published at ${word}`;
+  return `${word} level`;
+}
 function indExplain(i) {
   const pool = curPool();
   const cov = `${MUNI.filter(m => m[i.key] != null).length}/${MUNI.length} kommuner${(i.levels || []).includes("regso") ? `, ${AREAS.filter(a => a[i.key] != null).length}/${AREAS.length} RegSO` : ""}${(i.levels || []).includes("deso") ? ", DeSO per kommun" : ""}`;
   const ys = yearsForPool(i.key, pool);
   const asof = asofText(i);
   /* one line by default — label, level, unit, period; the definition, source, coverage and caveat open on ⓘ */
-  const asofShort = asofSrc => { const src = (MK.year !== LATEST && i.hist_asof && i.hist_asof[MK.year]) || i.asof || {}; return src.kommun || src.regso || src.deso || ""; };
+  const asofShort = () => { if (asofOne(i)) return asofOne(i);
+    const src = (MK.year !== LATEST && i.hist_asof && i.hist_asof[MK.year]) || i.asof || {}; return src.kommun || src.regso || src.deso || ""; };
   return `<details class="indx" ${UI.indxOpen ? "open" : ""}>
-    <summary><b>${esc(i.label)}</b><span class="tag">${i.level === "deso" ? "DeSO level" : i.level === "regso" ? "RegSO level" : i.level === "none" ? "national" : "kommun level"}</span><span class="tag">${esc(i.unit || "")}</span>${asofShort() ? `<span class="dim">as of ${esc(asofShort())}</span>` : ""}${i.warn ? `<span class="warnline">⚠</span>` : ""}<i class="more">ⓘ details</i></summary>
+    <summary><b>${esc(i.label)}</b><span class="tag" data-testid="level-badge">${esc(levelBadge(i))}</span><span class="tag">${esc(i.unit || "")}</span>${asofShort() ? `<span class="dim">as of ${esc(asofShort())}</span>${prelBadge(i, asofShort())}` : ""}${i.warn ? `<span class="warnline">⚠</span>` : ""}<i class="more">ⓘ details</i></summary>
     <div class="indx-body"><p>${esc(i.desc || "")}</p>
     <p class="dim"><em>Source</em> ${esc(i.source || "–")}${asof ? ` · <em>As of</em> ${asof}` : ""} · <em>Coverage</em> ${cov}${ys.length > 1 ? ` · <em>History</em> ${ys[0]}–${LATEST}` : ""} ${indSrcLink(i, MK.kommun ? (desoMode() ? "deso" : "regso") : "kommun", MK.kommun, MK.year === LATEST ? LATEST : MK.year)}</p>
     ${i.warn ? `<p class="warnline">⚠ ${esc(i.warn)}</p>` : ""}</div>
@@ -1075,7 +1140,10 @@ function indExplain(i) {
 
      year       a select of the periods this indicator actually has
      quarter    the same, plus a Yearly | Quarterly segment where the source
-                publishes quarters (Safety: reported offences, rolling 4 quarters)
+                publishes quarters (Safety: reported offences). Each quarter is
+                ONE quarter — Brå publishes single quarters, not a rolling
+                four-quarter sum, which is why Stockholm reads ~41–50 per 1 000
+                per quarter against 191,6 for the year.
      projection a static badge — an Outlook indicator is one published statement
                 about a future year, so there is nothing to select
      climate    a static badge naming the scenario, for the same reason
@@ -1084,6 +1152,24 @@ function indExplain(i) {
    the same shape either way and V() is the only place that has to know. */
 const isQuarter = t => /K\d/.test(String(t || ""));
 const qPeriodsOf = i => (i && i.q_periods) || [];
+/* Is this period preliminary? Never guessed from how new it looks — the build
+   reads it off the publisher's own metadata and ships `prel_periods` / `q_prel`
+   (Brå's explicit lists) and `prel` — {geography: "all" | first year} — because
+   an indicator can be preliminary at kommun and final below it. */
+function isPrel(i, t) {
+  if (!i || !t) return false;
+  if ((i.prel_periods || []).includes(t) || (i.q_prel || []).includes(t)) return true;
+  const rule = i.prel && i.prel[drawnLevel()];
+  if (!rule) return false;
+  return rule === "all" || String(t).slice(0, 4) >= String(rule);
+}
+const PREL_TIP = "Preliminary — the publisher has not finalised this period and the figure can still be revised.";
+const prelBadge = (i, t) => isPrel(i, t)
+  ? `<span class="prel" data-testid="prel" title="${esc(PREL_TIP)}">prel.</span>` : "";
+/* The period a tile or a rank reads. A quarter chosen for the active indicator
+   does not exist for the other four headline figures, and v2.0 blanked the whole
+   row rather than leaving them on their own latest year. */
+const periodFor = i => (isQuarter(MK.year) && !qPeriodsOf(i).length) ? LATEST : MK.year;
 /* Quarters are only offered where every area in the pool actually has them — a
    mixed pool would show a figure for some areas and a dash for the rest. */
 function quarterly(i) {
@@ -1095,6 +1181,14 @@ function curPeriods() {
   const i = curInd();
   if (MK.fq === "q" && quarterly(i)) return qPeriodsOf(i);
   return yearsFor(MK.ind);
+}
+/* The newest period of whichever mode is on. LATEST is a YEAR, so falling back
+   to it after a switch to Quarterly picked a period the quarterly series has
+   never heard of: the select showed the oldest quarter and the map quietly went
+   on drawing the yearly figure. */
+function newestPeriod() {
+  const ps = curPeriods();
+  return ps.includes(LATEST) ? LATEST : (ps[ps.length - 1] || LATEST);
 }
 function periodControl() {
   const i = curInd();
@@ -1113,17 +1207,22 @@ function periodControl() {
   const ps = curPeriods();
   const seg = q ? `<span class="seg qseg" data-testid="period-fq">${[["year", "Yearly"], ["q", "Quarterly"]].map(([m, l]) =>
     `<button class="sg ${(MK.fq === m || (m === "year" && MK.fq !== "q")) ? "on" : ""}" data-fq="${m}"
-      title="${m === "q" ? "Each point is the rolling sum of the four quarters ending there" : "One figure per year"}">${l}</button>`).join("")}</span>` : "";
+      title="${m === "q" ? "One figure per single quarter — Brå publishes single quarters, not a rolling four-quarter sum" : "One figure per year"}">${l}</button>`).join("")}</span>` : "";
   if (ps.length < 2) return seg ? `<span class="period" data-testid="period">${seg}</span>` : "";
+  const qmode = MK.fq === "q" && q;
   /* The select names the indicator's OWN latest period, not the dashboard's: an
-     indicator whose newest figure is two years old must not read "2026". */
+     indicator whose newest figure is two years old must not read "2026". This
+     only applies to years — LATEST is a year, so in quarterly mode every period
+     is "not LATEST" and the rule used to drop the newest quarter from the list
+     entirely (2026K2 was simply missing). */
   const hy = ps.filter(y => y !== LATEST); const lastHist = hy[hy.length - 1];
   const pool = curPool();
-  const lagging = lastHist && lastHist !== LATEST && !pool.some(m => m.hist && m.hist[MK.ind] && m.hist[MK.ind][LATEST] != null);
+  const lagging = !qmode && lastHist && lastHist !== LATEST
+    && !pool.some(m => m.hist && m.hist[MK.ind] && m.hist[MK.ind][LATEST] != null);
   const label = y => y !== LATEST ? y : (lagging ? `${lastHist} (latest)` : `${y} (latest)`);
   const opts = ps.filter(y => !(lagging && y === lastHist));
   return `<span class="period" data-testid="period">${seg}<select id="yearsel" class="indsel" data-testid="period-year"
-    aria-label="Period">${opts.map(y => `<option value="${y}" ${MK.year === y ? "selected" : ""}>${esc(label(y))}</option>`).join("")}</select></span>`;
+    aria-label="Period">${opts.map(y => `<option value="${y}" ${MK.year === y ? "selected" : ""}>${esc(label(y))}</option>`).join("")}</select>${prelBadge(i, MK.year)}</span>`;
 }
 
 /* geometry helpers: largest ring, centroid */
@@ -1151,14 +1250,14 @@ function srcNote(extra = "") {
     A kommun-level indicator is drawn on RegSO and DeSO polygons with the kommun's own value, marked ° on the map and "muni" in every table.
     ${esc((D.meta && D.meta.note) || "")}</div>${extra}<p class="cap">Full definitions and table stamps under <button class="lk mini" data-go="data/sources">Market › Sources</button>. Built ${esc((D.meta && D.meta.built) || "–")}.</p></details>`;
 }
-function rankOf(o, key, peers) {
+function rankOf(o, key, peers, per) {
   /* #1 is the best end, not the highest — on unemployment or forced sales that
      is the lowest value. A neutral indicator still gets a position so the reader
      can see where the area sits, but it is reported as "highest first" and
      carries `neutral` so the caller can drop the good/bad colour. */
-  const v = V(o, key); if (v == null) return null;
+  const v = V(o, key, per); if (v == null) return null;
   const ind = indOf(key);
-  const vals = peers.map(p => V(p, key)).filter(x => x != null);
+  const vals = peers.map(p => V(p, key, per)).filter(x => x != null);
   const lb = lowerBetter(ind);
   return { r: 1 + vals.filter(x => (lb ? x < v : x > v)).length, n: vals.length, neutral: neutralDir(ind) };
 }
@@ -1173,7 +1272,7 @@ function rankOf(o, key, peers) {
    filler is visual noise that means nothing. */
 function headlineInds(e) {
   return HL_KEYS.map(k => e.inds.find(i => i.key === k))
-    .filter(i => i && eVal(e, i.key).v != null).slice(0, 5);
+    .filter(i => i && eVal(e, i.key, periodFor(i)).v != null).slice(0, 5);
 }
 function headlineTiles(e) {
   const inds = headlineInds(e);
@@ -1185,8 +1284,8 @@ function headlineTiles(e) {
     return `<button class="hlc ${MK.ind === i.key ? "on" : ""}${inh ? " inh" : ""}${proj ? " proj" : ""}"
       data-testid="tile-${esc(i.key)}" data-arind="${esc(i.key)}"
       title="${esc(i.desc || i.label)} — click to read it in the chart and on the map">
-      <span>${esc(i.short || i.label)}</span>
-      <b>${fmtOf(i)(s.cur.v)}${moeSpan(i, s.cur.v, moeOf(i, inh ? e.kommun : e.o))}</b>
+      <span>${esc(i.short || i.label)}${isPrel(i, s.per) ? ` <i class="prel" title="${esc(PREL_TIP)}">prel.</i>` : ""}</span>
+      <b>${fmtOf(i)(s.cur.v)}${moeSpan(i, s.cur.v, moeOf(i, inh ? e.kommun : e.o, s.per))}</b>
       <em>${inh ? `<i class="inh">municipality figure</i>`
         : proj ? `<i class="projpill">Projection</i>`
         : `${s.yoy != null ? `<i class="${cls(s.yoy, i.key)}">${signed(s.yoy, 1, deltaUnit(i))}</i> y/y` : ""}${s.rk ? `${s.yoy != null ? " · " : ""}#${s.rk.r} of ${s.rk.n}` : ""}`}</em></button>`;
@@ -1313,6 +1412,8 @@ function fmtCell(i, v, fallback, o, y) {
   return `<td class="num${moeWide(i, v, m) ? " dim" : ""}${fallback ? " inh" : ""}" data-v="${v}">${fmtOf(i)(v)}${fallback ? ` <span class="tag-muni" title="the kommun's figure — no finer statistic is published">muni</span>` : ""}${moeSpan(i, v, m)}</td>`;
 }
 function deltaCell(o, i, pool) {
+  /* A coded indicator has no arithmetic: "Shortage → Balance" is not +1 pp. */
+  if (catsOf(i)) return `<td class="num dim" title="a coded assessment, not a quantity — a change in it is not a number">–</td>`;
   const y0 = yearsForPool(i.key, pool || curPool())[0]; if (!y0 || y0 === MK.year) return `<td class="num dim">–</td>`;
   const a = V(o, i.key, y0), b = V(o, i.key); if (a == null || b == null) return `<td class="num dim">–</td>`;
   const d = isPct(i) ? b - a : (a ? (b / a - 1) * 100 : null); if (d == null) return `<td class="num dim">–</td>`;
@@ -1426,20 +1527,25 @@ function eVal(e, k, y) { const own = V(e.o, k, y); if (own != null) return { v: 
 function eYears(e, k) { return histYears(k, e.type === "regso" && V(e.o, k) == null ? MUNI : e.peers); }
 /* everything a tile, headline cell or popup needs about one indicator for one area */
 function tileStats(e, i) {
-  const cur = eVal(e, i.key); if (cur.v == null) return null;
+  /* `per` rather than MK.year throughout: on the map a quarter can be selected
+     for the active indicator while the other tiles read their own latest year */
+  const per = periodFor(i);
+  const cur = eVal(e, i.key, per); if (cur.v == null) return null;
   const ys = eYears(e, i.key), y0 = ys[0];
   const own = ys.map(y => eVal(e, i.key, y).v), med = ys.map(y => median(e.peers.map(p => V(p, i.key, y))));
   const dlt = (a, b) => a == null || b == null ? null : isPct(i) ? b - a : (a ? (b / a - 1) * 100 : null);
   const unit = isPct(i) ? " pp" : " %";
-  const li = own.map((v, k) => v == null ? -1 : k).filter(k => k >= 0).pop(); const idx = MK.year === LATEST ? li : ys.indexOf(MK.year);
-  const yoy = idx > 0 ? dlt(own[idx - 1], own[idx]) : null;
-  const since = y0 && y0 !== MK.year ? dlt(own[0], cur.v) : null;
+  const li = own.map((v, k) => v == null ? -1 : k).filter(k => k >= 0).pop(); const idx = per === LATEST ? li : ys.indexOf(per);
+  /* a coded assessment has no arithmetic: Shortage → Balance is not +1 pp */
+  const coded = !!catsOf(i);
+  const yoy = coded || idx <= 0 ? null : dlt(own[idx - 1], own[idx]);
+  const since = coded || !y0 || y0 === per ? null : dlt(own[0], cur.v);
   /* a difference, in pp for a share and in the indicator's own unit otherwise —
      never a percentage OF a median */
-  const medPeer = median(e.peers.map(p => V(p, i.key)));
+  const medPeer = median(e.peers.map(p => V(p, i.key, per)));
   const vsMed = medPeer == null ? null : cur.v - medPeer;
-  const rk = cur.own ? rankOf(e.o, i.key, e.peers) : null;
-  return { cur, ys, y0, own, med, yoy, since, vsMed, rk, unit };
+  const rk = cur.own ? rankOf(e.o, i.key, e.peers, per) : null;
+  return { cur, per, ys, y0, own, med, yoy, since, vsMed, rk, unit };
 }
 /* A rise is green only where a rise is good. On unemployment it is red, and on
    a descriptor it is neither — `cls` returns "" and the delta is drawn plain. */
@@ -1824,9 +1930,17 @@ function pointsNear(cats) {
   out.sort((a, b) => a.m - b.m);
   return out;
 }
+/* A file that has not arrived yet is not an absence. Until every kommun the
+   radius reaches has answered, these sections say so — "0 groceries" and "none
+   within 1 km" are claims, and making them while the fetch is in flight is how
+   v2.0 told a Södermalm reader there was no shop within a kilometre of 31 of them. */
+const srvWaiting = () => nearKommuner(500).some(c => SRV["_l_" + c] || (SRV_IDX[c] && !Array.isArray(SRV[c])));
+const schWaiting = () => Object.keys(SCH_IDX).some(c => SCH["_l_" + c]);
+const loadingP = what => `<p class="empty" data-testid="loading">Loading ${esc(what)}…</p>`;
 function nearCard(cats, testid) {
-  const pts = pointsNear(cats);
   if (!Object.keys(SRV_IDX).length) return `<p class="empty">Not covered yet — no OpenStreetMap point files in this build.</p>`;
+  const pts = pointsNear(cats);                       /* also starts the fetches */
+  if (srvWaiting()) return loadingP("the OpenStreetMap points around the pin");
   const rows = cats.map(c => {
     const mine = pts.filter(p => p.cat === c);
     const d = SRV_CATS[c];
@@ -1842,7 +1956,9 @@ function nearCard(cats, testid) {
    an amenity, a few metres apart. Rows with the same name, the same use and a
    distance within 20 m are one row with a count. */
 function publicNear() {
+  if (!Object.keys(SRV_IDX).length) return `<p class="empty">Not covered yet — no OpenStreetMap point files in this build.</p>`;
   const pts = pointsNear(PUB_SET);
+  if (srvWaiting()) return loadingP("the OpenStreetMap points around the pin");
   if (!pts.length) return `<p class="empty">Nothing within ${radTxt(PROP.rad)} in this build.</p>`;
   const groups = [];
   for (const p of pts) {
@@ -1859,7 +1975,7 @@ function publicNear() {
 }
 function infraNear() {
   infraLoad();
-  if (!INFRA_GEO.data) return `<p class="empty">Loading the project geometry…</p>`;
+  if (!INFRA_GEO.data) return loadingP("the project geometry");
   const hits = [];
   for (const f of INFRA_GEO.data.features || []) {
     if (!f.geometry) continue;
@@ -1891,8 +2007,10 @@ function safetyNear() {
     <p class="cap">Reported offences are counted where the offence was reported, not where the offender or the victim lives, and a kommun with a shopping centre or a station counts offences committed against people who do not live there. Källa: Brå. The police designation is an assessment of an area's conditions, not a rating of its residents.</p>`;
 }
 function schoolsNear() {
-  const sch = propSchoolsNear(6);
-  if (!sch.length) return `<p class="empty">Loading schools near the pin…</p>`;
+  if (!Object.keys(SCH_IDX).length) return `<p class="empty">Not covered yet — no Skolverket files in this build.</p>`;
+  const sch = propSchoolsNear(6);                     /* also starts the fetches */
+  if (schWaiting()) return loadingP("the schools around the pin");
+  if (!sch.length) return `<p class="empty">No school with a year 9 within 8 km of the pin.</p>`;
   const e = propEntity();
   const km = e && e.kommun;
   const nat = SCH_META.national_merit;
@@ -2267,9 +2385,11 @@ function subToggle() {
   const n = (DESO_IDX[MK.kommun] || {}).n || 0;
   if (!n) return "";
   const busy = LF.desoPending === MK.kommun;
-  return `<div class="seg" role="group" aria-label="Sub-level">
-    <button class="${MK.sub === "regso" ? "on" : ""}" data-sub="regso">RegSO</button>
-    <button class="${MK.sub === "deso" ? "on" : ""}" data-sub="deso"${busy ? " disabled" : ""}>DeSO${busy ? " …" : ` (${n})`}</button>
+  /* `sg` is what makes a .seg child a segment — without it the browser drew two
+     native grey buttons in the middle of the map toolbar */
+  return `<div class="seg" role="group" aria-label="Sub-level" data-testid="sub-level">
+    <button class="sg ${MK.sub === "regso" ? "on" : ""}" data-sub="regso">RegSO</button>
+    <button class="sg ${MK.sub === "deso" ? "on" : ""}" data-sub="deso"${busy ? " disabled" : ""}>DeSO${busy ? " …" : ` (${n})`}</button>
   </div>`;
 }
 
@@ -2557,8 +2677,8 @@ function schLoad(code) {
   SCH["_l_" + code] = true;
   fetch("schools/" + code + ".json").then(r => r.json()).then(j => {
     SCH[code] = j; delete SCH["_l_" + code];
-    if (S.view === "analysis") renderKeep(); else { lfOverlays(); ovLegends(); }
-  }).catch(() => { SCH[code] = []; delete SCH["_l_" + code]; });
+    afterLazyLoad();
+  }).catch(() => { SCH[code] = []; delete SCH["_l_" + code]; afterLazyLoad(); });
 }
 function schLoadVisible(map) {
   const m = map || LF.map;
@@ -2776,8 +2896,8 @@ function srvLoad(code) {
   SRV["_l_" + code] = true;
   fetch("services/" + code + ".json").then(r => r.json()).then(j => {
     SRV[code] = j; delete SRV["_l_" + code];
-    if (S.view === "analysis") renderKeep(); else { lfOverlays(); ovLegends(); }
-  }).catch(() => { SRV[code] = []; delete SRV["_l_" + code]; });
+    afterLazyLoad();
+  }).catch(() => { SRV[code] = []; delete SRV["_l_" + code]; afterLazyLoad(); });
 }
 function srvLoadVisible(map) {
   const m = map || LF.map;
@@ -2853,8 +2973,8 @@ function infraLoad() {
   INFRA_GEO.loading = true;
   fetch("infra_projects.geojson").then(r => r.json()).then(j => {
     INFRA_GEO.data = j; INFRA_GEO.loading = false;
-    if (S.view === "analysis") renderKeep(); else { lfOverlays(); ovLegends(); }
-  }).catch(() => { INFRA_GEO.loading = false; INFRA_GEO.data = { features: [] }; });
+    afterLazyLoad();
+  }).catch(() => { INFRA_GEO.loading = false; INFRA_GEO.data = { features: [] }; afterLazyLoad(); });
 }
 function infraBuild(map) {
   const m = map || LF.map;
@@ -2916,6 +3036,23 @@ const pipeRows = () => (INFRA.projects || [])
     || (a.open_year || 9999) - (b.open_year || 9999)
     || a.name.localeCompare(b.name, "sv"));
 const kNames = codes => (codes || []).map(c => (byCode[c] || {}).name).filter(Boolean);
+/* ---------- the Budget cell ----------
+   A blank budget in data/external/infra_se.csv is deliberate and nothing is
+   invented to fill it: the four nya tunnelbanan extensions are funded as one
+   55,5 bn SEK programme and no per-line figure is published anywhere. A bare "–"
+   read as a gap in this dashboard rather than as a fact about the source, so the
+   cell says which of the two kinds of blank it is and carries the note.
+   `budget_state` and `budget_note` are curated in
+   data/external/infra_budget_state.csv — never inferred from the project's prose. */
+const budgetProgramme = p => p.budget_state === "programme";
+const budgetWord = p => (budgetProgramme(p) ? "programme only" : "not published");
+const BUDGET_TIP = { programme: "Funded inside a larger programme — the source publishes no cost for this project on its own.",
+                     not_published: "The source states no cost for this project." };
+function budgetCell(p) {
+  if (p.budget_msek != null) return `${nf(p.budget_msek, 0)} MSEK`;
+  const tip = p.budget_note || BUDGET_TIP[p.budget_state] || BUDGET_TIP.not_published;
+  return `<span class="nobudget" data-testid="no-budget" title="${esc(tip)}">${budgetWord(p)}</span>`;
+}
 function vPipeline() {
   const rows = pipeRows();
   const types = [...new Set((INFRA.projects || []).map(p => p.type))].sort();
@@ -2941,13 +3078,16 @@ function vPipeline() {
         <td>${esc(p.type)}</td>
         <td><span class="pipdot" style="background:${INFRA_TONE[p.status] || "#8A8C81"}"></span>${esc(p.status)}</td>
         <td class="num">${p.open_year || esc(p.open_window || "–")}</td>
-        <td class="num">${p.budget_msek != null ? nf(p.budget_msek, 0) + " MSEK" : "–"}</td>
+        <td class="num">${budgetCell(p)}</td>
         <td>${esc(p.price_base || "–")}</td>
         <td>${esc(p.agency || "")}</td>
         <td>${esc(kNames(p.kommuner).join(", "))}</td></tr>`).join("")}</tbody></table></div>
     <p class="cap">A budget is shown only with the price base the source stated — a figure in
-      unknown money is not a figure. A dash means the source publishes none; the Stockholm metro
-      lines, for instance, are funded as one programme rather than per line.
+      unknown money is not a figure. <b>programme only</b> means the project is funded inside a
+      larger programme and no figure exists for it on its own — the four Stockholm metro
+      extensions share one 55,5 bn SEK (2016 price level) programme total — and <b>not published</b>
+      means the source states no cost at all. Hover either for the note the source gave.
+      Nothing is apportioned or estimated.
       Sources: Trafikverket, Region Stockholm, Västtrafik and the project bodies themselves —
       each row links to the page it came from.</p>
   </div>`;
@@ -2974,7 +3114,7 @@ SHEETS.project = {
       tiles: `<div class="hl">
         ${tile("Status", esc(p.status))}
         ${tile("Opening", p.open_year || p.open_window || "–")}
-        ${tile("Budget", p.budget_msek != null ? nf(p.budget_msek, 0) + " MSEK" : "not published")}
+        ${tile("Budget", budgetCell(p))}
         ${tile("Price base", p.price_base || "–")}
         ${tile("Agency", esc(p.agency || ""))}</div>`,
       body: `<div class="grid-2">
@@ -2990,7 +3130,7 @@ SHEETS.project = {
             : "<b>Not drawn on the map.</b> No station could be located, and sketching an alignment between points would be inventing geography."}</p></div>
         <div class="card"><h3>Source</h3>
           <p class="cap"><a href="${esc(p.source_url)}" target="_blank" rel="noopener">${esc(p.source_url)}</a></p>
-          ${p.budget_msek != null ? `<p class="cap">Budget ${nf(p.budget_msek, 0)} MSEK at price base ${esc(p.price_base || "unknown")}. Figures from different price bases are not comparable and nothing here is converted.</p>` : `<p class="cap">No budget is published for this project on its own.</p>`}
+          ${p.budget_msek != null ? `<p class="cap">Budget ${nf(p.budget_msek, 0)} MSEK at price base ${esc(p.price_base || "unknown")}. Figures from different price bases are not comparable and nothing here is converted.</p>` : `<p class="cap"><b>Budget: ${budgetWord(p)}.</b> ${esc(p.budget_note || BUDGET_TIP[p.budget_state] || BUDGET_TIP.not_published)} Nothing is apportioned or estimated here.</p>`}
           <p class="cap">Curated by hand in <code>data/external/infra_se.csv</code>. Every row carries the page it came from.</p></div>
       </div>`,
     };
@@ -3027,8 +3167,8 @@ function climLoad(layer, code) {
   CLIM_ZONES["_l_" + k] = true;
   fetch("climate/" + layer + "/" + code + ".json").then(r => r.json()).then(j => {
     CLIM_ZONES[k] = j; delete CLIM_ZONES["_l_" + k];
-    if (S.view === "analysis") renderKeep(); else { lfOverlays(); ovLegends(); }
-  }).catch(() => { CLIM_ZONES[k] = []; delete CLIM_ZONES["_l_" + k]; });
+    afterLazyLoad();
+  }).catch(() => { CLIM_ZONES[k] = []; delete CLIM_ZONES["_l_" + k]; afterLazyLoad(); });
 }
 function climLoadVisible(map) {
   const m = map || LF.map;
@@ -3113,6 +3253,11 @@ const LST_PAD = 0.25;
 /* The gateway caps a radius at 3 km; the task caps the fallback at 2 km. Only
    used if /bbox is not deployed — it answers 404 and this switches over once. */
 const LST_FALLBACK_MAX = 2000;
+/* One automatic retry per box, and not for five seconds. Beyond that the reader
+   presses Retry — a page that keeps asking a failing service is a load generator,
+   not a dashboard. */
+const LST_MAX_TRIES = 2;
+const LST_RETRY_MS = 5000;
 
 const LST = {
   boxes: [],            /* every box fetched this session */
@@ -3127,6 +3272,14 @@ const LST = {
   bboxOk: true,
   filters: JSON.parse(JSON.stringify(LV.DEFAULT_FILTERS || {})),
   pins: new Set(),      /* every (pin, radius) already asked for this session */
+  /* ---- what failed, so nothing asks again on its own ----
+     v2.0 deleted the pin key on an error and then refreshed the section, which
+     called lstSectionBody → lstWantPin → lstFetchPin again: ~90 requests in 14 s
+     against a donated gateway that was already answering 500. A failure is now
+     remembered. The pin waits for the reader's Retry; a map box gets ONE
+     automatic retry after a backoff and then waits too. */
+  pinFails: new Set(),  /* (pin, radius) keys that failed */
+  boxFails: [],         /* [{ box, tries }] for the map's viewport queries */
   open: false,          /* the Test property section's "show the full module" state */
   sort: "dist",
   desc: false,
@@ -3178,13 +3331,18 @@ const lstHave = box => LST.boxes.some(b => lstContains(b, box));
 /* --- fetching --- */
 /* One request per viewport, 600 ms after the map stops. A box already in hand is
    never asked for again, and there is no interval anywhere. */
+/* a box that overlaps one which already failed is the same failure */
+const lstFailFor = box => LST.boxFails.find(f => lstContains(f.box, box) || lstContains(box, f.box));
 function lstWant(map) {
   if (!map || !LAY.has("listings")) return;
   if (map.getZoom() < LST_ZOOM) return;
   const box = lstBoxOf(map);
   if (lstHave(box) || LST.loading) return;
+  const f = lstFailFor(box);
+  if (f && f.tries >= LST_MAX_TRIES) return;      /* waiting for Retry, not looping */
   if (LST.timer) clearTimeout(LST.timer);
-  LST.timer = setTimeout(() => { LST.timer = null; lstFetch(lstPad(box), map); }, LST_DEBOUNCE);
+  LST.timer = setTimeout(() => { LST.timer = null; lstFetch(lstPad(box), map); },
+                         f ? LST_RETRY_MS : LST_DEBOUNCE);
 }
 function lstUrl(box) {
   if (LST.bboxOk) return `${GATEWAY}/bbox?s=${box.s.toFixed(6)}&w=${box.w.toFixed(6)}&n=${box.n.toFixed(6)}&e=${box.e.toFixed(6)}`;
@@ -3209,6 +3367,7 @@ async function lstFetch(box, map) {
     /* A 502 still carries the reason for every source, so it is rendered rather
        than thrown away: the legend has to be able to say which one failed. */
     LST.boxes.push(box);
+    LST.boxFails = LST.boxFails.filter(f => !lstContains(box, f.box));
     LST.sources = body.sources || [];
     LST.fetchedAt = body.fetchedAt || null;
     LST.covered = body.covered !== false;
@@ -3219,6 +3378,8 @@ async function lstFetch(box, map) {
     }
   } catch (err) {
     LST.error = err && err.message ? err.message : "the gateway did not answer";
+    const f = lstFailFor(box);
+    if (f) f.tries++; else LST.boxFails.push({ box, tries: 1 });
   } finally {
     LST.loading = false;
     lstRefresh(map);
@@ -3231,7 +3392,10 @@ function lstRefresh(map) {
   ovLegends();
   lstSectionRefresh();
 }
-function lstRetry() { LST.error = null; LST.boxes.length = 0; lstWant(LF.map || LF.pmap); }
+function lstRetry() {
+  LST.error = null; LST.boxes.length = 0; LST.boxFails.length = 0;
+  lstWant(LF.map || LF.pmap);
+}
 
 /* --- what is on screen --- */
 const lstShown = () => (LV.applyFilters ? LV.applyFilters(LST.rows, LST.filters) : LST.rows);
@@ -3396,7 +3560,7 @@ const lstPinKey = () => `${PROP.lat},${PROP.lon},${PROP.rad}`;
 function lstWantPin() {
   if (PROP.lat == null || LST.loading) return;
   const k = lstPinKey();
-  if (LST.pins.has(k)) return;
+  if (LST.pins.has(k) || LST.pinFails.has(k)) return;
   LST.pins.add(k);
   lstFetchPin(k);
 }
@@ -3416,7 +3580,9 @@ async function lstFetchPin(k) {
       LST.seen.add(key); LST.rows.push(l);
     }
   } catch (err) {
-    LST.pins.delete(k);
+    /* the key stays in `pins` AND goes into `pinFails`: the refresh below runs
+       lstSectionBody again, and both sets have to say "do not ask" */
+    LST.pinFails.add(k);
     LST.error = err && err.message ? err.message : "the gateway did not answer";
   } finally {
     LST.loading = false;
@@ -3494,12 +3660,14 @@ function lstTable(rows) {
 }
 function lstSectionBody() {
   if (PROP.lat == null) return `<p class="empty">Drop a pin first.</p>`;
-  lstWantPin();
+  /* the error is checked BEFORE asking, so a failed pin cannot be re-requested by
+     the very refresh that draws its error message */
   if (LST.error) {
-    return `<div class="lst-msg err">Listings unavailable — gateway error.
-      <button class="lk mini" data-lstretrypin>Retry</button> <span class="dim">${esc(LST.error)}</span></div>
+    return `<div class="lst-msg err" data-testid="lst-error">Listings unavailable — gateway error.
+      <button class="lk mini" data-lstretrypin data-testid="lst-retry">Retry</button> <span class="dim">${esc(LST.error)}</span></div>
       ${LST_CAVEAT}`;
   }
+  lstWantPin();
   const near = lstNearPin(LST.rows);
   const shown = LV.applyFilters ? LV.applyFilters(near, LST.filters) : near;
   if (LST.loading && !near.length) return `<p class="empty">Asking the listings gateway…</p>`;
@@ -3777,12 +3945,13 @@ function chartAdd(id, text) {
 }
 function chartInd() { return IND.concat(IND_DESO.filter(i => !IND.some(x => x.key === i.key))).find(i => i.key === CH.ind) || IND[0]; }
 /* ---------- Yearly | Quarterly ----------
-   Some series are published quarterly and shown as a rolling four-quarter sum,
-   which is the only honest way to compare a quarter with the one before it. An
-   indicator gets the toggle only when the build wrote `q_periods` for it, and
-   only when EVERY selected area actually has quarters — a mixed selection falls
-   back to yearly rather than drawing a line with holes in it. The caption then
-   states that each point is a rolling four-quarter window. */
+   Some series are published quarterly, and each point is ONE quarter exactly as
+   the publisher wrote it — Brå's reported offences run ~41–50 per 1 000 per
+   quarter against 191,6 for the year in Stockholm. Nothing here is summed over a
+   window; v2.0's captions said "rolling 4 quarters" and that was never true of
+   this data. An indicator gets the toggle only when the build wrote `q_periods`
+   for it, and only when EVERY selected area actually has quarters — a mixed
+   selection falls back to yearly rather than drawing a line with holes in it. */
 const chQPeriods = ind => (ind && ind.q_periods) || [];
 function chartQ() {
   if (CH.fq !== "q") return false;
@@ -3859,10 +4028,10 @@ function chTitleBlock(withTitle, ind, L0, sub) {
 }
 function chFoot(L0, H, ind, extra) {
   const src = (ind.source || ""); const short = src.length > 90 ? src.slice(0, 88) + "…" : src;
-  /* a rolling window has to say so on the chart itself, not only in the toolbar —
+  /* what a point IS has to say so on the chart itself, not only in the toolbar —
      the PNG leaves the toolbar behind */
   const oi = outlookOf(ind);
-  const roll = chartQ() ? " · rolling 4 quarters"
+  const roll = chartQ() ? " · each point is one quarter"
     : (oi && chartFcYears()) ? " · dashed = projected, not observed" : "";
   return `<text x="${L0}" y="${H - 14}" font-family="${CH_MONO}" font-size="11" fill="#8A8C81">Source: ${esc(short)} · Macro Dashboard — Sweden, open data · built ${esc((D.meta && D.meta.built) || "")}${roll}${extra || ""}</text>`;
 }
@@ -3954,9 +4123,9 @@ function chartSvgLine(withTitle) {
     return `<line x1="${lx}" x2="${lx + 26}" y1="${ly - 4}" y2="${ly - 4}" stroke="${s_.color}" stroke-width="${s_.dash ? 2 : 3}" ${s_.dash ? 'stroke-dasharray="7 5"' : ""}/><text x="${lx + 34}" y="${ly}" font-family="${F}" font-size="14" fill="#16170F">${esc(s_.name)}${s_.inherited ? " °" : ""}${last ? ` <tspan font-family="${M}" fill="#4A4C43">${esc(fmtOf(ind)(last.v))} (${last.y})</tspan>` : ""}</text>`; }).join("");
   const title = withTitle ? `<text x="${L0}" y="40" font-family="${F}" font-size="24" font-weight="600" fill="#16170F" id="chsvgtitle">${esc(CH.title || chartAutoTitle())}</text><text x="${L0}" y="64" font-family="${M}" font-size="12" fill="#8A8C81">${esc(ind.desc || "")}</text>` : "";
   /* The line chart draws its own footer rather than calling chFoot, so the
-     rolling-window and projection notes have to be repeated here — the PNG
-     leaves the toolbar behind, and a dashed line has to say what it means. */
-  const note = chartQ() ? " · rolling 4 quarters"
+     period-kind and projection notes have to be repeated here — the PNG leaves
+     the toolbar behind, and a dashed line has to say what it means. */
+  const note = chartQ() ? " · each point is one quarter"
     : (outlookOf(ind) && chartFcYears()) ? " · dashed = projected, not observed" : "";
   const fsrc = (ind.source || ""); const fshort = fsrc.length > 78 ? fsrc.slice(0, 76) + "…" : fsrc;
   const foot = `<text x="${L0}" y="${H - 14}" font-family="${M}" font-size="11" fill="#8A8C81">Source: ${esc(fshort)} · Macro Dashboard — Sweden, open data · built ${esc((D.meta && D.meta.built) || "")}${note}${series.some(s_ => s_.inherited) ? " · ° = municipality value shown for a RegSO or DeSO" : ""}</text>`;
@@ -3980,7 +4149,7 @@ function vCharts() {
       <select id="chy1" class="indsel"><option value="">to ${hi}</option>${ys.map(y => `<option value="${y}" ${CH.y1 === y ? "selected" : ""}>${y}</option>`).join("")}</select>`; })()}
       <label class="hint" style="display:flex;align-items:center;gap:5px"><input type="checkbox" id="chmed" ${CH.median ? "checked" : ""}> median</label>
       <div class="seg">${[["auto", "Auto"], ["line", "Line"], ["bar", "Bars"], ["dist", "Distribution"]].map(([m, l]) => `<button class="sg ${CH.mode === m ? "on" : ""}" data-chmode="${m}">${l}</button>`).join("")}</div>
-      ${chQPeriods(chartInd()).length > 1 ? `<div class="seg">${[["year", "Yearly"], ["q", "Quarterly"]].map(([m, l]) => `<button class="sg ${CH.fq === m ? "on" : ""}" data-chfq="${m}" title="${m === "q" ? "Each point is the rolling sum of the four quarters ending there" : "One point per year"}">${l}</button>`).join("")}</div>` : ""}
+      ${chQPeriods(chartInd()).length > 1 ? `<div class="seg">${[["year", "Yearly"], ["q", "Quarterly"]].map(([m, l]) => `<button class="sg ${CH.fq === m ? "on" : ""}" data-chfq="${m}" title="${m === "q" ? "Each point is one quarter as the publisher wrote it — not a rolling four-quarter sum" : "One point per year"}">${l}</button>`).join("")}</div>` : ""}
       ${chartMode() === "dist" ? `<select id="chdist" class="indsel">${Object.entries(DIST_DEFS).map(([k, v]) => `<option value="${k}" ${CH.dist === k ? "selected" : ""}>${v[0]}</option>`).join("")}</select>` : ""}</div></div>
     ${CH.fq === "q" && !chartQ() && chQPeriods(chartInd()).length > 1 ? `<p class="hint" style="margin:0 0 8px">Showing years: not every selected area has quarterly figures, and a line mixing the two would not be comparable.</p>` : ""}
     ${ents.length && CH.mode === "auto" && chartMode() === "bar" && !chartFcYears() && chartYears().length < 2 ? `<p class="hint" style="margin:0 0 8px">This indicator is a single snapshot (no history) — shown as bars of the latest value. BBR distributions are under <b>Distribution</b>.</p>` : ""}
@@ -4052,29 +4221,52 @@ function bdTable(key, unit, dec) {
    The breakdowns stay, folded: for new-build rent by rent-setting model and for
    vacancy by owner category the split IS the point. */
 const NAT_SPARK_NOTE = "sparkline: the whole series, not a window — the axis is the series' own range";
+/* ---------- how a national series is written ----------
+   Decimals come from the series' own format, not from a default of 1: a rent in
+   SEK and a count of dwellings are whole numbers, and "1 337,0 SEK" and
+   "1 464,0 dwellings" are false precision.
+
+   A y/y change of a RATE or of a GROWTH RATE is in percentage points. The policy
+   rate falling from 2,50 to 1,75 is −0,75 pp; writing it as "−0,8 %" says the
+   rate fell by four fifths of a per cent, which is wrong by two orders of
+   magnitude. Everything measured as a level or an index keeps %. */
+const MAC_DEC = { pct0: 0, sek0: 0, ksek: 0, int: 0, m2: 0, cat: 0,
+                  pct1: 1, idx: 1, idx1: 1, num1: 1, signpct1: 1, per1000: 1, per10k: 1,
+                  pct2: 2, ratio2: 2, num2: 2 };
+const macDec = o => (o.dec != null ? o.dec : (MAC_DEC[o.fmt] != null ? MAC_DEC[o.fmt] : 1));
+const macDeltaUnit = o => deltaUnit({ fmt: o.fmt });
+/* A national series carries no `direction` — CPI rising is neither good nor bad,
+   it is CPI — so the y/y is drawn plain unless the build says otherwise. Colour
+   without a stated direction is editorialising. */
+const macCls = (o, d) => {
+  if (!o || !o.direction || d == null || !d) return "";
+  return (o.direction === "lower_better" ? d < 0 : d > 0) ? "up" : "dn";
+};
 function vMarket() {
   const mac = D.macro || {}, lt = mac.latest || {};
   if (!Object.keys(lt).length) return `<div class="card"><p class="empty">No macro series built yet — run the pipeline (see Sources).</p></div>`;
   const tile = (key, label) => { const o = lt[key]; if (!o) return ""; const yoy = o.yoy;
-    return `<div><span>${esc(label)}</span><b>${nf(o.v, o.dec ?? 1)}<i class="u">${esc(o.unit || "")}</i></b>
-      ${yoy != null ? `<em class="k ${cls(yoy, key)}">${signed(yoy, 1, "%")} y/y</em>` : ""}<em>${esc(o.label || "")} · ${esc(o.t || "")}</em>${spark((mac.series || {})[key])}</div>`; };
-  const heroKeys = mac.hero || ["policy_rate", "mortgage_rate", "bond_10y", "cpi"];
-  const tableKeys = mac.table || Object.keys(lt);
+    return `<div><span>${esc(label)}</span><b>${nf(o.v, macDec(o))}<i class="u">${esc(o.unit || "")}</i></b>
+      ${yoy != null ? `<em class="k ${macCls(o, yoy)}">${signed(yoy, 1, macDeltaUnit(o))} y/y</em>` : ""}<em>${esc(o.t || "")}${o.src ? " · " + esc(o.src) : ""}</em>${spark((mac.series || {})[key])}</div>`; };
+  const heroKeys = (mac.hero || ["policy_rate", "mortgage_rate", "bond_10y", "cpi"]).filter(k => lt[k]);
+  /* the headline series are the tiles above; repeating them as rows is how the
+     mortgage rate came to appear twice on one screen */
+  const tableKeys = (mac.table || Object.keys(lt)).filter(k => lt[k] && !heroKeys.includes(k));
   const bds = [["newbuild_rent", "New-build rent by rent-setting model", "SEK / m² / yr", 0],
                ["vacancy", "Vacant dwellings by owner category", "% of dwellings", 1],
                ["permits", "Building permits by dwelling type", "dwellings", 0]]
     .filter(([k]) => ((mac.breakdown || {})[k]));
   return `
-  <div class="hero" data-testid="tiles">${heroKeys.map(k => tile(k, (lt[k] || {}).label || k)).join("")}</div>
+  <div class="hero natrow" data-testid="tiles">${heroKeys.map(k => tile(k, (lt[k] || {}).label || k)).join("")}</div>
   <div class="card">
-    <div class="card-head"><h3>National series</h3><span class="hint">${tableKeys.length} series · latest available period each · ${NAT_SPARK_NOTE}</span></div>
+    <div class="card-head"><h3>National series</h3><span class="hint">${tableKeys.length} more series · the ${heroKeys.length} headline ones are the tiles above · latest available period each · ${NAT_SPARK_NOTE}</span></div>
     <div class="scrollx"><table class="tbl compact" data-sortable data-testid="national-table"><thead><tr>
       <th>Series</th><th class="num">Latest</th><th>Period</th><th class="num">y/y</th><th>Trend</th><th>Source</th><th></th></tr></thead>
     <tbody>${tableKeys.map(k => { const o = lt[k]; if (!o) return "";
       return `<tr><th>${esc(o.label || k)}</th>
-        <td class="num" data-v="${o.v}">${nf(o.v, o.dec ?? 1)} ${esc(o.unit || "")}</td>
+        <td class="num" data-v="${o.v}">${nf(o.v, macDec(o))} ${esc(o.unit || "")}</td>
         <td class="dim">${esc(o.t || "")}</td>
-        <td class="num ${cls(o.yoy, k)}" data-v="${o.yoy ?? ""}">${o.yoy != null ? signed(o.yoy, 1, "%") : "–"}</td>
+        <td class="num ${macCls(o, o.yoy)}" data-v="${o.yoy ?? ""}">${o.yoy != null ? signed(o.yoy, 1, macDeltaUnit(o)) : "–"}</td>
         <td class="sparkcell">${spark((mac.series || {})[k], 120, 22)}</td>
         <td class="dim">${esc(o.src || "")}</td>
         <td><button class="tch" data-go="charts?ind=${esc(k)}&a=" title="Open in Charts">↗</button></td></tr>`; }).join("")}</tbody></table></div>
@@ -4145,7 +4337,9 @@ function longRow(o, i, level, period, value, opts) {
     population: o.pop != null ? o.pop : "",
     indicator: i.key, label: i.label, unit: i.unit || "",
     period, period_type: XC.periodType(period, { projection: isOutlook(i), scenario: isClimKey(i.key) }),
-    value, margin_of_error: x.moe != null ? x.moe : "",
+    /* a coded indicator keeps its number in `value` and gains the word beside it */
+    value, value_label: catsOf(i) ? ((catOf(i, value) || {}).label || "") : "",
+    margin_of_error: x.moe != null ? x.moe : "",
     value_type: x.value_type || (isOutlook(i) ? "projection" : "actual"),
     inherited_from: x.inherited_from || "",
     direction: dirOf(i),
@@ -4232,7 +4426,8 @@ function rowsNational() {
       out.push({
         level: "sweden", code: "SE", name: "Sweden", parent_code: "", parent_name: "", lan: "",
         population: "", indicator: k, label: meta.label || k, unit: meta.unit || "",
-        period: pt.t, period_type: XC.periodType(pt.t), value: pt.v, margin_of_error: "",
+        period: pt.t, period_type: XC.periodType(pt.t), value: pt.v, value_label: "",
+        margin_of_error: "",
         value_type: "actual", inherited_from: "", direction: "", source: meta.src || "",
         table_id: meta.src || "n/a", source_url: "", as_of: meta.t || "", fetched: FETCHED,
         licence: "CC0",

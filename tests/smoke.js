@@ -176,10 +176,15 @@ function assert(name, cond, detail) {
 }
 console.log("\nexports:");
 S.view = "table"; T.level = "kommun";
-const LONG = ["level", "code", "name", "parent_code", "parent_name", "lan", "population",
-  "indicator", "label", "unit", "period", "period_type", "value", "margin_of_error",
+/* v2.1 P1: `value_label` follows `value` — a coded indicator (Boverket BME)
+   exports −1/0/1 and Shortage/Balance/Surplus side by side. The column checks
+   below index by NAME so the next insertion does not silently move them. */
+const LONG_COLS = ["level", "code", "name", "parent_code", "parent_name", "lan", "population",
+  "indicator", "label", "unit", "period", "period_type", "value", "value_label", "margin_of_error",
   "value_type", "inherited_from", "direction", "source", "table_id", "source_url",
-  "as_of", "fetched", "licence"].join(";");
+  "as_of", "fetched", "licence"];
+const LONG = LONG_COLS.join(";");
+const col = name => LONG_COLS.indexOf(name);
 const viewCsv = A.exportRows("view");
 assert("This view exports the long schema", viewCsv[0] === LONG, viewCsv[0].slice(0, 70) + "…");
 assert("and has a row per area and indicator", viewCsv.length > 1000, `${viewCsv.length - 1} rows`);
@@ -205,12 +210,17 @@ assert("unit and magnitude agree in every exported row", bad.length === 0,
 /* the two rules a suppressed value must survive */
 const rows = areasCsv.slice(1);
 assert("a suppressed value is an empty cell, never a zero",
-  !rows.some(r => { const c = r.split(";"); return c[12] === "" && c[13] === "0"; }), "no 0 where – belongs");
+  !rows.some(r => { const c = r.split(";"); return c[col("value")] === "" && c[col("margin_of_error")] === "0"; }),
+  "no 0 where – belongs");
 assert("every row carries a source and an as-of",
-  rows.every(r => { const c = r.split(";"); return c[17] && c[20]; }),
-  (rows.find(r => { const c = r.split(";"); return !c[17] || !c[20]; }) || "").slice(0, 90));
+  rows.every(r => { const c = r.split(";"); return c[col("source")] && c[col("as_of")]; }),
+  (rows.find(r => { const c = r.split(";"); return !c[col("source")] || !c[col("as_of")]; }) || "").slice(0, 90));
 assert("a projected value is labelled as one",
-  rows.some(r => r.split(";")[14] === "projection"), "value_type=projection present");
+  rows.some(r => r.split(";")[col("value_type")] === "projection"), "value_type=projection present");
+assert("a coded indicator exports the number AND the word",
+  rows.some(r => { const c = r.split(";"); return c[col("indicator")] === "bme" && c[col("value")] !== ""
+    && ["Shortage", "Balance", "Surplus"].includes(c[col("value_label")]); }),
+  (rows.find(r => r.split(";")[col("indicator")] === "bme") || "no bme row").slice(0, 120));
 
 /* ---- data assertions the dashboard is supposed to honour ---- */
 console.log("\ndata contract:");

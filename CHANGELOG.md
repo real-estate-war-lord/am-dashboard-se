@@ -32,8 +32,15 @@ a year select, a Yearly | Quarterly segment where the source publishes quarters,
 a static badge for a projection, a static badge naming a climate scenario — and
 labelled with that indicator's own latest period rather than the dashboard's. The
 quarterly toggle is real rather than decorative: reported offences are published
-as a rolling four-quarter sum, `V()` reads it when the period is a quarter, and
-one key carries both kinds (`y=2025` or `y=2025K4`).
+per quarter, `V()` reads that series when the period is a quarter, and one key
+carries both kinds (`y=2025` or `y=2025K4`).
+
+> **Corrected in v2.1 P1.** This paragraph originally said the quarters were a
+> *rolling four-quarter sum*. They are not, and never were: Brå publishes single
+> quarters, and Stockholm reads ~41–50 per 1 000 per quarter against 191,6 for the
+> year. The figures were always right; the description was wrong, and it was
+> repeated in the period control's tooltip and on every exported chart. No number
+> changed when it was fixed.
 
 **Climate is an indicator family, not an overlay button.** Choosing a Climate
 indicator draws its hazard zones from zoom 10 with a hide toggle; choosing

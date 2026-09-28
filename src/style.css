@@ -216,6 +216,14 @@ main{overflow-y:auto;display:flex;flex-direction:column;min-width:0}
 .card.fold .foldb>.tbl:first-child,.card.fold .foldb>.hero:first-child{margin-top:0}
 .hero.hero3{grid-template-columns:repeat(3,minmax(0,1fr))}
 @media (max-width:1100px){.hero.hero3{grid-template-columns:1fr 1fr}}
+/* Data › National has five tiles in a four-column grid, so the fifth left three
+   cells of the grid's own line colour showing as empty grey boxes. Same trick as
+   .hero.wrap: the panel is the background and each cell draws its own rules, so
+   a row that does not fill is simply shorter. */
+.hero.natrow{grid-template-columns:repeat(auto-fit,minmax(200px,1fr));background:var(--panel);gap:0;
+  border-right:0;border-bottom:0}
+.hero.natrow>div{border-right:1px solid var(--line);border-bottom:1px solid var(--line)}
+@media (max-width:640px){.hero.natrow{grid-template-columns:1fr}}
 .back{margin-bottom:2px}
 .back button{background:none;border:0;color:var(--muted);font:inherit;font-size:12.5px;cursor:pointer;padding:2px 0}
 .back button:hover{color:var(--ink)}
@@ -1791,6 +1799,14 @@ td.dim .moe{color:inherit}
 .period{display:inline-flex;align-items:center;gap:6px}
 .fclab.clim{border-color:#C7D2E6;background:#EDF1F8;color:#2F4E8C}
 .qseg .sg{font-size:11px}
+/* "prel." — the publisher has not finalised this period. Amber, never red: a
+   preliminary figure is not a warning, it is a figure that can still move. */
+.prel{font-family:var(--mono);font-size:9.5px;letter-spacing:.04em;text-transform:lowercase;
+  color:#8A6212;background:#FAF2DD;border:1px solid #E6D6A8;border-radius:4px;padding:1px 4px;
+  font-style:normal;white-space:nowrap}
+.hl .prel,.hero .prel{margin-left:4px;font-size:8.5px;padding:0 3px}
+/* a budget the source does not publish: words, with its note on hover */
+.nobudget{font-family:var(--mono);font-size:10px;color:var(--muted);border-bottom:1px dotted var(--line2,var(--line));cursor:help}
 .pkrow .sh{font-style:normal;font-family:var(--mono);font-size:10px;color:var(--dim)}
 
 /* ---- the map's area card ---- */
