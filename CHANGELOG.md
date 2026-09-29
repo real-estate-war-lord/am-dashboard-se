@@ -1,5 +1,159 @@
 # Changelog
 
+## v2.1 — "Sweden fit"
+
+v2.0 built one of everything. This release makes the page fit the country it is
+about, and fixes the four things an audit of v2.0 found that its own 169 checks
+had passed over. No data build changed a number: what changed is which figures
+lead, what the page says while it is still loading, how much of it has to arrive
+before anything is drawn, and how much it weighs.
+
+**The map is the page.** At 1366×768 the map starts within 200 px of the top of
+the window and takes the rest of it, on every map route including Map only. Its
+height is now *measured* (`fitMapHeight()`) rather than guessed at
+`100vh - 250px` in the stylesheet — the 250 px was wrong by a different amount at
+every display scaling. The selected kommun's card moved onto the map as a 334 px
+panel at the top left, collapsible to its own title bar, a bottom sheet on a
+phone; its collapsed state travels in the URL (`card=0`) instead of
+`localStorage`, so two people following one link see one map. The map's four
+corners are allotted — panel, legend stack, zoom control, the "published per
+kommun only" note — and the spec measures every pair of them for overlap at
+three viewport sizes.
+
+**The page is 4.8 MB, down from 17.1.** Two independent changes. Every ring in
+`data/processed/` is now one delta-encoded string rather than an array of
+coordinate pairs — zig-zag, 5 bits per character, base64url alphabet, lossless at
+the five decimals the build already rounded to, 8.9 MB of geometry into 2.0 MB
+(`enc_ring()` in `build_makro.py` encodes, `src/geo_core.js` is the only decoder).
+And RegSO left the page: `dist/index.html` carries the 290 kommun outlines and a
+RegSO *name* index, while `dist/regso/values.json` holds all 3 363 areas' figures
+and `dist/regso/<kommun>.json` their boundaries. Everything that reads a RegSO
+figure asks `regsoReady()` first and says "Loading…" otherwise; everything that
+draws one goes through `regsoDrawable(kommun)`. A dash in this dashboard means
+the source suppressed the value, so a file still in flight may not borrow one.
+
+**"Map only" is a mode, and it is the absence of an indicator** — not another
+indicator and not another layer. It travels in the same `ind=` key (`#map?ind=none`),
+so an old link keeps working and a Map only link is the same shape as any other.
+The choropleth becomes clickable outlines, the legend and the period control are
+not rendered, the polygon labels are names with no value beside them, and the
+popups show five headline figures instead of the selected one plus four. `0`
+toggles it, and is ignored while the caret is in a field. Every Layers ▾ layer
+works on top; the hazard zones are the one exception, because they ride a Climate
+indicator and picking one for the reader would be inventing a scenario.
+
+**The headline row leads with what Sweden publishes below kommun.** Six tiles:
+`growth`, `income_med`, hyresrätt share, `higher_ed`, `employment` — all five
+published at DeSO and RegSO — and then rent, the one kommun-only figure, marked
+"municipality figure" wherever it is not the area's own. The same six on the
+map's area card, on every area page and on Test property.
+
+**A kommun-only indicator is no longer painted on every sub-area.**
+`#map/0180?ind=rent` draws Stockholm filled with its own figure against the
+national scale and its 127 RegSO as white outlines on top, with the figure
+printed once, on the kommun's own label. Three places say why: a note on the map,
+the legend, and the mini-maps' own badge. The two mini-maps follow the same rule.
+
+**Tenure vocabulary, glossed once.** `renters` reads "Hyresrätt share",
+`new_rental` "New hyresrätt", and `rent_owner` names allmännytta and private —
+applied once at load, so the picker, chips, tiles, popups, tables, chart titles
+and the CSV export cannot drift apart. The English gloss, and the sentence that
+K/T-tal is the purchase price divided by the assessed value and **not** a price
+per m², are in a folded help block in the indicator picker.
+
+**Search needs no å ä ö.** `src/search_core.js` folds diacritics, derives
+"<name>s stad" and "<name> kommun" for all 290 kommuner rather than curating
+them, and ranks exact › prefix › word start › anywhere. RegSO names and both
+spellings of a RegSO/DeSO code are searchable. Charts opens with Stockholm,
+Göteborg, Malmö and Uppsala against the Sweden median; an explicitly empty set is
+still reachable (`#charts?a=-`).
+
+**Test property answers seven questions before the reader scrolls.** A summary
+strip at the top of the page: nearest transport stop, groceries within 500 m,
+nearest year-9 merit, whether the pin is in a mapped hazard zone, whether it is
+in a police-designated area, live listings within the radius and the median
+advertised rent. One model (`stripItems()`) feeds the DOM and the Nearby export,
+so they cannot disagree, and every item is a button that opens the section its
+figure comes from. An input still in flight reads "…" and names what it is
+waiting for — never 0. The hazard item has three answers, not two: Yes, No and
+**Not mapped**, because a layer that never surveyed a spot is not a clean bill of
+health. Direct and queue supply are split and never averaged: the medians are
+over the direct listings only, with a caption saying so, and the queue block
+carries the sources' own queued-time figures or says they are not published. The
+six-line privacy paragraph is one line with the whole position a click away.
+
+### Fixed
+
+- **Four sections on Test property never finished loading.** `schLoad`,
+  `srvLoad`, `infraLoad` and `climLoad` all re-rendered only when
+  `S.view === "analysis"`, a view name v2.0 retired — so Services read "Grocery
+  0" for a pin with 31 groceries within a kilometre, for months. One helper
+  (`afterLazyLoad()`) now, on the success and the failure path, and while a file
+  is in flight the section says so instead of printing a count off a file that
+  has not arrived.
+- **A failing listings gateway was asked ~90 times in 14 seconds.** The error
+  render re-triggered the fetch that had just failed. A pin now waits for the
+  reader's Retry; a map box gets one automatic retry after a 5 s backoff and then
+  waits too. Measured: one request in ten seconds against an HTTP 500, and
+  exactly one more when Retry is pressed.
+- **The newest quarter was missing from the crime period control.** The "latest"
+  rule was a year rule applied to quarters. All 48 are offered, 2014K1…2026K2,
+  and a preliminary period is badged **prel.** from the table's own metadata.
+  Switching to Quarterly also left the period at a *year*, so the select showed
+  the oldest quarter while the map drew the yearly figure.
+- **Data › National printed every series to the same precision and called every
+  change a per cent.** Decimals come from the series' own format, a change in a
+  rate is in pp, and `signed()` prints no sign for a change that rounds to zero,
+  so "−0,0" cannot appear anywhere on the page.
+- **The RegSO/DeSO level buttons were missing a class** and rendered as native
+  grey buttons beside the segmented controls they belong to.
+- **A blank project budget rendered as a dash**, which in this dashboard means a
+  suppressed value. It reads "programme only" or "not published" now, from a
+  curated `data/external/infra_budget_state.csv`, with the caption explaining
+  both.
+- **`eVal()` inherited the kommun's figure for a RegSO and not for a DeSO**, so
+  rent was a dash on a DeSO area page while the map painted that same DeSO with
+  the kommun's rent. `subKommun(e)` is the one predicate now, and `no_inherit`
+  still wins over it.
+- **The kommun page's mini-map drew all 3 363 RegSO tinted with their kommun's
+  value** for a kommun-level indicator — 290 figures repeated over twelve times
+  as many polygons. It draws the 290 kommuner.
+- **On a kommun's area page the "this is the page's area" stroke was given to
+  every sub-area at once**, so Stockholm's mini-map read as a black mesh.
+- **Boverket's BME exported as a bare code.** The long schema gained a
+  `value_label` column after `value`, and a coded indicator gets no y/y and no
+  "Δ since" anywhere: "Shortage → Balance" is not +1 pp.
+- **The Pipeline table's status dot wrapped onto the line above its word**, so
+  the colour belonged to nothing.
+- **The map toolbar clipped the indicator's name** to "Rent, … S… municipality ▾"
+  while 180 px of the row sat empty.
+- **The kommun-only note was drawn on top of the mini-maps' legend.** P4 centred
+  it along the bottom of the map, and the rule matched the mini-maps too, which
+  have no free bottom-centre lane.
+
+### Tests
+
+`tests/ui_v2_1/spec.py` is the acceptance spec for this release — every check
+asserts what the page **says** after its lazy loads settle, because v2.0's 169
+checks asserted that elements exist and three broken sections stayed green for
+months behind that. `settle()` is called before every content assertion, the
+gateway is answered from `tests/fixtures/listings_stockholm.json` **and** from an
+explicit HTTP 500 error mode that counts the requests, and where a number can be
+recomputed from the files in `dist/` the spec recomputes it and compares — the
+service counts, the export's 556 185 rows, the direct/queue medians, the seven
+strip answers. P4's checks drive the loading states on purpose by holding
+`regso/values.json` open, because with the prefetch in place a check that merely
+waited would never see them. P6 adds the release regression: eleven routes at
+1366×768, 1440×900, 1536×864 and 390×844, each settled, each asserted for zero
+page errors and no horizontal overflow, plus the mini-maps' four corners measured
+against each other. `tests/ui_v2/spec.py`'s 169 v2.0 checks all still run; five
+were **updated, never deleted**, each logged in `docs/v2_1/DECISIONS.md`.
+`make test-js` is 122 unit tests across seven modules, including
+`tests/geo.test.js`, which checks the ring codec's round trip and decodes the
+real build output. Every judgement call an unattended phase made is one line in
+`docs/v2_1/DECISIONS.md`; what each phase built is in `docs/v2_1/PROGRESS.md`.
+
+
 ## v2.0 — "one of everything" (draft, not released)
 
 A UI round. No data build script changed, no indicator moved, no number is

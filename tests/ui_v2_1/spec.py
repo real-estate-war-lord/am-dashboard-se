@@ -77,8 +77,35 @@ SHOT_ROUTES = {
     # direct/queue split with the cards open
     "prop-summary": (f"#property?p={STHLM}:Test", "prop-strip"),
     "prop-alloc": (f"#property?p={STHLM}:Test&rad=2000&show=listings&lopen=1", "lst-split"),
+    # P6 — the two area levels the release set was missing
+    "area-kommun": ("#area/kommun/0180", None),
+    "area-deso": ("#area/deso/0180C1010_DeSO2025", None),
 }
 SHOT_SIZES = [(1440, 900), (1366, 768), (390, 844)]
+
+# `--doc-shots` writes the review set that ships in docs/ui_v2_1/: the eleven
+# routes P6 reviews, at the two sizes the release notes are read at. The gate's
+# `--shots` keeps capturing all of SHOT_ROUTES at all three sizes into logs/,
+# which is a working set and not something to commit.
+DOC_SHOT_SIZES = [(1440, 900), (390, 844)]
+# The eleven review routes, spelled out rather than borrowed from SHOT_ROUTES:
+# `shots()` walks one page, and an `ind=`-less route inherits whatever the
+# previous one selected — which had the committed area-kommun screenshot showing
+# Map only. Every route here names its own indicator, so the set is the same
+# whatever order it is written in. `growth` is the dashboard's own default.
+DOC_SHOT_ROUTES = {
+    "mapfirst": ("#map?ind=growth", None),
+    "maponly": ("#map?ind=none", None),
+    "mapfirst-kommun": ("#map/0180?ind=growth", None),
+    "area-kommun": ("#area/kommun/0180?ind=growth", None),
+    "area-regso": ("#area/regso/0180R001_RegSO2025?ind=rent", None),
+    "area-deso": ("#area/deso/0180C1010_DeSO2025?ind=income_med", None),
+    "prop-summary": (f"#property?p={STHLM}:Test&ind=growth", "prop-strip"),
+    "data-areas": ("#data/areas/kommun?ind=growth", None),
+    "data-national": ("#data/national", None),
+    "data-projects": ("#data/projects", None),
+    "charts-default": ("#charts", None),
+}
 
 
 # --------------------------------------------------------------------------- #
@@ -2183,18 +2210,218 @@ def _export_nearby(r, page, errs, calls):
 
 
 # --------------------------------------------------------------------------- #
+# P6 — full regression
+# --------------------------------------------------------------------------- #
 
-def shots(browser, url, out: pathlib.Path) -> None:
+# The eleven routes the release is reviewed on, at four viewport sizes. This is
+# deliberately the *v2.1* set: the v2.0 spec's own responsive pass runs thirteen
+# routes of its own and none of them is Map only, a labelled pin or a bare
+# #charts, all three of which are new in this release. It also reads the page
+# without settle(), so a section that overflows only once its lazily loaded file
+# lands would go unseen — which is the class of bug this whole spec exists for.
+REG_ROUTES = {
+    "map": "#map",
+    "map-only": "#map?ind=none",
+    "map-kommun": "#map/0180",
+    "area-kommun": "#area/kommun/0180",
+    "area-regso": "#area/regso/0180R001_RegSO2025",
+    "area-deso": "#area/deso/0180C1010_DeSO2025",
+    "property": f"#property?p={STHLM}:Test",
+    "data-areas": "#data/areas/kommun",
+    "data-national": "#data/national",
+    "data-projects": "#data/projects",
+    "charts": "#charts",
+}
+REG_SIZES = [(1366, 768), (1440, 900), (1536, 864), (390, 844)]
+
+
+def _regression(r, page, errs, w, h):
+    page.set_viewport_size({"width": w, "height": h})
+    page.wait_for_timeout(250)
+    over, bad = [], []
+    for name, route in REG_ROUTES.items():
+        errs.clear()
+        hop(page, route, 900)
+        settle(page)
+        sw = page.evaluate("document.documentElement.scrollWidth")
+        if sw > w + 1:
+            over.append(f"{name} {sw}>{w}")
+        e = js_errs(errs)
+        if e:
+            bad.append(f"{name}: {e[0][:70]}")
+    r.ok(f"{w}×{h}: no horizontal overflow on any of the {len(REG_ROUTES)} routes",
+         not over, "; ".join(over))
+    r.ok(f"{w}×{h}: zero page errors", not bad, "; ".join(bad))
+    errs.clear()
+
+
+@check("regression-1366", "P6", "every route at 1366×768", needs="fresh")
+def _reg_1366(r, page, errs, calls):
+    _regression(r, page, errs, 1366, 768)
+
+
+@check("regression-1440", "P6", "every route at 1440×900", needs="fresh")
+def _reg_1440(r, page, errs, calls):
+    _regression(r, page, errs, 1440, 900)
+
+
+@check("regression-1536", "P6", "every route at 1536×864", needs="fresh")
+def _reg_1536(r, page, errs, calls):
+    _regression(r, page, errs, 1536, 864)
+
+
+@check("regression-390", "P6", "every route at 390×844", needs="fresh")
+def _reg_390(r, page, errs, calls):
+    _regression(r, page, errs, 390, 844)
+
+
+# P4 measured the big map's four corners against each other. P5 left the two
+# mini-maps unmeasured and the defect that hid there was real: P4's
+# bottom-centre rule for the kommun-only note matched `.mapwrap > .monote.ko`,
+# which is also what the mini-maps render, so on every RegSO/DeSO page and on
+# Test property the amber note was drawn on top of the legend.
+MINI_PARTS = {
+    "the note": "[data-testid=minimap] > [data-testid=kommun-only-note]",
+    "the legend": "[data-testid=minimap] .maplegend",
+    "the zoom control": "[data-testid=minimap] .leaflet-control-zoom",
+    "the full-screen button": "[data-testid=minimap] [data-testid=minimap-full]",
+}
+
+
+@check("minimap-corners", "P6", "nothing on a mini-map is drawn on top of anything else",
+       needs="fresh")
+def _minimap_corners(r, page, errs, calls):
+    routes = [("an area page", "#area/regso/0180R001_RegSO2025?ind=rent"),
+              ("Test property", f"#property?p={STHLM}:Test&ind=rent&show=none")]
+    for w, h in [(1366, 768), (1440, 900), (390, 844)]:
+        page.set_viewport_size({"width": w, "height": h})
+        for what, route in routes:
+            hop(page, route, 1400)
+            settle(page)
+            page.eval_on_selector("[data-testid=minimap]",
+                                  "e => e.scrollIntoView({ block: 'center' })")
+            page.wait_for_timeout(350)
+            parts = {k: box(page, s) for k, s in MINI_PARTS.items()}
+            r.ok(f"{w}×{h} {what}: the kommun-only note is on the mini-map",
+                 bool(parts["the note"]) and parts["the note"]["h"] > 0,
+                 json.dumps(parts["the note"]))
+            names = list(MINI_PARTS)
+            for i in range(len(names)):
+                for j in range(i + 1, len(names)):
+                    a, b = names[i], names[j]
+                    r.ok(f"{w}×{h} {what}: {a} is clear of {b}",
+                         not overlaps(parts[a], parts[b]),
+                         f"{a} {parts[a]}, {b} {parts[b]}")
+    page.set_viewport_size({"width": 1440, "height": 900})
+    r.ok("no page error while measuring the mini-maps", not js_errs(errs),
+         (js_errs(errs)[0] if js_errs(errs) else "")[:140])
+    errs.clear()
+
+
+@check("pipeline-status-inline", "P6", "a status dot stays on the line of the word it colours")
+def _pipeline_dots(r, page, errs, calls):
+    for w, h in [(1366, 768), (1440, 900), (1536, 864)]:
+        page.set_viewport_size({"width": w, "height": h})
+        hop(page, "#data/projects", 900)
+        settle(page)
+        rows = page.evaluate(
+            """() => Array.from(document.querySelectorAll('td.pipst')).map(td => {
+                 const dot = td.querySelector('.pipdot');
+                 const tn = Array.from(td.childNodes)
+                     .find(n => n.nodeType === 3 && n.textContent.trim());
+                 if (!dot || !tn) return { word: '(no dot or no word)', same: false };
+                 const rg = document.createRange(); rg.selectNodeContents(tn);
+                 const t = rg.getBoundingClientRect(), d = dot.getBoundingClientRect();
+                 return { word: tn.textContent.trim(),
+                          same: d.top < t.bottom && d.bottom > t.top }; })""")
+        r.ok(f"{w}×{h}: Pipeline draws a dot for every project", len(rows) >= 40,
+             f"{len(rows)} status cells")
+        wrapped = [x["word"] for x in rows if not x["same"]]
+        r.ok(f"{w}×{h}: and not one of them wrapped away from its word", not wrapped,
+             f"{len(wrapped)} wrapped: " + ", ".join(wrapped[:5]))
+    page.set_viewport_size({"width": 1440, "height": 900})
+
+
+@check("toolbar-label-whole", "P6", "the map toolbar prints the indicator's name, not an ellipsis")
+def _toolbar_label(r, page, errs, calls):
+    # The picker button is the only place on the map that names the active
+    # indicator in full. v2.1 P1 logged it as truncated and cosmetic; it is the
+    # kind of thing a release screenshot is read for, so P6 measures it.
+    for w, h in [(1366, 768), (1440, 900), (1536, 864)]:
+        page.set_viewport_size({"width": w, "height": h})
+        for route in ["#map/0180?ind=rent", "#map?ind=income_med"]:
+            hop(page, route, 900)
+            settle(page)
+            m = page.evaluate(
+                """() => { const b = document.querySelector('[data-testid=map-toolbar] .indbtn');
+                           if (!b) return null;
+                           const l = b.querySelector('b');
+                           return { btn: b.scrollWidth - b.clientWidth,
+                                    lab: l ? l.scrollWidth - l.clientWidth : -1,
+                                    text: b.innerText.replace(/\\s+/g, ' ').trim() }; }""")
+            r.ok(f"{w}×{h} {route}: the label is not clipped",
+                 m and m["lab"] <= 1 and m["btn"] <= 1, json.dumps(m, ensure_ascii=False))
+            r.ok(f"{w}×{h} {route}: and it has no ellipsis in it",
+                 m and "…" not in m["text"], (m or {}).get("text", "")[:90])
+    page.set_viewport_size({"width": 1440, "height": 900})
+    r.ok("the toolbar row still does not wrap the map down the page",
+         box(page, "[data-testid=map]").get("top", 9999) <= MAP_TOP_BUDGET,
+         json.dumps(box(page, "[data-testid=map]")))
+
+
+# --------------------------------------------------------------------------- #
+
+def shots(browser, url, out: pathlib.Path, routes=None, sizes=None,
+          only_missing: bool = False) -> None:
+    """Capture `routes` at `sizes` into `out`.
+
+    `only_missing` exists for the committed set in docs/ui_v2_1/: a screenshot is
+    not byte-stable across runs (basemap tiles, antialiasing), so rewriting it on
+    every gate would leave the working tree dirty afterwards and
+    `./overnight.sh release` refuses to run on one. The gate fills in whatever is
+    missing; `--doc-shots` refreshes the whole set on purpose."""
     out.mkdir(parents=True, exist_ok=True)
-    for w, h in SHOT_SIZES:
+    routes = SHOT_ROUTES if routes is None else routes
+    for w, h in (sizes or SHOT_SIZES):
+        todo = {k: v for k, v in routes.items()
+                if not (only_missing and (out / f"{k}_{w}x{h}.png").exists())}
+        if not todo:
+            continue
         page, _, _ = boot(browser, url, w, h)
-        for name, (route, anchor) in SHOT_ROUTES.items():
+        for name, (route, anchor) in todo.items():
             hop(page, route, 1200)
             settle(page, 6000)
+            # `#main` is the scroll container, not the window (`main{overflow-y:auto}`),
+            # so `window.scrollTo` is a no-op on a desktop viewport. Both of the
+            # things below went wrong because of that: a hash change does not
+            # reset the scroll, so a route with no anchor was photographed at
+            # wherever the previous one had been left, and `block: 'start'` puts
+            # the anchor under the sticky breadcrumb bar, which clipped the top
+            # line of the Test property strip in every shot of it (v2.1 P6).
             if anchor and page.eval_on_selector_all(f"[data-testid={anchor}]", "e => e.length"):
-                page.eval_on_selector(f"[data-testid={anchor}]",
-                                      "e => e.scrollIntoView({ block: 'start' })")
-                page.wait_for_timeout(500)
+                page.eval_on_selector(
+                    f"[data-testid={anchor}]",
+                    """e => { e.scrollIntoView({ block: 'start' });
+                              const r = e.getBoundingClientRect();
+                              let cover = 0;
+                              // whichever of the two top bars this viewport shows
+                              for (const x of document.querySelectorAll('.topbar, .mtop')) {
+                                const cs = getComputedStyle(x);
+                                if (cs.position !== 'sticky' && cs.position !== 'fixed') continue;
+                                const b = x.getBoundingClientRect();
+                                if (b.height > 0 && b.top <= r.top + 1)
+                                  cover = Math.max(cover, b.bottom);
+                              }
+                              if (!cover) return;
+                              const d = cover - r.top + 10;
+                              const m = document.getElementById('main');
+                              if (m && m.scrollHeight > m.clientHeight) m.scrollTop -= d;
+                              else window.scrollBy(0, -d); }""")
+            else:
+                page.evaluate("""() => { const m = document.getElementById('main');
+                                         if (m) m.scrollTop = 0;
+                                         window.scrollTo(0, 0); }""")
+            page.wait_for_timeout(500)
             page.screenshot(path=str(out / f"{name}_{w}x{h}.png"), full_page=False)
         page.close()
     print(f"\nscreenshots → {out}")
@@ -2208,6 +2435,9 @@ def main() -> int:
     ap.add_argument("--upto", default=PHASES[-1], choices=PHASES)
     ap.add_argument("--out", default=str(ROOT / "docs" / "ui_v2_1"))
     ap.add_argument("--shots", action="store_true")
+    ap.add_argument("--doc-shots", action="store_true",
+                    help="write the committed review set to docs/ui_v2_1/ "
+                         "(implied by --shots at --upto P6)")
     args = ap.parse_args()
 
     from playwright.sync_api import sync_playwright
@@ -2235,6 +2465,13 @@ def main() -> int:
         shared[0].close()
         if args.shots:
             shots(browser, args.url, out)
+        # The committed review set is written whenever the whole release is
+        # exercised with screenshots — `--upto P6 --shots` is what the gate runs,
+        # and docs/ui_v2_1/ is part of what P6 delivers, so it should not need a
+        # second command nobody will remember to type.
+        if args.doc_shots or (args.shots and args.upto == PHASES[-1]):
+            shots(browser, args.url, ROOT / "docs" / "ui_v2_1",
+                  DOC_SHOT_ROUTES, DOC_SHOT_SIZES, only_missing=not args.doc_shots)
         browser.close()
 
     r.write(out)

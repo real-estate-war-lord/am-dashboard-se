@@ -588,3 +588,138 @@ mini-map". No v2.0 check was changed; the 169 still pass as written.
   survive a re-recorded fixture.
 * Two screenshot routes were added (`prop-summary`, `prop-alloc`), so `--shots`
   now writes 66 files per run.
+
+---
+
+## P6 — full regression, screenshots, write-up
+
+Gate green: `make validate`, `make build`, `make test` (smoke + `node --test`),
+`tests/ui_v2/spec.py --upto P11` (169/169), `tests/ui_v2_1/spec.py --upto P6`
+(509/509 — P1–P5's 297 plus 212 new).
+
+### Built
+
+**The release regression, four checks and 212 assertions.** `regression-1366`,
+`-1440`, `-1536` and `-390` each open a cold page at that viewport and walk
+eleven routes — `#map`, `#map?ind=none`, `#map/0180`, the kommun, RegSO and DeSO
+area pages, a labelled pin, the three Data tabs and a bare `#charts` — calling
+`settle(page)` on each before measuring. Two assertions per viewport: no
+horizontal overflow on any route, and zero page errors (through `js_errs()`, so
+the fixture's `example.invalid` photo URLs are not counted as the page's fault).
+This repeats what the v2.0 spec's P10 does and is not redundant: its route list
+is the v2.0 one, three of these routes are new in this release, and it reads the
+page without settling, so anything that only overflows once a lazily loaded file
+lands is invisible to it.
+
+**`minimap-corners` — P5's handover item, and it was a real defect.** P4 centred
+the kommun-only note along the bottom of the map with `.mapwrap > .monote.ko`,
+and that is also what the two mini-maps render, so on every RegSO and DeSO area
+page and on Test property the amber note was drawn straight over the legend. The
+rule is scoped to `.mapwrap:not(.minicard)` now and a mini-map's note takes the
+**top** edge, between Leaflet's zoom control and the ⤢ button — restoring the
+pre-P4 bottom-left corner was not enough, because the small legend is
+bottom-right and at 390 px it reaches past the middle. The check measures all six
+pairs of note × legend × zoom × full-screen at three viewport sizes, on both
+mini-maps.
+
+**Three more things the screenshots showed that no check had asked about.**
+
+* Pipeline's status dot wrapped onto the line above its word, so the colour
+  belonged to nothing. `td.pipst{white-space:nowrap}`;
+  `pipeline-status-inline` asserts it by measuring the dot's rectangle against a
+  `Range` over the cell's own text node, at three widths, across all 49 rows.
+* The map toolbar clipped the indicator's name to "Rent, … S… municipality ▾"
+  while ~180 px of the row sat empty — `max-width:30ch` was simply narrower than
+  the row ever needed. 46ch, plus `min-width:0`; the button is `overflow:hidden`
+  so it still shrinks before the nowrap row can overflow, which the four
+  regression checks prove at 1366 through 1536.
+* Every listings card carried a literal "…" that nothing ever replaced:
+  `lstFillText()` is wired to a map popup opening, not to the card grid, and
+  asking the gateway for 27 descriptions nobody has clicked on is the opposite of
+  what P1 spent its time fixing. The node now renders `text_start` where the
+  source already sent it and is hidden when empty (`.text:empty`), so the popup
+  path is unchanged. In the same card, "6 275" and "kr/mån" were breaking across
+  two lines — the value is in a `.v` span that will not break.
+
+**The committed review set.** `docs/ui_v2_1/` holds the eleven review routes at
+1440×900 and 390×844, written by `--doc-shots`, which `--shots --upto P6`
+implies — the gate's own command is what produces them, so they cannot go stale
+behind a second command nobody remembers to type. The gate's own `--shots` still
+captures all 24 of `SHOT_ROUTES` at three sizes into `logs/`, as a working set.
+Three things had to be fixed before the set was worth committing, and all three
+were in the *helper*, not in the page:
+
+* **`#main` is the scroller, not the window** (`main{overflow-y:auto}`), so
+  `window.scrollTo` did nothing on a desktop viewport. A hash change does not
+  reset the scroll either, so a route with no anchor was photographed at
+  wherever the previous one had been left.
+* **`block: 'start'` puts an anchor under the sticky breadcrumb bar**, which cut
+  the label row off the top of every Test property strip shot. It backs off by
+  the measured overlap now — and by *whichever* of `.topbar` / `.mtop` this
+  viewport shows, because `querySelector('.topbar, .mtop')` returns `.mtop` first
+  in document order and at 1440 that one is `display:none` with a height of 0,
+  which is what made the first attempt at this fix a no-op.
+* **A route with no `ind=` inherits the previous one's indicator**, so
+  `area-kommun` and `prop-summary` were committed showing Map only.
+  `DOC_SHOT_ROUTES` names an indicator on every route.
+
+**The write-up.** `CHANGELOG.md` has a "v2.1 — Sweden fit" entry covering all six
+phases, with a Fixed list of fourteen items and a Tests paragraph;
+`README.md` has a v2.1 section, the two new hash keys (`card=0`, `a=-`) and
+`ind=none` in the key list, a screenshot pair out of `docs/ui_v2_1/` and the
+status checklist; `docs/v2_1/RELEASE_NOTES_FI.md` is 32 lines of Finnish — what
+shipped per phase, what was skipped and why, the open ⚠ and an eight-point
+localhost checklist.
+
+### Deviations
+
+Seven, all in `docs/v2_1/DECISIONS.md`. The two to read before touching this: the
+mini-map note takes the **top** edge rather than going back to bottom-left, and
+`--doc-shots` is a set of its own rather than committing the gate's 72-file
+working set.
+
+No check was deleted anywhere. No v2.0 check changed in this phase — the 169
+still pass as written — and no earlier v2.1 check was touched either.
+
+### Known issues, not fixed here
+
+* `indExplain`'s "as of" at RegSO/DeSO still falls back to the kommun stamp
+  (P1's), and the area mini-map still fits to its own area (P3's). Both are
+  pre-existing and neither is a wrong number.
+* `#map/0180?ind=crime_1000` shows the kommun's figure on every RegSO row
+  *without* the kommun-only treatment rent gets, because `crime_1000` declares
+  `levels: [kommun, regso, deso]` and `rent` declares `[kommun]`. The badge says
+  "RegSO rows · kommun figures" either way, so nothing is claimed falsely, but
+  the two indicators are drawn differently for a reason that lives in
+  `config/indicators.json` — which is forbidden to these phases. Worth a look
+  from outside the overnight run.
+* At 390 px the Pipeline type filter wraps to two rows inside one pill-shaped
+  background. Legible, slightly untidy; not worth a layout change at this point
+  in the release.
+* A screenshot is not byte-stable across runs (basemap tiles, antialiasing), so
+  the gate **fills in only what is missing** from `docs/ui_v2_1/` rather than
+  rewriting all 22 — otherwise every gate run would leave the tree dirty and
+  `./overnight.sh release`, which refuses to run on a dirty tree, would never
+  start. The cost is that a view can change without its committed screenshot
+  following: **`--doc-shots` refreshes the set**, and whoever changes a view in
+  this set should run it.
+* The screenshot helper still hops between routes on one page, so a route with no
+  `ind=` inherits the previous shot's indicator (P5's note). The committed set is
+  immune — every route in `DOC_SHOT_ROUTES` names its own — but the gate's
+  working set in `logs/` still inherits, which is worth knowing when reading one.
+
+### What the next phase must know
+
+* **`REG_ROUTES` in `tests/ui_v2_1/spec.py` is the release's route list.** A new
+  destination belongs in it, and in `SHOT_ROUTES`; add it to `DOC_SHOT_ROUTES`
+  too if a reader of the release notes should see it.
+* **`--doc-shots` is what refreshes `docs/ui_v2_1/`.** The gate only fills in
+  files that are missing, so a view you change keeps its old screenshot until
+  somebody asks for a new one. Delete the two files for a route, or pass the
+  flag, and review the diff.
+* **A mini-map's overlays have three occupied corners** (zoom top-left, ⤢
+  top-right, legend bottom-right) and one free edge. Anything new on one goes
+  through `minimap-corners` before it is believed.
+* **`.pipst` and `.lst-card .facts .v` exist to stop a line breaking inside one
+  fact.** A new table cell that pairs a mark with a word, or a figure with its
+  unit, wants the same treatment.

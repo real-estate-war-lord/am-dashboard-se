@@ -261,3 +261,51 @@ front. A reader should be able to reverse any of them from this file alone.
   listings carry `example.invalid` photo URLs that cannot resolve anywhere, so
   "no page error" on those two paths could only ever mean "nothing was thrown".
   Every other check still asserts against the raw list.
+- **P6** — P4's bottom-centre rule for the kommun-only note is scoped to
+  `.mapwrap:not(.minicard)`, and a **mini-map's** note takes the **top edge**
+  instead (centred, `calc(100% - 96px)` wide, between Leaflet's zoom control and
+  the ⤢ button). Restoring the pre-P4 bottom-left corner was not enough: the
+  small legend is bottom-right and at 390 px it reaches past the middle, so the
+  two would still meet on a phone. The top edge is the one corner-to-corner run
+  nothing else on a mini-map uses. `minimap-corners` measures all six pairs at
+  three viewport sizes, which is what P5 handed over.
+- **P6** — the map toolbar's indicator button goes from `max-width:30ch` to
+  `46ch` plus `min-width:0`. 30ch clipped "Rent, median SEK / m² / yr
+  municipality ▾" to "Rent, … S… municipality ▾" while ~180 px of the row sat
+  empty. The button is `overflow:hidden`, so its automatic minimum size is 0 and
+  it still shrinks before the nowrap row can overflow — which the four
+  `regression-*` checks are what actually prove, at 1366 through 1536.
+- **P6** — the Pipeline status cell is `td.pipst{white-space:nowrap}` rather than
+  a `:has(> .pipdot)` rule: the dot is the status, so it may not wrap onto the
+  line above the word it colours, and a class is what the check can select on.
+  `pipeline-status-inline` asserts it by measuring the dot's rect against a
+  `Range` over the cell's own text node, not by reading the computed style.
+- **P6** — `--doc-shots` writes **eleven routes × two sizes** into
+  `docs/ui_v2_1/`, and `--shots --upto P6` implies it, while the gate's `--shots`
+  goes on capturing all 24 of `SHOT_ROUTES` at three sizes into `logs/`. The
+  gate's set is a working set for the eye review; committing 72 PNGs of it would
+  bury the eleven a reader of the release notes is meant to look at. The implying
+  is deliberate: `./overnight.sh gate P6` is the only command this phase can run,
+  so a committed set that needed a second one would go stale the first time
+  somebody forgot. The implied form writes **only the files that are missing**,
+  because a screenshot is not byte-stable across runs and a gate that rewrote all
+  22 would leave the tree dirty — and `./overnight.sh release` refuses to start on
+  a dirty tree. `--doc-shots` refreshes the whole set.
+- **P6** — the eleven doc routes are **spelled out with their own `ind=`** rather
+  than borrowed from `SHOT_ROUTES`. `shots()` walks one page and a route with no
+  `ind=` inherits whatever the previous one selected, which had the committed
+  `area-kommun` screenshot showing Map only. `growth` is the dashboard's own
+  default, so naming it changes nothing but makes the set order-independent.
+- **P6** — the screenshot helper scrolls **`#main`**, not the window.
+  `main{overflow-y:auto}` makes it the scroller on a desktop viewport, so
+  `window.scrollTo` was a no-op there — which is why a route with no anchor was
+  photographed wherever the previous one had been left. The anchored shots back
+  off by the *measured* overlap of whichever of `.topbar` / `.mtop` this viewport
+  actually shows: `querySelector('.topbar, .mtop')` returns `.mtop` first in
+  document order, and at 1440 it is `display:none` with a height of 0.
+- **P6** — the release regression repeats what `tests/ui_v2/spec.py` P10 already
+  does, on purpose. Its route list is the v2.1 one — Map only, a labelled pin and
+  a bare `#charts` are all new here and none of them is in the v2.0 list — and it
+  calls `settle()` before measuring, where P10 reads the page immediately. A
+  section that only overflows once its lazily loaded file lands is invisible to
+  the older pass, and that is the class of bug this spec exists for. Both run.

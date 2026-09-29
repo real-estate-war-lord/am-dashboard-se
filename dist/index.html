@@ -2083,6 +2083,10 @@ a.srcv:hover{border-bottom-style:solid}
 .lgpick .lgb:hover{border-color:var(--line)}
 .lgpick .lgb.on{background:var(--ink);color:#fff}
 .pipdot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:middle}
+/* The dot IS the status, so it has to stay on the word's line. In Pipeline the
+   column is narrow enough that "● construction" wrapped after the dot and the
+   colour ended up a line above the word it belongs to (v2.1 P6). */
+.pipst{white-space:nowrap}
 .lgrow.lgclick{cursor:pointer;pointer-events:auto}
 .lgrow.lgclick.off{opacity:.45}
 .lgrow.lgclick:hover{text-decoration:underline}
@@ -2413,7 +2417,12 @@ td.dim .moe{color:inherit}
 [data-testid=map-toolbar] .asrch{flex:1 1 200px;min-width:130px;max-width:360px}
 [data-testid=map-toolbar] .asrch input{width:100%}
 [data-testid=map-toolbar] .indsel{height:28px;padding-top:0;padding-bottom:0;max-width:22ch}
-[data-testid=map-toolbar] .indbtn{max-width:30ch;height:28px}
+/* 30ch was narrower than the row ever needed: "Rent, median SEK / m² / yr
+   municipality ▾" was clipped to "Rent, … S… municipality ▾" while 180 px of the
+   toolbar sat empty. 46ch holds the longest label the picker can put here, and
+   the button shrinks below it under pressure — it is `overflow:hidden`, so its
+   automatic minimum size is 0 and the flex row still cannot overflow (v2.1 P6). */
+[data-testid=map-toolbar] .indbtn{max-width:46ch;min-width:0;height:28px}
 [data-testid=map-toolbar] .lk{height:28px;padding-top:0;padding-bottom:0;display:inline-flex;align-items:center}
 [data-testid=map-toolbar] .seg .sg,[data-testid=map-toolbar] .seg button{padding-top:3px;padding-bottom:3px}
 .card-head.tools-only{gap:6px}
@@ -2470,6 +2479,9 @@ td.dim .moe{color:inherit}
 .lst-card .sub{color:var(--muted);font-size:11.5px;margin-bottom:8px}
 .lst-card .facts{display:grid;grid-template-columns:1fr 1fr;gap:3px 10px;font-family:var(--mono);font-size:11.5px;margin-bottom:8px}
 .lst-card .facts i{font-style:normal;color:var(--muted)}
+/* A figure and its own unit are one thing: "6 275" on one line and "kr/mån" on
+   the next reads as two facts. The line may still break after the label. */
+.lst-card .facts .v{white-space:nowrap}
 .lst-card .badges{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px}
 .lst-bdg{font-size:10.5px;font-family:var(--mono);padding:2px 7px;border-radius:999px;
   border:1px solid var(--line);background:var(--panel2);color:var(--ink2);text-decoration:none}
@@ -2478,6 +2490,7 @@ td.dim .moe{color:inherit}
 .lst-bdg.also{background:#E9F1EF;border-color:#C9DCD7;color:#14544A}
 .lst-bdg.pos{background:var(--panel2);color:var(--muted)}
 .lst-card .text{font-size:12px;color:var(--ink2);line-height:1.45;margin-bottom:9px}
+.lst-card .text:empty{display:none}
 .lst-card .text.muted{color:var(--dim);font-style:italic}
 .lst-card .open{display:block;text-align:center;padding:8px;border-radius:var(--r);
   background:var(--side);color:var(--side-ink);text-decoration:none;font-weight:500;font-size:12.5px}
@@ -2747,10 +2760,21 @@ tr.inh td.num{color:var(--ink2)}
    the kommun, and CSS small caps go through innerText — "Rent, median" would
    read "RENT, MEDIAN" to a screen reader and to the tests alike. Only the label
    in front of it is set in caps. */
-.mapwrap > .monote.ko{left:50%;right:auto;bottom:24px;transform:translateX(-50%);
+/* `:not(.minicard)` because the two mini-maps use the same element and have no
+   bottom-centre lane free — their legend is bottom-right and reaches past the
+   middle, so P4's centring put the note on top of it on every RegSO/DeSO page
+   and on Test property. Fixed in v2.1 P6; the mini-map keeps the bottom-left
+   corner it had, and `minimap-corners` measures all four pairs. */
+.mapwrap:not(.minicard) > .monote.ko{left:50%;right:auto;bottom:24px;transform:translateX(-50%);
   max-width:min(560px,52%);text-align:center;text-transform:none;letter-spacing:0;
   font-size:10px;line-height:1.4}
-.mapwrap > .monote.ko b{text-transform:uppercase;letter-spacing:.06em}
+.mapwrap:not(.minicard) > .monote.ko b{text-transform:uppercase;letter-spacing:.06em}
+/* A mini-map has no free bottom-centre lane: its legend is bottom-right and at
+   390 px it reaches past the middle. The note takes the top edge instead, between
+   Leaflet's zoom control (top left, ~40 px) and the ⤢ button (top right, 34 px),
+   which is the one corner-to-corner run nothing else on a mini-map uses. */
+.mapwrap.minicard > .monote.ko{top:8px;bottom:auto;left:50%;right:auto;
+  transform:translateX(-50%);max-width:calc(100% - 96px);text-align:center}
 /* 334 px does not hold five columns, let alone six. Two, at every viewport:
    the media queries further up this file are written for a full-width row. */
 .mapwrap > .acard.mappanel .hl,
@@ -2781,11 +2805,11 @@ tr.inh td.num{color:var(--ink2)}
   .maplegs{top:46px}
   body.legopen .maplegs{display:flex;max-height:calc(50% - 60px)}
   #lfmap .leaflet-top.leaflet-left{top:0;bottom:auto}
-  .mapwrap > .monote.ko{top:10px;bottom:auto;left:54px;right:96px;transform:none;
+  .mapwrap:not(.minicard) > .monote.ko{top:10px;bottom:auto;left:54px;right:96px;transform:none;
     max-width:none;text-align:left}
   /* opened, the legend stack covers that lane — and says the same thing in its
      own note, so the overlay stands down rather than being drawn under it */
-  body.legopen .mapwrap > .monote.ko{display:none}
+  body.legopen .mapwrap:not(.minicard) > .monote.ko{display:none}
 }
 </style>
 </head>
@@ -5616,7 +5640,7 @@ function mapAreaCard(m) {
       <summary>Upcoming projects (${projects.length})</summary><div class="secbody">
       <table class="tbl compact"><tbody>${projects.map(p => `<tr>
         <th><button class="lk mini" data-go="project/${esc(p.id)}">${esc(p.name)}</button></th>
-        <td><span class="pipdot" style="background:${INFRA_TONE[p.status] || "#8A8C81"}"></span>${esc(p.status)}</td>
+        <td class="pipst"><span class="pipdot" style="background:${INFRA_TONE[p.status] || "#8A8C81"}"></span>${esc(p.status)}</td>
         <td class="num">${p.open_year || esc(p.open_window || "–")}</td></tr>`).join("")}</tbody></table>
       <p class="cap">Hand-curated from the agencies' own pages; every row links to the source. <b>Not a forecast of anything</b> — a status and an opening year as the project body states them.</p></div></details>` : ""}`}
   </div>`;
@@ -6316,7 +6340,7 @@ function infraNear() {
   if (!hits.length) return `<p class="empty">No mapped project within ${radTxt(Math.max(PROP.rad, 2000))}. A project whose stations could not be found in OpenStreetMap is in <b>Data › Projects</b> but is not drawn, and so cannot be measured from here.</p>`;
   return `<table class="tbl compact" data-testid="infra-near"><thead><tr><th>Project</th><th>Status</th><th class="num">Opening</th><th class="num">Distance</th></tr></thead>
     <tbody>${hits.map(h => `<tr><th><button class="lk mini" data-go="project/${esc(h.p.id)}">${esc(h.p.name)}</button></th>
-      <td><span class="pipdot" style="background:${INFRA_TONE[h.p.status] || "#8A8C81"}"></span>${esc(h.p.status)}</td>
+      <td class="pipst"><span class="pipdot" style="background:${INFRA_TONE[h.p.status] || "#8A8C81"}"></span>${esc(h.p.status)}</td>
       <td class="num">${h.p.open_year || esc(h.p.open_window || "–")}</td>
       <td class="num">${distTxt(h.m)}</td></tr>`).join("")}</tbody></table>
     <p class="cap">Distance to the nearest drawn point of the alignment or of a located station, not to a platform entrance. Shown out to ${radTxt(Math.max(PROP.rad, 2000))} because a transport project matters further away than a grocer does.</p>`;
@@ -7759,7 +7783,7 @@ function vPipeline() {
       <tbody>${rows.map(p => `<tr>
         <th><button class="lk mini" data-go="project/${esc(p.id)}">${esc(p.name)}</button></th>
         <td>${esc(p.type)}</td>
-        <td><span class="pipdot" style="background:${INFRA_TONE[p.status] || "#8A8C81"}"></span>${esc(p.status)}</td>
+        <td class="pipst"><span class="pipdot" style="background:${INFRA_TONE[p.status] || "#8A8C81"}"></span>${esc(p.status)}</td>
         <td class="num">${p.open_year || esc(p.open_window || "–")}</td>
         <td class="num">${budgetCell(p)}</td>
         <td>${esc(p.price_base || "–")}</td>
@@ -8160,6 +8184,11 @@ function lstBadges(l) {
   if (l.audience) b.push(`<span class="lst-bdg">${esc((LV.AUDIENCE_LABEL || {})[l.audience] || l.audience)}</span>`);
   return b.join("");
 }
+/* The advert's own first lines go in `[data-text]` where the source already sent
+   them. The node is rendered even when empty — `.text:empty` hides it — because a
+   map popup fills it through lstFillText(); a card in the grid does not, because
+   that would ask the gateway for 27 descriptions nobody has clicked on. It used
+   to ship a literal "…" that nothing ever replaced (v2.1 P6). */
 function lstCard(l) {
   const m2 = LV.sekPerM2Year(l);
   const sub = [l.area_name, l.landlord].filter(Boolean).join(" · ") || l.src_label || l.src;
@@ -8172,15 +8201,15 @@ function lstCard(l) {
       <h3>${esc(l.address || "Address not given")}</h3>
       <div class="sub">${esc(sub)} · ${esc(l.src_label || l.src)}</div>
       <div class="facts">
-        <div><i>Advertised rent</i> ${l.rent_sek_mo != null ? nf(l.rent_sek_mo, 0) + " kr/mån" : "–"}</div>
-        <div><i>Size</i> ${l.size_m2 != null ? nf(l.size_m2, 1) + " m²" : "–"}</div>
-        <div><i>Rooms</i> ${l.rooms != null ? nf(l.rooms, l.rooms % 1 ? 1 : 0) : "–"}</div>
-        <div><i>Floor</i> ${l.floor != null ? nf(l.floor, 0) : "–"}</div>
-        <div><i>SEK/m²/yr</i> ${m2 != null ? nf(m2, 0) : "–"}</div>
-        <div><i>From</i> ${esc(l.available_from || "–")}</div>
+        <div><i>Advertised rent</i> <span class="v">${l.rent_sek_mo != null ? nf(l.rent_sek_mo, 0) + " kr/mån" : "–"}</span></div>
+        <div><i>Size</i> <span class="v">${l.size_m2 != null ? nf(l.size_m2, 1) + " m²" : "–"}</span></div>
+        <div><i>Rooms</i> <span class="v">${l.rooms != null ? nf(l.rooms, l.rooms % 1 ? 1 : 0) : "–"}</span></div>
+        <div><i>Floor</i> <span class="v">${l.floor != null ? nf(l.floor, 0) : "–"}</span></div>
+        <div><i>SEK/m²/yr</i> <span class="v">${m2 != null ? nf(m2, 0) : "–"}</span></div>
+        <div><i>From</i> <span class="v">${esc(l.available_from || "–")}</span></div>
       </div>
       <div class="badges">${lstBadges(l)}</div>
-      <div class="text" data-text>…</div>
+      <div class="text" data-text>${esc(l.text_start || "")}</div>
       <a class="open" href="${esc(l.url || "#")}" target="_blank" rel="noopener">Open listing ›</a>
     </div></div>`;
 }

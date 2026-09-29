@@ -1408,6 +1408,10 @@ a.srcv:hover{border-bottom-style:solid}
 .lgpick .lgb:hover{border-color:var(--line)}
 .lgpick .lgb.on{background:var(--ink);color:#fff}
 .pipdot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:middle}
+/* The dot IS the status, so it has to stay on the word's line. In Pipeline the
+   column is narrow enough that "● construction" wrapped after the dot and the
+   colour ended up a line above the word it belongs to (v2.1 P6). */
+.pipst{white-space:nowrap}
 .lgrow.lgclick{cursor:pointer;pointer-events:auto}
 .lgrow.lgclick.off{opacity:.45}
 .lgrow.lgclick:hover{text-decoration:underline}
@@ -1738,7 +1742,12 @@ td.dim .moe{color:inherit}
 [data-testid=map-toolbar] .asrch{flex:1 1 200px;min-width:130px;max-width:360px}
 [data-testid=map-toolbar] .asrch input{width:100%}
 [data-testid=map-toolbar] .indsel{height:28px;padding-top:0;padding-bottom:0;max-width:22ch}
-[data-testid=map-toolbar] .indbtn{max-width:30ch;height:28px}
+/* 30ch was narrower than the row ever needed: "Rent, median SEK / m² / yr
+   municipality ▾" was clipped to "Rent, … S… municipality ▾" while 180 px of the
+   toolbar sat empty. 46ch holds the longest label the picker can put here, and
+   the button shrinks below it under pressure — it is `overflow:hidden`, so its
+   automatic minimum size is 0 and the flex row still cannot overflow (v2.1 P6). */
+[data-testid=map-toolbar] .indbtn{max-width:46ch;min-width:0;height:28px}
 [data-testid=map-toolbar] .lk{height:28px;padding-top:0;padding-bottom:0;display:inline-flex;align-items:center}
 [data-testid=map-toolbar] .seg .sg,[data-testid=map-toolbar] .seg button{padding-top:3px;padding-bottom:3px}
 .card-head.tools-only{gap:6px}
@@ -1795,6 +1804,9 @@ td.dim .moe{color:inherit}
 .lst-card .sub{color:var(--muted);font-size:11.5px;margin-bottom:8px}
 .lst-card .facts{display:grid;grid-template-columns:1fr 1fr;gap:3px 10px;font-family:var(--mono);font-size:11.5px;margin-bottom:8px}
 .lst-card .facts i{font-style:normal;color:var(--muted)}
+/* A figure and its own unit are one thing: "6 275" on one line and "kr/mån" on
+   the next reads as two facts. The line may still break after the label. */
+.lst-card .facts .v{white-space:nowrap}
 .lst-card .badges{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px}
 .lst-bdg{font-size:10.5px;font-family:var(--mono);padding:2px 7px;border-radius:999px;
   border:1px solid var(--line);background:var(--panel2);color:var(--ink2);text-decoration:none}
@@ -1803,6 +1815,7 @@ td.dim .moe{color:inherit}
 .lst-bdg.also{background:#E9F1EF;border-color:#C9DCD7;color:#14544A}
 .lst-bdg.pos{background:var(--panel2);color:var(--muted)}
 .lst-card .text{font-size:12px;color:var(--ink2);line-height:1.45;margin-bottom:9px}
+.lst-card .text:empty{display:none}
 .lst-card .text.muted{color:var(--dim);font-style:italic}
 .lst-card .open{display:block;text-align:center;padding:8px;border-radius:var(--r);
   background:var(--side);color:var(--side-ink);text-decoration:none;font-weight:500;font-size:12.5px}
@@ -2072,10 +2085,21 @@ tr.inh td.num{color:var(--ink2)}
    the kommun, and CSS small caps go through innerText — "Rent, median" would
    read "RENT, MEDIAN" to a screen reader and to the tests alike. Only the label
    in front of it is set in caps. */
-.mapwrap > .monote.ko{left:50%;right:auto;bottom:24px;transform:translateX(-50%);
+/* `:not(.minicard)` because the two mini-maps use the same element and have no
+   bottom-centre lane free — their legend is bottom-right and reaches past the
+   middle, so P4's centring put the note on top of it on every RegSO/DeSO page
+   and on Test property. Fixed in v2.1 P6; the mini-map keeps the bottom-left
+   corner it had, and `minimap-corners` measures all four pairs. */
+.mapwrap:not(.minicard) > .monote.ko{left:50%;right:auto;bottom:24px;transform:translateX(-50%);
   max-width:min(560px,52%);text-align:center;text-transform:none;letter-spacing:0;
   font-size:10px;line-height:1.4}
-.mapwrap > .monote.ko b{text-transform:uppercase;letter-spacing:.06em}
+.mapwrap:not(.minicard) > .monote.ko b{text-transform:uppercase;letter-spacing:.06em}
+/* A mini-map has no free bottom-centre lane: its legend is bottom-right and at
+   390 px it reaches past the middle. The note takes the top edge instead, between
+   Leaflet's zoom control (top left, ~40 px) and the ⤢ button (top right, 34 px),
+   which is the one corner-to-corner run nothing else on a mini-map uses. */
+.mapwrap.minicard > .monote.ko{top:8px;bottom:auto;left:50%;right:auto;
+  transform:translateX(-50%);max-width:calc(100% - 96px);text-align:center}
 /* 334 px does not hold five columns, let alone six. Two, at every viewport:
    the media queries further up this file are written for a full-width row. */
 .mapwrap > .acard.mappanel .hl,
@@ -2106,9 +2130,9 @@ tr.inh td.num{color:var(--ink2)}
   .maplegs{top:46px}
   body.legopen .maplegs{display:flex;max-height:calc(50% - 60px)}
   #lfmap .leaflet-top.leaflet-left{top:0;bottom:auto}
-  .mapwrap > .monote.ko{top:10px;bottom:auto;left:54px;right:96px;transform:none;
+  .mapwrap:not(.minicard) > .monote.ko{top:10px;bottom:auto;left:54px;right:96px;transform:none;
     max-width:none;text-align:left}
   /* opened, the legend stack covers that lane — and says the same thing in its
      own note, so the overlay stands down rather than being drawn under it */
-  body.legopen .mapwrap > .monote.ko{display:none}
+  body.legopen .mapwrap:not(.minicard) > .monote.ko{display:none}
 }

@@ -43,6 +43,53 @@ mkdir -p data/raw/osm_pbf && curl -L -o data/raw/osm_pbf/sweden-latest.osm.pbf \
   https://download.geofabrik.de/europe/sweden-latest.osm.pbf
 ```
 
+## What's new in v2.1 — "Sweden fit"
+
+The same data, fitted to the country it is about — and four bugs that v2.0's own
+169 checks had passed over.
+
+- **The map is the page.** It starts within 200 px of the top of the window at
+  1366×768 and takes the rest of it; its height is measured, not guessed. The selected
+  kommun's card is a panel over the map, collapsible, a bottom sheet on a phone, with
+  its collapsed state in the URL (`card=0`) rather than in `localStorage`.
+- **4.8 MB instead of 17.1.** Boundaries travel as one delta-encoded string per ring,
+  and RegSO left the page: `dist/index.html` carries the 290 kommun outlines and a
+  RegSO name index, the figures and boundaries are fetched beside it. Anything that
+  has not arrived says "Loading…" — never 0, never a dash, because a dash here means
+  the source suppressed the value.
+- **Map only** (`#map?ind=none`, or the key `0`) — the boundaries with nothing coloured
+  in, for reading the geography itself. It is the absence of an indicator, in the same
+  `ind=` key, so the link is the same shape as any other and every Layers ▾ layer
+  still works on top.
+- **Six headline figures, five of them published below kommun** — growth, median
+  income, hyresrätt share, higher education, employment — and then rent, the one
+  kommun-only figure, marked "municipality figure" wherever it is not the area's own.
+- **A kommun-only indicator is drawn once, where it belongs.** `#map/0180?ind=rent`
+  fills Stockholm with its own figure and draws its 127 RegSO as outlines on top,
+  instead of painting one number across 127 areas.
+- **Hyresrätt, bostadsrätt, äganderätt, allmännytta** in the indicator names, glossed
+  once in the picker — together with the sentence that K/T-tal is the purchase price
+  divided by the assessed value and **not** a price per m².
+- **Search needs no å ä ö**, and knows "Sthlm", "Gbg" and "<name>s stad" for all 290
+  kommuner. Charts opens with a chart on it.
+- **Test property answers seven questions at the top of the page** — nearest transport
+  stop, groceries within 500 m, nearest year-9 merit, mapped hazard zone, police
+  designation, live listings and the median advertised rent — each one a button that
+  opens the section its figure comes from. Direct and queue supply are split and never
+  averaged, and a hazard layer that never surveyed the spot reads **Not mapped**, not
+  "No".
+
+### Screenshots
+
+| | |
+|---|---|
+| ![Map](docs/ui_v2_1/mapfirst-kommun_1440x900.png) | ![Test property](docs/ui_v2_1/prop-summary_1440x900.png) |
+| The map is the page; the kommun's card is a panel over it | Seven answers before the reader scrolls |
+
+The full review set — eleven routes at 1440 and at 390 — is in
+[`docs/ui_v2_1/`](docs/ui_v2_1). Finnish release notes and a localhost review
+checklist: [`docs/v2_1/RELEASE_NOTES_FI.md`](docs/v2_1/RELEASE_NOTES_FI.md).
+
 ## What's new in v2.0 — "one of everything"
 
 The same data, rebuilt around one of each thing. Seven destinations became four, three
@@ -93,9 +140,10 @@ menu, two pages became one Test property, and four exporters became one schema.
 | `#property?p=lat,lon[:label]` | one pin, read against every layer |
 | `#school/<code>` · `#project/<id>` | the two datasheets |
 
-Shared keys: `ind` · `y` (a year or a quarter) · `fq=q` · `lay` · `zones=0` · `show` ·
-`rad` · `cols=all` · `c`/`z` (the map camera). A key is written only when it differs from
-the default, so a link stays readable. Old spellings — `#table/*`, `#pipeline`,
+Shared keys: `ind` (`ind=none` is Map only) · `y` (a year or a quarter) · `fq=q` · `lay` ·
+`zones=0` · `show` · `rad` · `cols=all` · `card=0` (the map's area panel collapsed) ·
+`a=-` (Charts with no areas on it) · `c`/`z` (the map camera). A key is written only when
+it differs from the default, so a link stays readable. Old spellings — `#table/*`, `#pipeline`,
 `#market`, `#sources`, `#analysis?a=`, `#compare?a=`, the five overlay flags, `?t=`/`?g=`
 and `listings.html#at=` — all redirect.
 
@@ -188,6 +236,8 @@ Built and running.
 - [x] v1.2 / v1.2.1 — outlook, safety, schools, climate, infrastructure, services
 - [x] v2.0 — the UI overhaul: four destinations, one picker, one export schema, listings
       folded into Test property
+- [x] v2.1 — Sweden fit: map-first layout, 4.8 MB page, Map only, the headline row Sweden
+      actually publishes, and Test property as an asset-management tool
 - [ ] Next: a län layer of its own, so the län-level sources stop borrowing the kommun map
 
 ## Running it

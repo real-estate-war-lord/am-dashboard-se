@@ -1795,7 +1795,7 @@ function mapAreaCard(m) {
       <summary>Upcoming projects (${projects.length})</summary><div class="secbody">
       <table class="tbl compact"><tbody>${projects.map(p => `<tr>
         <th><button class="lk mini" data-go="project/${esc(p.id)}">${esc(p.name)}</button></th>
-        <td><span class="pipdot" style="background:${INFRA_TONE[p.status] || "#8A8C81"}"></span>${esc(p.status)}</td>
+        <td class="pipst"><span class="pipdot" style="background:${INFRA_TONE[p.status] || "#8A8C81"}"></span>${esc(p.status)}</td>
         <td class="num">${p.open_year || esc(p.open_window || "–")}</td></tr>`).join("")}</tbody></table>
       <p class="cap">Hand-curated from the agencies' own pages; every row links to the source. <b>Not a forecast of anything</b> — a status and an opening year as the project body states them.</p></div></details>` : ""}`}
   </div>`;
@@ -2495,7 +2495,7 @@ function infraNear() {
   if (!hits.length) return `<p class="empty">No mapped project within ${radTxt(Math.max(PROP.rad, 2000))}. A project whose stations could not be found in OpenStreetMap is in <b>Data › Projects</b> but is not drawn, and so cannot be measured from here.</p>`;
   return `<table class="tbl compact" data-testid="infra-near"><thead><tr><th>Project</th><th>Status</th><th class="num">Opening</th><th class="num">Distance</th></tr></thead>
     <tbody>${hits.map(h => `<tr><th><button class="lk mini" data-go="project/${esc(h.p.id)}">${esc(h.p.name)}</button></th>
-      <td><span class="pipdot" style="background:${INFRA_TONE[h.p.status] || "#8A8C81"}"></span>${esc(h.p.status)}</td>
+      <td class="pipst"><span class="pipdot" style="background:${INFRA_TONE[h.p.status] || "#8A8C81"}"></span>${esc(h.p.status)}</td>
       <td class="num">${h.p.open_year || esc(h.p.open_window || "–")}</td>
       <td class="num">${distTxt(h.m)}</td></tr>`).join("")}</tbody></table>
     <p class="cap">Distance to the nearest drawn point of the alignment or of a located station, not to a platform entrance. Shown out to ${radTxt(Math.max(PROP.rad, 2000))} because a transport project matters further away than a grocer does.</p>`;
@@ -3938,7 +3938,7 @@ function vPipeline() {
       <tbody>${rows.map(p => `<tr>
         <th><button class="lk mini" data-go="project/${esc(p.id)}">${esc(p.name)}</button></th>
         <td>${esc(p.type)}</td>
-        <td><span class="pipdot" style="background:${INFRA_TONE[p.status] || "#8A8C81"}"></span>${esc(p.status)}</td>
+        <td class="pipst"><span class="pipdot" style="background:${INFRA_TONE[p.status] || "#8A8C81"}"></span>${esc(p.status)}</td>
         <td class="num">${p.open_year || esc(p.open_window || "–")}</td>
         <td class="num">${budgetCell(p)}</td>
         <td>${esc(p.price_base || "–")}</td>
@@ -4339,6 +4339,11 @@ function lstBadges(l) {
   if (l.audience) b.push(`<span class="lst-bdg">${esc((LV.AUDIENCE_LABEL || {})[l.audience] || l.audience)}</span>`);
   return b.join("");
 }
+/* The advert's own first lines go in `[data-text]` where the source already sent
+   them. The node is rendered even when empty — `.text:empty` hides it — because a
+   map popup fills it through lstFillText(); a card in the grid does not, because
+   that would ask the gateway for 27 descriptions nobody has clicked on. It used
+   to ship a literal "…" that nothing ever replaced (v2.1 P6). */
 function lstCard(l) {
   const m2 = LV.sekPerM2Year(l);
   const sub = [l.area_name, l.landlord].filter(Boolean).join(" · ") || l.src_label || l.src;
@@ -4351,15 +4356,15 @@ function lstCard(l) {
       <h3>${esc(l.address || "Address not given")}</h3>
       <div class="sub">${esc(sub)} · ${esc(l.src_label || l.src)}</div>
       <div class="facts">
-        <div><i>Advertised rent</i> ${l.rent_sek_mo != null ? nf(l.rent_sek_mo, 0) + " kr/mån" : "–"}</div>
-        <div><i>Size</i> ${l.size_m2 != null ? nf(l.size_m2, 1) + " m²" : "–"}</div>
-        <div><i>Rooms</i> ${l.rooms != null ? nf(l.rooms, l.rooms % 1 ? 1 : 0) : "–"}</div>
-        <div><i>Floor</i> ${l.floor != null ? nf(l.floor, 0) : "–"}</div>
-        <div><i>SEK/m²/yr</i> ${m2 != null ? nf(m2, 0) : "–"}</div>
-        <div><i>From</i> ${esc(l.available_from || "–")}</div>
+        <div><i>Advertised rent</i> <span class="v">${l.rent_sek_mo != null ? nf(l.rent_sek_mo, 0) + " kr/mån" : "–"}</span></div>
+        <div><i>Size</i> <span class="v">${l.size_m2 != null ? nf(l.size_m2, 1) + " m²" : "–"}</span></div>
+        <div><i>Rooms</i> <span class="v">${l.rooms != null ? nf(l.rooms, l.rooms % 1 ? 1 : 0) : "–"}</span></div>
+        <div><i>Floor</i> <span class="v">${l.floor != null ? nf(l.floor, 0) : "–"}</span></div>
+        <div><i>SEK/m²/yr</i> <span class="v">${m2 != null ? nf(m2, 0) : "–"}</span></div>
+        <div><i>From</i> <span class="v">${esc(l.available_from || "–")}</span></div>
       </div>
       <div class="badges">${lstBadges(l)}</div>
-      <div class="text" data-text>…</div>
+      <div class="text" data-text>${esc(l.text_start || "")}</div>
       <a class="open" href="${esc(l.url || "#")}" target="_blank" rel="noopener">Open listing ›</a>
     </div></div>`;
 }
