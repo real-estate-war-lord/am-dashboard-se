@@ -43,6 +43,21 @@ mkdir -p data/raw/osm_pbf && curl -L -o data/raw/osm_pbf/sweden-latest.osm.pbf \
   https://download.geofabrik.de/europe/sweden-latest.osm.pbf
 ```
 
+## What's new in v2.1.1 — one pin, and it stays put
+
+Two bugs, both of them the same pin being thrown away.
+
+- **A pasted Google Maps link drops a pin on the map** instead of leaving it. The
+  search row reads "Drop a pin here"; the ordinary navigation drills to the pin's
+  kommun keeping the indicator, year and layers; the pin is drawn with dashed rings
+  at 500 m, 1 km and 2 km and is not clickable, so a click still reaches the polygon
+  underneath. A card in the map's free corner names the kommun, RegSO and DeSO it
+  fell in and offers **Open Test property ›**, carrying the pin and the radius.
+- **Test property remembers it.** One pin, shared by the map (`pin=`/`pl=`/`rad=`)
+  and the page (`p=`). A link that names none does not clear it, the sidebar links
+  carry it both ways, and the last one is kept in `localStorage` (`se.lastPin`) so a
+  reload of a bare `#property` comes back to it. Only the clear button forgets it.
+
 ## What's new in v2.1 — "Sweden fit"
 
 The same data, fitted to the country it is about — and four bugs that v2.0's own
@@ -238,6 +253,8 @@ Built and running.
       folded into Test property
 - [x] v2.1 — Sweden fit: map-first layout, 4.8 MB page, Map only, the headline row Sweden
       actually publishes, and Test property as an asset-management tool
+- [x] v2.1.1 — one pin: a pasted link lands on the map, and Test property stops
+      forgetting it
 - [ ] Next: a län layer of its own, so the län-level sources stop borrowing the kommun map
 
 ## Running it

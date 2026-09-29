@@ -2136,3 +2136,40 @@ tr.inh td.num{color:var(--ink2)}
      own note, so the overlay stands down rather than being drawn under it */
   body.legopen .mapwrap:not(.minicard) > .monote.ko{display:none}
 }
+
+/* ============================================================================
+   v2.1.1 — the pin on the map
+   A location pasted into the map's search box lands here instead of navigating
+   away to Test property. The card takes the map's one free corner — bottom
+   right, above Leaflet's attribution — because the other three are spoken for:
+   the kommun panel top left, the legend stack top right, the zoom control and
+   the kommun-only note along the bottom left and centre.
+   ==========================================================================*/
+#mkpin{position:absolute;right:12px;bottom:26px;z-index:760;
+  width:290px;max-width:calc(100% - 24px)}
+#mkpin:empty{display:none}
+.pincard{display:flex;flex-direction:column;gap:3px;
+  background:rgba(255,255,255,.96);border:1px solid var(--line);border-radius:10px;
+  padding:9px 11px 10px;box-shadow:0 3px 16px rgba(20,28,24,.17)}
+.pincard .pinid{display:flex;align-items:baseline;gap:8px}
+.pincard .pinid b{font-family:var(--disp);font-size:14px;font-weight:600;letter-spacing:-.01em}
+.pincard .pinx{margin-left:auto;width:20px;height:20px;line-height:1;flex:none;
+  background:var(--panel);border:1px solid var(--line);border-radius:6px;
+  color:var(--ink2);cursor:pointer;font-size:11px}
+.pincard .pinx:hover{color:var(--ink);border-color:var(--ink)}
+.pincard .tag{align-self:flex-start}
+.pincard .pinwhere{font-size:11.5px;line-height:1.35;color:var(--ink)}
+.pincard .pinwhere.dim{color:var(--ink2)}
+.pincard .dim{font-family:var(--mono);font-size:10px}
+.pincard .pinact{margin-top:6px}
+/* the marker itself: a ring in the accent, so it reads as this page's pin and
+   not as one of the overlays' dots */
+.pin-mark i{display:block;width:14px;height:14px;margin:4px;border-radius:50%;
+  background:#1C6B5C;border:3px solid #fff;box-shadow:0 0 0 1.5px #1C6B5C,0 1px 5px rgba(20,28,24,.45)}
+@media (max-width:600px){
+  /* the kommun panel is a bottom sheet at this width and owns the bottom half,
+     so the card takes the top lane — the one the kommun-only note uses, which
+     stands down for it rather than being drawn underneath it */
+  #mkpin{top:10px;bottom:auto;left:54px;right:46px;width:auto;max-width:none}
+  #mkpin:not(:empty)~.monote.ko{display:none}
+}

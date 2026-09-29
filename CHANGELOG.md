@@ -1,5 +1,62 @@
 # Changelog
 
+## v2.1.1 — one pin, and it stays put
+
+Two bugs, both of them the same pin being thrown away, and both reported on the
+live v2.1 page. No data build changed and no number moved.
+
+**A pasted Google Maps link drops a pin on the map.** Typing a link or a
+"59.31972, 18.07194" pair into the map's search box used to leave the map
+altogether and open Test property — it answered a question the reader had not
+asked yet and threw away the map they had just built. It now behaves the way the
+Danish edition's `asrchRows()` / `tpDrop()` do: the search row reads **Drop a pin
+here**, the ordinary navigation drills to the pin's own kommun with the
+indicator, the year, the quarter and the layers all still selected, the pin lands
+with dashed rings at 500 m, 1 km and 2 km (the chosen radius solid), and the
+camera goes to it once. The rings and the marker are `interactive: false` and sit
+in a pane of their own above the choropleth, so a click still reaches the polygon
+underneath and the schools and services dots are not drawn over the pin. A pin
+card takes the map's one free corner — bottom right on a desktop, the top lane on
+a phone — and says what the pin is called, which kommun, RegSO and DeSO it
+actually fell in, and offers **Open Test property ›**, which carries the pin and
+the radius over. A link pasted while already on Test property still replaces the
+pin there, as before.
+
+**Test property no longer forgets the pin.** The sidebar's Test property link was
+always the bare `#property`, and a bare `#property` set the pin to null — so
+every trip through Data or Charts and back landed on an empty paste box with the
+pin still sitting in memory. The pin is now one pin shared by the map and the
+page: a link that names one (`p=` on Test property, `pin=`/`pl=`/`rad=` on the
+map) sets it, a link that names none says nothing about it, and the only thing
+that forgets it is the clear button. The nav items carry it, "Open on map" and
+"Open Test property ›" carry it in both directions, and the last pin is kept in
+`localStorage` under `se.lastPin` (every access wrapped — a private window or
+blocked storage costs the pin its life beyond the tab and nothing else) so a
+reload of a bare `#property` comes back to the property the reader was looking
+at. Clearing clears the stored copy too.
+
+**Two things the new checks found on the way.** The pin's camera was being
+issued into `applyPendingFit()`'s animated `fitBounds` to the kommun, and a
+`setView` into an animation in flight is swallowed — the map ended on the kommun
+every time a pin was dropped. The pin now takes the pending fit off the kommun
+before it happens rather than racing it. And two renders in the same tick
+schedule two map inits, the second of which threw "Map container is already
+initialized" as an uncaught page error; every init now stands down when Leaflet
+has already marked the container. That one predates this release — it was on the
+v2.1 page too, invisible until a check watched `pageerror` on a cold open of
+`#property?p=…`.
+
+**Under it.** `src/route_core.js` gained `pinParse()` / `pinQuery()` — the map's
+spelling of the same point Test property spells `p=lat,lon:label` — and
+`toInternal()` hands a map link's pin back parsed, the way it already handed back
+`p=`. `rad=` is left out when it is the radius nobody chose, so the two views
+agree on what no `rad=` means. Nine new cases in `tests/route.test.js`; a new P7
+in `tests/ui_v2_1/spec.py` (four checks, ~60 assertions) that pastes the link,
+reads the hash, counts the drawn rings and their `interactive` flag, walks
+Map → Test property → Data → Test property through the sidebar and compares the
+tiles before and after, reloads a bare `#property`, and clears. `tests/ui_v2/spec.py`
+P2 and P7 were updated to the behaviour the search box and the pin now have.
+
 ## v2.1 — "Sweden fit"
 
 v2.0 built one of everything. This release makes the page fit the country it is

@@ -53,6 +53,57 @@ test("the property codec round-trips, is list-capable, and keeps the label", () 
   assert.deepStrictEqual(R.propParse("nonsense"), []);
 });
 
+/* ---- the map's pin (v2.1.1) ---- */
+
+test("the map's pin codec round-trips through pin= / pl= / rad=", () => {
+  const pin = { lat: 59.31972, lon: 18.07194, label: "Home", rad: 2000 };
+  assert.deepStrictEqual(R.pinQuery(pin), { pin: "59.31972,18.07194", pl: "Home", rad: "2000" });
+  assert.deepStrictEqual(R.pinParse({ pin: "59.31972,18.07194", pl: "Home", rad: "2000" }), pin);
+});
+
+test("pinQuery leaves out a label nobody typed and the radius nobody chose", () => {
+  assert.deepStrictEqual(R.pinQuery({ lat: 59.3, lon: 18, label: "", rad: 1000 }, 1000),
+    { pin: "59.3,18" });
+  /* the same radius is written down when it is not the default the caller names */
+  assert.deepStrictEqual(R.pinQuery({ lat: 59.3, lon: 18, rad: 1000 }, 2000).rad, "1000");
+  /* a radius that is not one of the three offered is not a radius */
+  assert.strictEqual(R.pinQuery({ lat: 59.3, lon: 18, rad: 750 }, 1000).rad, undefined);
+});
+
+test("no pin, no keys — a link is never lengthened by a pin that does not exist", () => {
+  assert.deepStrictEqual(R.pinQuery(null), {});
+  assert.deepStrictEqual(R.pinQuery({ lat: null, lon: null }), {});
+  assert.strictEqual(R.pinParse({}), null);
+  assert.strictEqual(R.pinParse({ pin: "Stockholm" }), null);
+});
+
+test("toInternal hands the map's pin back parsed, the way property hands back p=", () => {
+  const r = R.toInternal("#map/0180?ind=rent&pin=59.31972,18.07194&pl=Home&rad=2000");
+  assert.strictEqual(r.view, "makro");
+  assert.deepStrictEqual(r.parts, ["map", "0180"]);
+  assert.deepStrictEqual(r.pin, { lat: 59.31972, lon: 18.07194, label: "Home", rad: 2000 });
+  /* the keys stay in the query too, so nothing that reads the query is surprised */
+  assert.strictEqual(r.query.pin, "59.31972,18.07194");
+  assert.strictEqual(R.toInternal("#map/0180?ind=rent").pin, null);
+});
+
+test("a pinned map link survives the rewrite, unchanged and idempotently", () => {
+  const h = "map/0180?ind=rent&lay=services&pin=59.31972,18.07194&pl=Home&rad=2000";
+  assert.strictEqual(R.toV2(h), h);
+  assert.strictEqual(R.toV2(R.toV2(h)), h);
+  /* the old flag spelling still resolves, and takes the pin with it */
+  assert.strictEqual(R.toV2("map/0180?ind=rent&srv=1&pin=59.3,18"),
+    "map/0180?ind=rent&pin=59.3,18&lay=services");
+});
+
+test("a pin and a property link are two spellings of one point", () => {
+  const q = R.pinQuery({ lat: 59.31972, lon: 18.07194, label: "Home", rad: 2000 }, 1000);
+  const back = R.pinParse(q);
+  assert.strictEqual(R.propSerialise([back]), "59.31972,18.07194:Home");
+  assert.deepStrictEqual(R.toInternal("#property?p=59.31972,18.07194:Home&rad=2000").pins,
+    [{ lat: 59.31972, lon: 18.07194, label: "Home" }]);
+});
+
 /* ---- the redirects the task names ---- */
 
 test("#table/* → #data/areas/*, with an unknown level falling back to kommun", () => {

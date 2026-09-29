@@ -253,15 +253,23 @@ def phase2(r: Report, page, errs) -> None:
     page.set_viewport_size({"width": 1440, "height": 900})
     page.wait_for_timeout(300)
 
-    # coordinates in the search box go to the property page
+    # A coordinate in the search box drops a pin on the map. Until v2.1.1 it
+    # jumped straight to Test property, which threw away the map the reader had
+    # built; the pin lands on it instead and the card offers the page as the next
+    # step. tests/ui_v2_1/spec.py P7 is where the whole behaviour is checked —
+    # this is the v2.0 contract updated to the one the search box actually has.
     page.fill("[data-testid=search] input, input[data-testid=search]", "59.31972, 18.07194")
     page.wait_for_timeout(350)
-    r.ok("a pasted coordinate offers a Test property result",
+    r.ok("a pasted coordinate offers a pin, not an area",
          page.eval_on_selector_all("[data-testid=search-coord]", "e => e.length") == 1)
     page.click("[data-testid=search-coord]")
-    page.wait_for_timeout(600)
-    r.ok("and clicking it opens the pin", hash_has(page.evaluate("location.hash"), f"property?p={STHLM}"),
-         page.evaluate("location.hash"))
+    page.wait_for_timeout(1400)
+    h = page.evaluate("location.hash")
+    r.ok("and clicking it drops the pin on the map", h.startswith("#map/") and f"pin={STHLM}" in h, h)
+    # and the pin is cleared again, so the phases after this one see the page they
+    # were written against — a pin survives every hash now, by design
+    page.click("[data-testid=pin-card] [data-propclear]")
+    page.wait_for_timeout(400)
 
     hop(page, "#map")
     jumps = page.eval_on_selector_all("[data-testid=search-jumps] button", "e => e.map(x => x.innerText.trim())")
@@ -441,7 +449,14 @@ def phase6(r: Report, page, errs) -> None:
 
 def phase7(r: Report, page, errs, calls) -> None:
     r.head("P7", "Test property with the listings module")
+    # v2.1.1: the pin outlives the hash and the tab, so the empty state is what
+    # the page shows when there is no pin anywhere — not merely what `#property`
+    # shows. The stored copy is cleared first for the same reason.
+    page.evaluate("() => { try { localStorage.removeItem('se.lastPin'); } catch (e) {} }")
     hop(page, "#property")
+    if page.eval_on_selector_all("[data-propclear]", "e => e.length"):
+        page.click("[data-propclear]")
+        page.wait_for_timeout(400)
     r.ok("the empty state focuses its input",
          page.eval_on_selector_all("[data-testid=state-empty]", "e => e.length") == 1
          and page.evaluate("document.activeElement.getAttribute('data-testid')") == "prop-input")

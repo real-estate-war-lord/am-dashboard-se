@@ -2811,6 +2811,43 @@ tr.inh td.num{color:var(--ink2)}
      own note, so the overlay stands down rather than being drawn under it */
   body.legopen .mapwrap:not(.minicard) > .monote.ko{display:none}
 }
+
+/* ============================================================================
+   v2.1.1 — the pin on the map
+   A location pasted into the map's search box lands here instead of navigating
+   away to Test property. The card takes the map's one free corner — bottom
+   right, above Leaflet's attribution — because the other three are spoken for:
+   the kommun panel top left, the legend stack top right, the zoom control and
+   the kommun-only note along the bottom left and centre.
+   ==========================================================================*/
+#mkpin{position:absolute;right:12px;bottom:26px;z-index:760;
+  width:290px;max-width:calc(100% - 24px)}
+#mkpin:empty{display:none}
+.pincard{display:flex;flex-direction:column;gap:3px;
+  background:rgba(255,255,255,.96);border:1px solid var(--line);border-radius:10px;
+  padding:9px 11px 10px;box-shadow:0 3px 16px rgba(20,28,24,.17)}
+.pincard .pinid{display:flex;align-items:baseline;gap:8px}
+.pincard .pinid b{font-family:var(--disp);font-size:14px;font-weight:600;letter-spacing:-.01em}
+.pincard .pinx{margin-left:auto;width:20px;height:20px;line-height:1;flex:none;
+  background:var(--panel);border:1px solid var(--line);border-radius:6px;
+  color:var(--ink2);cursor:pointer;font-size:11px}
+.pincard .pinx:hover{color:var(--ink);border-color:var(--ink)}
+.pincard .tag{align-self:flex-start}
+.pincard .pinwhere{font-size:11.5px;line-height:1.35;color:var(--ink)}
+.pincard .pinwhere.dim{color:var(--ink2)}
+.pincard .dim{font-family:var(--mono);font-size:10px}
+.pincard .pinact{margin-top:6px}
+/* the marker itself: a ring in the accent, so it reads as this page's pin and
+   not as one of the overlays' dots */
+.pin-mark i{display:block;width:14px;height:14px;margin:4px;border-radius:50%;
+  background:#1C6B5C;border:3px solid #fff;box-shadow:0 0 0 1.5px #1C6B5C,0 1px 5px rgba(20,28,24,.45)}
+@media (max-width:600px){
+  /* the kommun panel is a bottom sheet at this width and owns the bottom half,
+     so the card takes the top lane — the one the kommun-only note uses, which
+     stands down for it rather than being drawn underneath it */
+  #mkpin{top:10px;bottom:auto;left:54px;right:46px;width:auto;max-width:none}
+  #mkpin:not(:empty)~.monote.ko{display:none}
+}
 </style>
 </head>
 <body>
@@ -2963,6 +3000,8 @@ const CLIM_KEYS = ["flood100", "flood200", "floodBHF", "coast20", "coast30",
                    "sea2100_85", "sea2100_45", "landslide", "cloudburst_mapped"];
 
 const LEVELS = ["kommun", "regso", "deso"];
+/* the radii the pin's rings and every radius filter are chosen from */
+const RADII = [500, 1000, 2000];
 const AREA_TYPES = LEVELS;
 
 /* ---------- Map only ----------
@@ -3030,6 +3069,35 @@ function parseLatLon(s) {
   if (!isFinite(lat) || !isFinite(lon)) return null;
   return [lat, lon];
 }
+/* ---------- the pin ----------
+   The same point has two spellings, because it plays two parts.
+
+   On Test property it is the page's subject and leads the link:
+   `property?p=59.31972,18.07194:Home`. On the map it is one more thing drawn
+   over the choropleth, so it travels in keys of its own — `pin=lat,lon`, with
+   `pl=` for the label and `rad=` for the radius — and `map/0180?ind=rent&pin=…`
+   still reads as a map link that happens to carry a pin.
+
+   `rad=` is left out when it is the radius the reader never chose, so the two
+   views agree on what no `rad=` means and a link stays short. */
+function pinParse(query) {
+  const q = query || {};
+  const ll = parseLatLon(q.pin);
+  if (!ll) return null;
+  const rad = Number(q.rad);
+  return { lat: ll[0], lon: ll[1], label: q.pl || "",
+           rad: RADII.indexOf(rad) >= 0 ? rad : 0 };
+}
+function pinQuery(pin, defRad) {
+  const q = {};
+  if (!pin || pin.lat == null || pin.lon == null) return q;
+  q.pin = `${round5(pin.lat)},${round5(pin.lon)}`;
+  if (pin.label) q.pl = pin.label;
+  const r = Number(pin.rad);
+  if (RADII.indexOf(r) >= 0 && r !== Number(defRad)) q.rad = String(r);
+  return q;
+}
+
 /* the property codec: "lat,lon[:label]", list-capable (";") */
 function propSerialise(items) {
   return (items || []).map(p => {
@@ -3136,7 +3204,6 @@ function areaTabs(query) {
 /* listings.html carried its own hash: `#at=lat,lon&r=1000&g=…&al=…&rm=…&res=1&offer=1&src=…&sort=…`.
    It becomes `#property?p=lat,lon&rad=1000&show=listings` plus the filter keys the section reads.
    Exported so dist/listings.html (a four-line redirect) and the test use the same codec. */
-const RADII = [500, 1000, 2000];
 function listingsQuery(q) {
   const out = {};
   const ll = parseLatLon(q.at);
@@ -3202,12 +3269,13 @@ function toInternal(hash, opts) {
     return { view: "property", parts: ["property"], query: q, pins };
   }
   if (head === "area") return { view: "area", parts, query: q };
-  if (head === "map") return { view: "makro", parts, query: q };
+  if (head === "map") return { view: "makro", parts, query: q, pin: pinParse(q) };
   return { view: head, parts, query: q };
 }
 
 const API = { CLIM_FALLBACK_IND, CLIM_KEYS, LEVELS, LAYERS, RADII, ALIASES, IND_NONE,
               splitHash, buildHash, parseLatLon, round5, propParse, propSerialise,
+              pinParse, pinQuery,
               climateFlag, layerFlags, areaTabs, listingsQuery, fromListingsHash,
               stripNone, toV2, toInternal };
 if (typeof window !== "undefined") window.ROUTE_CORE = API;
@@ -4117,6 +4185,41 @@ const PROP_RAD_DEFAULT = 1000;
 const PROP_SHOW_DEFAULTS = ["listings", "services"];
 const PROP = { lat: null, lon: null, label: "", rad: PROP_RAD_DEFAULT,
                show: new Set(PROP_SHOW_DEFAULTS), res: null, resKey: "" };
+/* v2.1.1: ONE pin, and the map holds the same one. A coordinate pasted into the
+   map's search box is a point, not an area, so it lands as a pin on the map the
+   reader is already looking at — `map/0180?…&pin=59.31972,18.07194` — and Test
+   property is the step after that, not instead of it. Because it is one pin, the
+   only thing that forgets it is the clear button: a link that names no pin says
+   nothing about the pin, it does not deny it. That is what stopped Test property
+   losing the reader's property every time they looked at the Data tab.
+
+   `se.lastPin` survives a reload, so a bare `#property` typed or bookmarked is
+   the property the reader was last looking at rather than an empty box. Every
+   access is wrapped: a browser with storage blocked, a private window and a
+   file:// open all throw here, and none of them is a reason for the page to stop
+   working — the pin simply does not outlive the tab. */
+const PIN_STORE = "se.lastPin";
+function pinStore() {
+  try {
+    if (PROP.lat == null) { localStorage.removeItem(PIN_STORE); return; }
+    localStorage.setItem(PIN_STORE, JSON.stringify(
+      { lat: PROP.lat, lon: PROP.lon, label: PROP.label, rad: PROP.rad }));
+  } catch (e) { /* no storage: the pin lives as long as the tab does */ }
+}
+function pinRestore() {
+  let j = null;
+  try { j = JSON.parse(localStorage.getItem(PIN_STORE) || "null"); } catch (e) { return false; }
+  if (!j || !isFinite(j.lat) || !isFinite(j.lon)) return false;
+  PROP.lat = RC.round5(j.lat); PROP.lon = RC.round5(j.lon);
+  PROP.label = typeof j.label === "string" ? j.label : "";
+  PROP.rad = RC.RADII.includes(Number(j.rad)) ? Number(j.rad) : PROP_RAD_DEFAULT;
+  PROP.res = null; PROP.resKey = "";
+  return true;
+}
+function pinForget() {
+  PROP.lat = PROP.lon = null; PROP.label = ""; PROP.res = null; PROP.resKey = "";
+  pinStore();
+}
 const UI = { indxOpen: false, menu: null, cardFold: false, legFold: {} };           /* fold states that survive a re-render */
 const MKT = { src: false };                                                        /* market: sources panel open */
 /* Charts opens with a chart on it. "Nothing to plot yet" was the first thing a reader
@@ -4309,6 +4412,8 @@ function hashFor() {
     withInd();
     if (LAY.size) q.lay = layList();
     if (LAY.has("listings")) Object.assign(q, lstQuery());
+    /* the pin is part of what is on the map, so it is part of the map's link */
+    Object.assign(q, pinQ());
     if (ZN.off) q.zones = "0";
     if (MK.kommun) q.show = showValue(MC.show, MC_SHOW_DEFAULTS);
     /* the panel is open by default, so only the collapsed state is spelled out */
@@ -4325,6 +4430,27 @@ function hashFor() {
 }
 /* the canonical order, so two links that mean the same thing are the same link */
 const layList = () => RC.LAYERS.filter(k => LAY.has(k)).join(",");
+/* `pin=` `pl=` `rad=` for whatever pin is on screen — nothing at all when there
+   is none, so a link is never lengthened by a pin that does not exist */
+const pinQ = () => RC.pinQuery(PROP, PROP_RAD_DEFAULT);
+/* the same three keys added to a hash somebody else built (`withQ("map/0180")`) */
+function withPin(h) {
+  if (PROP.lat == null) return h;
+  const { path, query } = RC.splitHash(h);
+  return RC.buildHash(path, Object.assign(query, pinQ()));
+}
+/* Test property showing this pin: the codec's own `p=`, the radius, and the
+   sections the reader has open — so the nav item is the page they left, not a
+   blank one. */
+function propLink() {
+  if (PROP.lat == null) return "property";
+  const q = { p: RC.propSerialise([{ lat: PROP.lat, lon: PROP.lon, label: PROP.label }]) };
+  if (PROP.rad !== PROP_RAD_DEFAULT) q.rad = String(PROP.rad);
+  q.show = showValue(PROP.show, PROP_SHOW_DEFAULTS);
+  if (MK.ind) q.ind = MK.ind;
+  if (MK.year !== LATEST) q.y = MK.year;
+  return RC.buildHash("property", q);
+}
 
 function parseHash() {
   const raw = (location.hash || "#map").replace(/^#/, "");
@@ -4361,9 +4487,16 @@ function parseHash() {
   else if (v === "pipeline") { S.view = "pipeline"; PIPE.type = q.t || ""; PIPE.status = q.s || ""; DT.tab = "projects"; }
   else if (v === "property") {
     S.view = "property";
+    /* A link that names a pin sets it. A link that names none says nothing about
+       the pin — it does not clear it (v2.1.1). `#property` reached from the nav,
+       from Back, or typed, keeps the pin in memory; on a cold open there is none
+       in memory and the last one stored is restored instead. Only the clear
+       button forgets a pin. */
     const pin = (r.pins || [])[0] || null;
-    PROP.lat = pin ? pin.lat : null; PROP.lon = pin ? pin.lon : null; PROP.label = pin ? pin.label : "";
-    PROP.rad = RC.RADII.includes(Number(q.rad)) ? Number(q.rad) : PROP_RAD_DEFAULT;
+    if (pin) { PROP.lat = pin.lat; PROP.lon = pin.lon; PROP.label = pin.label; pinStore(); }
+    else if (PROP.lat == null) pinRestore();
+    if (pin || q.rad != null)
+      PROP.rad = RC.RADII.includes(Number(q.rad)) ? Number(q.rad) : PROP_RAD_DEFAULT;
     setShow(PROP.show, q.show, PROP_SHOW_DEFAULTS);
     if (PROP.lat != null) propResolve();
   } else if (SHEETS[v] && parts.length > 1) { S.view = "sheet"; SH.kind = v; SH.parts = parts.slice(1); }
@@ -4382,6 +4515,14 @@ function parseHash() {
     if (CH.areas.some(a => String(a).indexOf("regso:") === 0)) regsoLoadVals();
   } else {
     S.view = "makro";
+    /* `pin=` on a map link is the same one pin Test property reads (v2.1.1). It
+       is set here and never cleared here, for the reason spelled out above. */
+    if (r.pin) {
+      PROP.lat = r.pin.lat; PROP.lon = r.pin.lon; PROP.label = r.pin.label;
+      PROP.rad = r.pin.rad || PROP_RAD_DEFAULT;
+      pinStore();
+    }
+    if (PROP.lat != null) propResolve();
     MK.kommun = parts[1] && byCode[parts[1]] ? parts[1] : null;
     MK.sub = parts[2] === "deso" ? "deso" : "regso";
     setShow(MC.show, q.show, MC_SHOW_DEFAULTS);
@@ -4464,9 +4605,19 @@ const NAV_ON = { area: "makro", market: "table", pipeline: "table" };
 const viewOf = id => VIEWS.find(v => v[0] === id) || VIEWS[0];
 const navOn = () => (S.view === "sheet" ? ((SHEETS[SH.kind] || {}).nav || "makro") : (NAV_ON[S.view] || S.view));
 
+/* The nav item for a view that can be holding the reader's pin carries it
+   (v2.1.1). Until then "Test property" was always the bare `#property`, so every
+   trip through Data or Charts and back landed on an empty paste box — the pin was
+   in memory, the link said otherwise, and the link won. */
+function navDest(id, fallback) {
+  if (PROP.lat == null) return fallback;
+  if (id === "property") return propLink();
+  if (id === "makro") return withPin(fallback);
+  return fallback;
+}
 function navHtml() {
   const on = navOn();
-  return VIEWS.map(v => `<button class="nav-item ${on === v[0] ? "on" : ""}" data-testid="nav-item" data-go="${v[3]}" title="${esc(v[2])}"><b>${v[1]}</b></button>`).join("");
+  return VIEWS.map(v => `<button class="nav-item ${on === v[0] ? "on" : ""}" data-testid="nav-item" data-go="${esc(navDest(v[0], v[3]))}" title="${esc(v[2])}"><b>${v[1]}</b></button>`).join("");
 }
 function renderNav() {
   const el = document.getElementById("nav"); if (el) el.innerHTML = navHtml();
@@ -4565,7 +4716,7 @@ function afterLazyLoad() {
 const MAPS = [];
 window.__maps = MAPS;
 function regMap(m) { MAPS.push(m); return m; }
-const LF_LAYER_KEYS = "areaG labG ownG usoLayer schLayer srvLayer pubLayer infLayer climLayer listLayer".split(" ");
+const LF_LAYER_KEYS = "areaG labG ownG pinG usoLayer schLayer srvLayer pubLayer infLayer climLayer listLayer".split(" ");
 function dropMaps() {
   while (MAPS.length) {
     const m = MAPS.pop();
@@ -4582,6 +4733,14 @@ function dropMaps() {
   "sch srv pub clim list uso inf".split(" ").forEach(k => { LF[k + "Canvas"] = null; LF[k + "Drawn"] = false; });
   LF.ctx = null;
 }
+/* Two renders in the same tick schedule two map inits; by the time the second
+   runs, the first has already called L.map() on the very container it is about
+   to — and Leaflet throws "Map container is already initialized", which reaches
+   the page as an uncaught error and stops whatever else that callback was going
+   to do. Leaflet marks the container itself, and `map.remove()` unmarks it, so
+   the mark is exactly "a live map is on this element". There is nothing to redo
+   when it is set: the first init built the map that is on screen. */
+const mapTaken = el => !!(el && el._leaflet_id);
 function lfGuardMap() {
   if (typeof L === "undefined" || !L.Map || L.Map.prototype._amGuarded) return;
   const mp = L.Map.prototype, end = mp._onZoomTransitionEnd, move = mp._move;
@@ -4642,6 +4801,7 @@ document.addEventListener("click", e => {
   if (UI.menu && !g(".menupop")) { UI.menu = null; renderKeep(); }
   if ((el = g("[data-go]"))) { navClose(); go(el.dataset.go); return; }
   if ((el = g("[data-searchgo]"))) { searchGo(el.dataset.searchgo); return; }
+  if ((el = g("[data-searchpin]"))) { searchPin(el.dataset.searchpin); return; }
   if ((el = g("[data-tcols]"))) { T.cols = el.dataset.tcols; syncHash(); renderKeep(); return; }
   if ((el = g("[data-tlevel]"))) { T.level = el.dataset.tlevel; if (!curInds().some(i => i.key === MK.ind)) MK.ind = curInds()[0].key; syncHash(); renderKeep(); return; }
   if ((el = g("[data-export]"))) { UI.menu = null; runExport(el.dataset.export); renderKeep(); return; }
@@ -4653,8 +4813,8 @@ document.addEventListener("click", e => {
   if (g("[data-mkown]")) { MK.own = !MK.own; renderKeep(); return; }
   if (g("[data-fs]")) { toggleFullscreen(); return; }
   if (g("[data-back]")) { history.back(); return; }
-  if ((el = g("[data-propclear]"))) { PROP.lat = PROP.lon = null; PROP.label = ""; PROP.res = null; PROP.resKey = "";
-    syncHash(); renderKeep(); return; }
+  /* the one thing that forgets the pin, in memory and in storage alike */
+  if ((el = g("[data-propclear]"))) { pinForget(); syncHash(); renderKeep(); return; }
   /* a summary-strip item opens the section its figure comes from and scrolls to it */
   if ((el = g("[data-secgo]"))) { propGoSec(el.dataset.secgo); return; }
   if ((el = g("[data-layer]"))) { const k = el.dataset.layer;
@@ -4719,8 +4879,8 @@ document.addEventListener("change", e => {
   if (el.id === "chq") { chartAdd(null, el.value); }
   if (el.id === "chtitle") { CH.title = el.value; const t = document.getElementById("chsvgtitle"); if (t) t.textContent = CH.title || chartAutoTitle(); }
   if (el.id === "propin") { propSet(el.value); }
-  if (el.id === "proplab") { PROP.label = el.value.trim(); syncHash(); }
-  if (el.id === "proprad") { PROP.rad = Number(el.value) || PROP_RAD_DEFAULT; syncHash(); renderKeep(); }
+  if (el.id === "proplab") { PROP.label = el.value.trim(); pinStore(); syncHash(); }
+  if (el.id === "proprad") { PROP.rad = Number(el.value) || PROP_RAD_DEFAULT; pinStore(); syncHash(); renderKeep(); }
   if (el.id === "tregion") { T.lan = el.value; renderTableBody(); }
   if (el.id === "tminpop") { T.minPop = Number(el.value) || 0; renderTableBody(); }
 });
@@ -5204,13 +5364,20 @@ const SR_MAX = 10;
 function searchResults(q) {
   const s = String(q || "").trim();
   if (!s) return [];
-  /* a coordinate or a Maps link is a pin, not an area */
+  /* A coordinate or a Maps link is a point, not an area — so it drops a pin on
+     the map the reader is already looking at rather than navigating them away to
+     Test property (v2.1.1). The row carries `pin` instead of `h`, which is what
+     tells the dropdown and Enter to take it that way. */
   const loc = parseLocation(s);
   if (loc && !loc.error) {
     const ll = `${(+loc.lat).toFixed(5)},${(+loc.lon).toFixed(5)}`;
-    return [{ coord: true, t: `Test property at ${nf(loc.lat, 5)}, ${nf(loc.lon, 5)}`,
-              sub: "a coordinate is a point, not an area — it opens as a pin",
-              h: `property?p=${ll}` }];
+    /* the pair is written with dots, not through nf(): a Swedish decimal comma
+       turns "59.31972, 18.07194" into "59,31972, 18,07194", where the same
+       character separates the decimals and the two numbers. A coordinate is
+       spelled the same way here, in the card, in the input and in the hash. */
+    return [{ coord: true, pin: ll, t: "Drop a pin here",
+              sub: `${ll.replace(",", ", ")} — a point, not an area: it lands on the map`,
+              h: "" }];
   }
   /* the ranking lives in src/search_core.js and is unit-tested there: exact, then
      prefix, then word start, then anywhere, and the pool's own order inside a rank —
@@ -5235,7 +5402,7 @@ function searchDropHtml() {
     `<button data-mapjump="${j.id}" title="Move the camera to ${esc(j.label)} (key ${j.key}) — the selection does not change">${esc(j.label)}</button>`).join("")}</div>`;
   const rows = res.length
     ? res.map((o, k) => `<button class="srow ${k === SR.sel ? "on" : ""}"${o.coord ? ' data-testid="search-coord"' : ""}
-        data-searchgo="${esc(o.h)}" role="option"><b>${esc(o.t)}</b><em>${esc(o.sub)}</em></button>`).join("")
+        ${o.pin ? `data-searchpin="${esc(o.pin)}"` : `data-searchgo="${esc(o.h)}"`} role="option"><b>${esc(o.t)}</b><em>${esc(o.sub)}</em></button>`).join("")
     : SR.q ? `<div class="snone">No area matches “${esc(SR.q)}” — try a kommun name, a RegSO name, a RegSO or DeSO code, or a coordinate. <em>å ä ö are optional: goteborg finds Göteborg.</em></div>` : "";
   return jumps + rows;
 }
@@ -5245,13 +5412,60 @@ function searchRefresh() {
 }
 function searchGo(h) {
   SR.q = ""; SR.open = false; SR.sel = 0;
-  /* a coordinate result carries a whole hash of its own; an area keeps the
-     indicator and year the reader is looking at */
+  /* an area keeps the indicator and year the reader is looking at, unless the
+     row already spells a query of its own. A coordinate never comes through
+     here — it is a pin, and searchPin() takes it (v2.1.1). */
   go(h.indexOf("?") >= 0 ? h : withQ(h));
 }
 function searchEnter() {
   const res = searchResults(SR.q);
-  if (res.length) searchGo(res[Math.min(SR.sel, res.length - 1)].h);
+  if (!res.length) return;
+  const o = res[Math.min(SR.sel, res.length - 1)];
+  if (o.pin) searchPin(o.pin); else searchGo(o.h);
+}
+/* ---------- a location chosen in the map's search box ----------
+   The pin lands on the map in front of the reader: the ordinary navigation
+   drills to the kommun it falls in — indicator, year and layers all travel with
+   it — the rings are drawn at the radius already chosen, the camera goes to the
+   pin, and the pin card offers Test property as the step after that. Until
+   v2.1.1 this jumped straight to Test property, which threw away the map the
+   reader had built and answered a question they had not asked yet. */
+function searchPin(coord) {
+  const ll = RC.parseLatLon(coord);
+  if (!ll) return;
+  SR.q = ""; SR.open = false; SR.sel = 0;
+  searchRefresh();
+  pinDrop(ll[0], ll[1]);
+}
+/* async because the kommun the pin falls in comes out of the ring files, which
+   are fetched on demand — 2.5 MB of boundaries is not in the page for a pin that
+   most readers never drop. Until they land nothing moves; they are small and
+   cached after the first pin. */
+async function pinDrop(lat, lon) {
+  const la = RC.round5(lat), lo = RC.round5(lon);
+  PROP.lat = la; PROP.lon = lo; PROP.res = null; PROP.resKey = "";
+  if (!RC.RADII.includes(PROP.rad)) PROP.rad = PROP_RAD_DEFAULT;
+  pinStore();
+  LF.pinFit = true;                 /* this pin takes the camera with it, once */
+  const r = await locate(la, lo);
+  /* the reader may have moved the pin while the rings were in flight */
+  if (PROP.lat !== la || PROP.lon !== lo) return;
+  /* A point in water or outside Sweden has no kommun to drill to, so the map
+     stays where it is and the card says why — the pin is still drawn, because
+     "nothing happened" would be the one answer that is never true. */
+  if (r && r.error) { PROP.res = r; PROP.resKey = la + "," + lo; }
+  /* The drill is the ordinary navigation and nothing else: hashFor() is what
+     writes a map link everywhere in this page, so the indicator, the year, the
+     quarter, the layers, the zones and the open panels all travel by definition
+     rather than by a second list here that would drift out of step with it.
+     MK.kommun is what hashFor() reads; parseHash sets it from the hash a moment
+     later, so it is put back rather than left half-applied if `go` is a no-op. */
+  const kom = r && r.kommun ? r.kommun.code : MK.kommun;
+  const prev = MK.kommun;
+  MK.kommun = kom;
+  const h = S.view === "makro" ? hashFor() : withPin(withQ("map" + (kom ? "/" + kom : "")));
+  MK.kommun = prev;
+  go(h);
 }
 /* The selected quarter IS the as-of. hist_asof is keyed by year, so a quarter
    fell through to the yearly stamp and the card said "2025" under a 2026K2 map. */
@@ -5645,6 +5859,43 @@ function mapAreaCard(m) {
       <p class="cap">Hand-curated from the agencies' own pages; every row links to the source. <b>Not a forecast of anything</b> — a status and an opening year as the project body states them.</p></div></details>` : ""}`}
   </div>`;
 }
+/* ---------- the pin card ----------
+   v2.1.1. It sits ON the map, in the corner nothing else uses, and says the
+   three things a dropped pin has to say: what it is called, where it actually
+   fell, and the way on. "Open Test property ›" carries the pin and the radius,
+   so the reader never pastes the same link twice.
+
+   The area line is finest first — DeSO › RegSO › kommun — which is the order the
+   figures are read in. It says "Locating…" rather than a dash while the ring
+   files are in flight: a dash in this dashboard means the source suppressed the
+   value, and a pin's kommun is never suppressed, only late. */
+function pinWhere() {
+  const r = PROP.res;
+  if (!r) return { txt: "Locating…", dim: true };
+  if (r.error) return { txt: r.error, dim: true };
+  const parts = [r.deso && `DeSO ${r.deso.code.split("_")[0]}`,
+                 r.regso && `RegSO ${r.regso.name}`,
+                 r.kommun && r.kommun.name].filter(Boolean);
+  return parts.length ? { txt: parts.join(" \u203a "), dim: false }
+                      : { txt: "outside the published areas", dim: true };
+}
+function mkPinCard() {
+  if (S.view !== "makro" || PROP.lat == null) return "";
+  const w = pinWhere();
+  return `<div class="pincard" data-testid="pin-card">
+    <div class="pinid"><b>${esc(propName() || "Test property")}</b>
+      <button class="pinx" data-propclear title="Remove the pin" aria-label="Remove the pin">\u2715</button></div>
+    <span class="tag">${esc(PROP.lat.toFixed(5))}, ${esc(PROP.lon.toFixed(5))}</span>
+    <span class="pinwhere${w.dim ? " dim" : ""}" data-testid="pin-where">${esc(w.txt)}</span>
+    <span class="dim">${esc(radTxt(PROP.rad))} radius</span>
+    <div class="pinact"><button class="lk mini primary" data-testid="pin-open" data-go="${esc(propLink())}">Open Test property \u203a</button></div>
+  </div>`;
+}
+function pinCardRefresh() {
+  const el = document.getElementById("mkpin");
+  if (el) el.innerHTML = mkPinCard();
+}
+
 /* The note over the map while a drilled kommun's sub-areas are still being
    fetched. The kommun outline is drawn (it is in the page); the areas inside it
    are not there yet, and the map says so rather than reading as an empty kommun. */
@@ -5666,6 +5917,7 @@ function vMakro() {
     ${mapOnly() ? mapOnlyStrip() : indExplain(ind)}
     <div class="mapwrap${mapOnly() ? " maponly" : ""}"><div id="lfmap" data-testid="map"></div>
       ${muni ? mapAreaCard(muni) : ""}
+      <div id="mkpin">${mkPinCard()}</div>
       ${kommunOnlyMap() ? kommunOnlyStrip(ind) : ""}
       ${mapWaitNote()}
       <div class="maplegs" data-testid="legends">
@@ -6093,13 +6345,14 @@ function propSet(text) {
   const err = document.getElementById("properr");
   const r = parseLocation(text);
   if (r.error) {
-    if (!String(text || "").trim()) { PROP.lat = PROP.lon = null; PROP.res = null; PROP.resKey = ""; syncHash(); renderKeep(); return; }
+    if (!String(text || "").trim()) { pinForget(); syncHash(); renderKeep(); return; }
     if (err) err.textContent = r.message;
     return;
   }
   if (err) err.textContent = "";
   PROP.lat = +r.lat.toFixed(6); PROP.lon = +r.lon.toFixed(6);
   PROP.res = null; PROP.resKey = "";
+  pinStore();
   syncHash();
   propResolve().then(() => { if (S.view === "property") renderKeep(); });
   renderKeep();
@@ -6126,6 +6379,9 @@ async function propResolve() {
      in are fetched, not only DeSO */
   if (PROP.lat != null) { loadDeso(r && r.kommun ? r.kommun.code : null); regsoLoad(r && r.kommun ? r.kommun.code : null); }
   if (S.view === "property") renderKeep();
+  /* on the map only the pin card is waiting on this — redrawing the whole view
+     would close a popup the reader opened while the rings were in flight */
+  else if (S.view === "makro") pinCardRefresh();
 }
 /* the finest entity we actually hold figures for */
 function propEntity() {
@@ -6638,7 +6894,7 @@ function vProperty() {
       <span class="anerr" id="properr"></span>
     </div>
     ${pinned ? `<div class="tools">
-      <button class="lk" data-go="${withQ("map/" + (r.kommun ? r.kommun.code : ""))}">Open on map</button>
+      <button class="lk" data-go="${esc(withPin(withQ("map/" + (r.kommun ? r.kommun.code : ""))))}" data-testid="prop-onmap">Open on map</button>
       ${e ? `<button class="lk" data-go="${withQ(`area/${e.type}/${e.code}`)}">${esc(e.name)} ›</button>` : ""}
       ${r.kommun && e && e.type !== "kommun" ? `<button class="lk" data-go="${withQ("area/kommun/" + r.kommun.code)}">${esc(r.kommun.name)} ›</button>` : ""}
       <a class="lk" href="${esc(osm)}" target="_blank" rel="noopener">OpenStreetMap ↗</a>
@@ -6673,7 +6929,7 @@ function vProperty() {
 }
 function propMapInit() {
   const el = document.getElementById("propmap");
-  if (!el || typeof L === "undefined" || PROP.lat == null) return;
+  if (!el || typeof L === "undefined" || PROP.lat == null || mapTaken(el)) return;
   lfGuardCanvas(); lfGuardMap();
   const e = propArea();
   const m = regMap(L.map(el, { center: [PROP.lat, PROP.lon], zoom: 14, dragging: true,
@@ -6919,7 +7175,7 @@ function arMapMode(e, ind) {
   return { useQ, sind, kommuneLevel };
 }
 function arMapInit() {
-  const el = document.getElementById("armap"); if (!el || typeof L === "undefined") return;
+  const el = document.getElementById("armap"); if (!el || typeof L === "undefined" || mapTaken(el)) return;
   const e = areaEntity(); if (!e) return;
   lfGuardCanvas(); lfGuardMap();
   const map = regMap(L.map(el, { center: [62.5, 16.5], zoom: 5, dragging: true, scrollWheelZoom: true, zoomSnap: 0.5, zoomDelta: 1, wheelPxPerZoomLevel: 30, wheelDebounceTime: 20, attributionControl: false }));
@@ -8564,6 +8820,53 @@ function lfDrop(...names) {
   }
 }
 
+/* ---------- the pin on the map ----------
+   v2.1.1. A marker and three dashed rings at 500 m, 1 km and 2 km, the chosen
+   one solid: the rings are the scale a reader needs to judge "how far is that"
+   without measuring, and they are the same three radii the Test property filter
+   offers, so the map and the page agree about what "within 1 km" means.
+
+   Everything here is `interactive: false`. A ring is 2 km across at the zoom a
+   pin is dropped at and would otherwise swallow every click meant for the
+   polygons underneath it — the pin says what it is in the card under the map's
+   corner, not in a popup over the fill the reader is studying. */
+const PIN_RINGS = [500, 1000, 2000];
+const PIN_ZOOM = 13;
+const PIN_COL = "#1C6B5C";
+function pinLayers(map) {
+  const m = map || LF.map;
+  if (!m) return;
+  lfDrop("pinG");
+  if (PROP.lat == null) return;
+  /* A pane of its own, above the choropleth (400) and above the point overlays'
+     canvases (435-450). Without it the rings share the overlay pane with the
+     polygons — drawn under the schools and services dots, and counted by anything
+     that asks how many shapes the choropleth has drawn. */
+  if (!m.getPane("pinpane")) { m.createPane("pinpane"); m.getPane("pinpane").style.zIndex = 460; }
+  const ll = [PROP.lat, PROP.lon];
+  const parts = PIN_RINGS.map(rad => L.circle(ll, { radius: rad, color: PIN_COL, pane: "pinpane",
+    weight: rad === PROP.rad ? 1.8 : 1, opacity: rad === PROP.rad ? .85 : .35,
+    dashArray: rad === PROP.rad ? null : "4,4", fill: false, interactive: false }));
+  parts.push(L.marker(ll, { interactive: false, keyboard: false, zIndexOffset: 1200,
+    title: propName() || "Test property",
+    icon: L.divIcon({ className: "pin-mark", iconSize: [22, 22], iconAnchor: [11, 11], html: "<i></i>" }) }));
+  LF.pinG = L.layerGroup(parts).addTo(m);
+  /* The camera follows the pin exactly once — when it is dropped, and when a
+     link that names one is opened. After that the reader moves the camera, not
+     the pin: `LF.pinShown` is what stops every re-render pulling the map back to
+     a pin they have already panned away from. */
+  const shown = `${PROP.lat},${PROP.lon}`;
+  if (LF.pinFit || LF.pinShown !== shown) {
+    /* pendingFit is dropped rather than raced: applyPendingFit() animates a
+       fitBounds to the kommun, and a setView issued into an animation in flight
+       is swallowed — the camera ended on the kommun every time. This runs
+       BEFORE applyPendingFit() in lfInit and takes the fit off it. */
+    LF.pinFit = false; LF.pendingFit = null;
+    m.setView(ll, Math.max(m.getZoom(), PIN_ZOOM), { animate: false });
+  }
+  LF.pinShown = shown;
+}
+
 /* ---------- quick jumps ----------
    Camera only. mapJump() moves the viewport and does nothing else: it never
    sets MK.kommun, never touches the hash, never opens a popup. Zooming is a
@@ -8666,7 +8969,7 @@ function fitMapHeight() {
 }
 function lfInit() {
   const el = document.getElementById("lfmap");
-  if (!el || typeof L === "undefined") return;
+  if (!el || typeof L === "undefined" || mapTaken(el)) return;
   lfGuardCanvas(); lfGuardMap();
   /* sized BEFORE Leaflet reads the container, or the first fitBounds is
      computed against the stylesheet's height and the view is off */
@@ -8709,6 +9012,11 @@ function lfInit() {
   map.on("moveend", lfOverlays);
   lfLayers();
   lfOverlays();
+  /* before the kommun fit, not after it: a pin that wants the camera takes the
+     pending fit off applyPendingFit() rather than trying to out-run its
+     animation. With no pin, or with one the camera has already been to, the
+     kommun fit happens exactly as before. */
+  pinLayers(map);
   applyPendingFit();
 }
 

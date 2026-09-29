@@ -40,6 +40,8 @@ const CLIM_KEYS = ["flood100", "flood200", "floodBHF", "coast20", "coast30",
                    "sea2100_85", "sea2100_45", "landslide", "cloudburst_mapped"];
 
 const LEVELS = ["kommun", "regso", "deso"];
+/* the radii the pin's rings and every radius filter are chosen from */
+const RADII = [500, 1000, 2000];
 const AREA_TYPES = LEVELS;
 
 /* ---------- Map only ----------
@@ -107,6 +109,35 @@ function parseLatLon(s) {
   if (!isFinite(lat) || !isFinite(lon)) return null;
   return [lat, lon];
 }
+/* ---------- the pin ----------
+   The same point has two spellings, because it plays two parts.
+
+   On Test property it is the page's subject and leads the link:
+   `property?p=59.31972,18.07194:Home`. On the map it is one more thing drawn
+   over the choropleth, so it travels in keys of its own — `pin=lat,lon`, with
+   `pl=` for the label and `rad=` for the radius — and `map/0180?ind=rent&pin=…`
+   still reads as a map link that happens to carry a pin.
+
+   `rad=` is left out when it is the radius the reader never chose, so the two
+   views agree on what no `rad=` means and a link stays short. */
+function pinParse(query) {
+  const q = query || {};
+  const ll = parseLatLon(q.pin);
+  if (!ll) return null;
+  const rad = Number(q.rad);
+  return { lat: ll[0], lon: ll[1], label: q.pl || "",
+           rad: RADII.indexOf(rad) >= 0 ? rad : 0 };
+}
+function pinQuery(pin, defRad) {
+  const q = {};
+  if (!pin || pin.lat == null || pin.lon == null) return q;
+  q.pin = `${round5(pin.lat)},${round5(pin.lon)}`;
+  if (pin.label) q.pl = pin.label;
+  const r = Number(pin.rad);
+  if (RADII.indexOf(r) >= 0 && r !== Number(defRad)) q.rad = String(r);
+  return q;
+}
+
 /* the property codec: "lat,lon[:label]", list-capable (";") */
 function propSerialise(items) {
   return (items || []).map(p => {
@@ -213,7 +244,6 @@ function areaTabs(query) {
 /* listings.html carried its own hash: `#at=lat,lon&r=1000&g=…&al=…&rm=…&res=1&offer=1&src=…&sort=…`.
    It becomes `#property?p=lat,lon&rad=1000&show=listings` plus the filter keys the section reads.
    Exported so dist/listings.html (a four-line redirect) and the test use the same codec. */
-const RADII = [500, 1000, 2000];
 function listingsQuery(q) {
   const out = {};
   const ll = parseLatLon(q.at);
@@ -279,12 +309,13 @@ function toInternal(hash, opts) {
     return { view: "property", parts: ["property"], query: q, pins };
   }
   if (head === "area") return { view: "area", parts, query: q };
-  if (head === "map") return { view: "makro", parts, query: q };
+  if (head === "map") return { view: "makro", parts, query: q, pin: pinParse(q) };
   return { view: head, parts, query: q };
 }
 
 const API = { CLIM_FALLBACK_IND, CLIM_KEYS, LEVELS, LAYERS, RADII, ALIASES, IND_NONE,
               splitHash, buildHash, parseLatLon, round5, propParse, propSerialise,
+              pinParse, pinQuery,
               climateFlag, layerFlags, areaTabs, listingsQuery, fromListingsHash,
               stripNone, toV2, toInternal };
 if (typeof window !== "undefined") window.ROUTE_CORE = API;

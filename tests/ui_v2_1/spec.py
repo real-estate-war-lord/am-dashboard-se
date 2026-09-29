@@ -37,7 +37,7 @@ DIST = ROOT / "dist"
 FIXTURE = ROOT / "tests" / "fixtures" / "listings_stockholm.json"
 GATEWAY_GLOB = "**am-se-listings**"
 
-PHASES = ["P1", "P2", "P3", "P4", "P5", "P6"]
+PHASES = ["P1", "P2", "P3", "P4", "P5", "P6", "P7"]
 
 # The pins the spec drives. Södermalm is the one every audit note is written
 # about; Göteborg is the second so nothing passes by being hard-coded to 0180.
@@ -80,6 +80,8 @@ SHOT_ROUTES = {
     # P6 — the two area levels the release set was missing
     "area-kommun": ("#area/kommun/0180", None),
     "area-deso": ("#area/deso/0180C1010_DeSO2025", None),
+    # P7 — the pin on the map: marker, rings and the card in the free corner
+    "map-pin": (f"#map/0180?ind=growth&pin={STHLM}&pl=Test", None),
 }
 SHOT_SIZES = [(1440, 900), (1366, 768), (390, 844)]
 
@@ -2223,6 +2225,9 @@ REG_ROUTES = {
     "map": "#map",
     "map-only": "#map?ind=none",
     "map-kommun": "#map/0180",
+    # v2.1.1: the map with a pin on it — the card takes a corner on a desktop and
+    # the top lane on a phone, and neither may push the page sideways
+    "map-pin": f"#map/0180?pin={STHLM}&pl=Test",
     "area-kommun": "#area/kommun/0180",
     "area-regso": "#area/regso/0180R001_RegSO2025",
     "area-deso": "#area/deso/0180C1010_DeSO2025",
@@ -2367,6 +2372,269 @@ def _toolbar_label(r, page, errs, calls):
     r.ok("the toolbar row still does not wrap the map down the page",
          box(page, "[data-testid=map]").get("top", 9999) <= MAP_TOP_BUDGET,
          json.dumps(box(page, "[data-testid=map]")))
+
+
+# --------------------------------------------------------------------------- #
+# P7 — the pin: dropped on the map, and remembered by Test property
+#
+# Two bugs, one pin. A pasted Google Maps link used to leave the map and open
+# Test property, throwing away the map the reader had built; and Test property
+# used to forget the pin the moment they looked at anything else, because the
+# nav link was always the bare `#property` and a bare `#property` set the pin to
+# null. Both checks below read what the page actually holds — the hash, the
+# drawn layers, the figures — rather than that a control exists.
+# --------------------------------------------------------------------------- #
+
+MAPS_LINK = "https://www.google.com/maps/@59.31972,18.07194,17z"
+
+
+def pin_located(page, timeout_ms: int = 12000) -> None:
+    """Wait until the pin knows which areas it fell in.
+
+    The boundary rings are fetched on demand — 2.5 MB is not in the page for a
+    pin most readers never drop — so the card and the header say "Locating…"
+    first. That is not the word `settle()` watches for, and it is deliberately
+    not "Loading": it is the pin being placed, not a figure being waited on."""
+    page.wait_for_function("() => window.AM && window.AM.PROP && window.AM.PROP.res",
+                           timeout=timeout_ms)
+    page.wait_for_timeout(250)
+
+
+def pin_layers(page) -> dict:
+    """What the big map has actually drawn for the pin.
+
+    Counted off the live Leaflet map rather than off the DOM: a dashed ring is a
+    <path> like every polygon on the choropleth, so counting SVG elements would
+    say nothing. `interactive` is the property that decides whether a click
+    reaches the kommun underneath the ring, which is the whole reason the rings
+    are drawn the way they are."""
+    return page.evaluate("""() => {
+      const m = window.AM.map, g = window.AM.LF.pinG;
+      const o = { onMap: !!(m && g && m.hasLayer(g)), markers: 0, interactive: 0,
+                  radii: [], latlng: null };
+      if (!g) return o;
+      g.eachLayer(l => {
+        if (l.options.interactive) o.interactive++;
+        if (typeof l.getRadius === "function") o.radii.push(l.getRadius());
+        else { o.markers++; const p = l.getLatLng(); o.latlng = [p.lat, p.lng]; }
+      });
+      o.radii.sort((a, b) => a - b);
+      return o; }""")
+
+
+@check("pin-search-stays-on-map", "P7",
+       "a pasted Maps link drops a pin on the map instead of leaving it", needs="fresh")
+def _pin_search(r, page, errs, calls):
+    hop(page, "#map?ind=growth&lay=services", 1200)
+    settle(page)
+    page.fill("[data-testid=search] input, input[data-testid=search]", MAPS_LINK)
+    page.wait_for_timeout(400)
+    row = sel_text(page, "[data-testid=search-coord]")
+    r.ok("the dropdown offers to drop a pin, not to open another page",
+         "drop a pin" in row.lower(), row.replace("\n", " ")[:120])
+    r.ok("and it says what it is: a point, not an area",
+         "point" in row.lower() and "59.31972" in row, row.replace("\n", " ")[:120])
+    page.click("[data-testid=search-coord]")
+    page.wait_for_timeout(1200)
+    pin_located(page)
+    settle(page)
+
+    h = page.evaluate("location.hash")
+    r.ok("the view is still the map", page.evaluate("window.AM.S.view") == "makro"
+         and h.startswith("#map"), h)
+    r.ok("it drilled to the pin's own kommun with the ordinary navigation",
+         h.startswith("#map/0180"), h)
+    r.ok("the hash carries the pin", f"pin={STHLM}" in h, h)
+    r.ok("and kept the indicator and the layers the reader had chosen",
+         "ind=growth" in h and "lay=services" in h, h)
+
+    lay = pin_layers(page)
+    r.ok("a marker is drawn for it", lay and lay["markers"] >= 1, json.dumps(lay))
+    r.ok("with the three radius rings around it", lay and lay["radii"] == [500, 1000, 2000],
+         json.dumps(lay))
+    r.ok("none of them takes a click meant for the polygons underneath",
+         lay and lay["interactive"] == 0, json.dumps(lay))
+    r.ok("and they are at the pasted coordinate", lay and lay["latlng"]
+         and abs(lay["latlng"][0] - 59.31972) < 1e-4 and abs(lay["latlng"][1] - 18.07194) < 1e-4,
+         json.dumps(lay))
+    # the camera followed the pin rather than staying on the national frame
+    z = page.evaluate("window.AM.map.getZoom()")
+    c = page.evaluate("() => { const c = window.AM.map.getCenter(); return [c.lat, c.lng]; }")
+    r.ok("the camera is on the pin", z >= 13 and abs(c[0] - 59.31972) < .05 and abs(c[1] - 18.07194) < .05,
+         f"zoom {z}, centre {c}")
+
+    card = page.inner_text("[data-testid=pin-card]")
+    r.ok("the pin card names the kommun, the RegSO and the DeSO it fell in",
+         "Stockholm" in card and "RegSO" in card and "DeSO" in card,
+         card.replace("\n", " · ")[:160])
+    r.ok("and its coordinate", "59.31972" in card and "18.07194" in card,
+         card.replace("\n", " · ")[:160])
+    open_h = page.get_attribute("[data-testid=pin-open]", "data-go")
+    r.ok("its button opens Test property carrying the same pin",
+         open_h.startswith("property?p=59.31972,18.07194"), open_h)
+    page.click("[data-testid=pin-open]")
+    page.wait_for_timeout(1600)
+    settle(page)
+    h2 = page.evaluate("location.hash")
+    r.ok("and clicking it really does", page.evaluate("window.AM.S.view") == "property"
+         and f"p={STHLM}" in h2, h2)
+    t = settle(page)
+    r.ok("with the figures for that pin on screen, not an empty paste box",
+         "Stockholm" in t and page.eval_on_selector_all("[data-testid=state-empty]", "e => e.length") == 0,
+         t.replace("\n", " ")[:140])
+    r.ok("no page error", not js_errs(errs), (js_errs(errs)[0] if js_errs(errs) else "")[:140])
+    errs.clear()
+
+
+@check("pin-survives-the-nav", "P7",
+       "Test property keeps the pin through the sidebar and through a reload", needs="fresh")
+def _pin_survives(r, page, errs, calls):
+    # map → Test property, the way a reader gets there from a dropped pin
+    hop(page, f"#map/0180?ind=growth&pin={STHLM}&pl=Home", 1200)
+    pin_located(page)
+    settle(page)
+    page.click("[data-testid=pin-open]")
+    page.wait_for_timeout(1600)
+    figures = settle(page)
+    r.ok("Test property opens on the pin", page.evaluate("window.AM.S.view") == "property"
+         and page.evaluate("window.AM.PROP.lat") == 59.31972, page.evaluate("location.hash"))
+    tiles = sel_text(page, "[data-testid=tiles]")
+    r.ok("and has its figures", len(tiles.strip()) > 20 and "Stockholm" in figures,
+         tiles.replace("\n", " ")[:120])
+
+    # the sidebar, which is where the pin used to be lost
+    nav = page.evaluate("""() => { const o = {};
+      for (const b of document.querySelectorAll('[data-testid=nav-item]'))
+        o[b.innerText.trim()] = b.dataset.go;
+      return o; }""")
+    r.ok("the Test property nav item carries the pin",
+         str(nav.get("Test property", "")).startswith("property?p=59.31972,18.07194"),
+         json.dumps(nav))
+    r.ok("and the Map one carries it too", f"pin={STHLM}" in str(nav.get("Map", "")),
+         json.dumps(nav))
+
+    def click_nav(label):
+        page.eval_on_selector_all("[data-testid=nav-item]",
+                                  "(els, l) => { const b = els.find(x => x.innerText.trim() === l); if (b) b.click(); }",
+                                  label)
+        page.wait_for_timeout(1400)
+
+    click_nav("Data")
+    r.ok("Data is a different view", page.evaluate("window.AM.S.view") in ("table", "market", "pipeline"),
+         page.evaluate("location.hash"))
+    click_nav("Test property")
+    pin_located(page)
+    back = settle(page)
+    r.ok("and back through the sidebar the pin is still there",
+         page.evaluate("window.AM.PROP.lat") == 59.31972
+         and page.eval_on_selector_all("[data-testid=state-empty]", "e => e.length") == 0,
+         page.evaluate("location.hash"))
+    r.ok("with the same figures, not a reset page",
+         sel_text(page, "[data-testid=tiles]").strip() == tiles.strip(),
+         sel_text(page, "[data-testid=tiles]").replace("\n", " ")[:120])
+
+    # a bare #property — typed, bookmarked, or arrived at from an old link
+    hop(page, "#property", 1400)
+    settle(page)
+    r.ok("a bare #property keeps the pin already in memory",
+         page.evaluate("window.AM.PROP.lat") == 59.31972,
+         page.evaluate("() => String(window.AM.PROP.lat)"))
+
+    # and across a reload, where memory is gone and only the stored copy is left
+    stored = page.evaluate("() => { try { return localStorage.getItem('se.lastPin'); } catch (e) { return 'THREW'; } }")
+    r.ok("the pin is remembered in localStorage under se.lastPin",
+         stored and stored != "THREW" and "59.31972" in stored, str(stored)[:120])
+    # a real reload of the bare hash: memory is gone, the stored copy is all there is
+    page.reload(wait_until="load")
+    page.wait_for_function("typeof window.AM !== 'undefined'", timeout=20000)
+    pin_located(page)
+    after = settle(page)
+    r.ok("so a reload of bare #property restores it",
+         page.evaluate("window.AM.PROP.lat") == 59.31972
+         and page.eval_on_selector_all("[data-testid=state-empty]", "e => e.length") == 0,
+         after.replace("\n", " ")[:140])
+    r.ok("and the restored pin reads as the same place", "Stockholm" in after,
+         after.replace("\n", " ")[:140])
+
+    # Test property → the map carries it the other way
+    onmap = page.get_attribute("[data-testid=prop-onmap]", "data-go")
+    r.ok("'Open on map' carries the pin to the map",
+         f"pin={STHLM}" in str(onmap) and str(onmap).startswith("map/0180"), str(onmap))
+    page.click("[data-testid=prop-onmap]")
+    page.wait_for_timeout(1800)
+    r.ok("and it arrives drawn there", f"pin={STHLM}" in page.evaluate("location.hash")
+         and (pin_layers(page) or {}).get("markers", 0) >= 1,
+         page.evaluate("location.hash"))
+
+    # only the clear button forgets it
+    page.click("[data-testid=pin-card] [data-propclear]")
+    page.wait_for_timeout(800)
+    r.ok("the clear button removes the pin from the map", page.evaluate("window.AM.PROP.lat") is None
+         and (pin_layers(page) or {}).get("markers", 0) == 0
+         and page.eval_on_selector_all("[data-testid=pin-card]", "e => e.length") == 0,
+         page.evaluate("location.hash"))
+    r.ok("and out of the hash", "pin=" not in page.evaluate("location.hash"),
+         page.evaluate("location.hash"))
+    r.ok("and out of storage, so a reload does not bring it back",
+         not page.evaluate("() => { try { return localStorage.getItem('se.lastPin'); } catch (e) { return null; } }"),
+         str(page.evaluate("() => { try { return localStorage.getItem('se.lastPin'); } catch (e) { return 'THREW'; } }")))
+    hop(page, "#property", 1200)
+    r.ok("cleared really is cleared", page.evaluate("window.AM.PROP.lat") is None
+         and page.eval_on_selector_all("[data-testid=state-empty]", "e => e.length") == 1,
+         page.evaluate("location.hash"))
+    r.ok("no page error", not js_errs(errs), (js_errs(errs)[0] if js_errs(errs) else "")[:140])
+    errs.clear()
+
+
+@check("pin-paste-on-property", "P7",
+       "a link pasted on Test property still replaces the pin there", needs="fresh")
+def _pin_paste_property(r, page, errs, calls):
+    hop(page, f"#property?p={STHLM}:Home", 1200)
+    pin_located(page)
+    settle(page)
+    # Enter, not just fill(): the paste box reads its input on `change`, which a
+    # real browser fires on Enter or on blur and which fill() does not dispatch
+    # at all. The map's search box is the other convention — it reads `input` on
+    # every keystroke — and fill() is enough there.
+    page.fill("[data-testid=prop-input]", "https://www.google.com/maps/@57.7089,11.9746,17z")
+    page.press("[data-testid=prop-input]", "Enter")
+    page.wait_for_timeout(600)
+    page.wait_for_function("() => window.AM.PROP.res && window.AM.PROP.res.kommun"
+                           " && window.AM.PROP.res.kommun.code === '1480'", timeout=12000)
+    t = settle(page)
+    r.ok("the pin moves to the pasted location",
+         abs(page.evaluate("window.AM.PROP.lat") - 57.7089) < 1e-4,
+         str(page.evaluate("window.AM.PROP.lat")))
+    r.ok("the view does not leave Test property",
+         page.evaluate("window.AM.S.view") == "property", page.evaluate("location.hash"))
+    r.ok("and the page reads as Göteborg now", "Göteborg" in t, t.replace("\n", " ")[:140])
+    r.ok("the hash was rewritten to it", "p=57.7089,11.9746" in page.evaluate("location.hash"),
+         page.evaluate("location.hash"))
+    r.ok("no page error", not js_errs(errs), (js_errs(errs)[0] if js_errs(errs) else "")[:140])
+    errs.clear()
+
+
+@check("pin-card-corner", "P7", "the pin card takes a free corner of the map", needs="fresh")
+def _pin_card_corner(r, page, errs, calls):
+    for w, h in [(1366, 768), (1440, 900)]:
+        page.set_viewport_size({"width": w, "height": h})
+        hop(page, f"#map/0180?ind=growth&pin={STHLM}&pl=Home", 1200)
+        pin_located(page)
+        settle(page)
+        card = box(page, "[data-testid=pin-card]")
+        mapb = box(page, "[data-testid=map]")
+        r.ok(f"{w}×{h}: the card is on the map", overlaps(card, mapb), json.dumps(card))
+        r.ok(f"{w}×{h}: the map still starts within the budget",
+             mapb and mapb["top"] <= MAP_TOP_BUDGET, f"top {mapb.get('top')}")
+        for what, sel in [("the kommun panel", ".mapwrap > [data-testid=area-card]"),
+                          ("the legend", "[data-testid=legend]"),
+                          ("the zoom control", "#lfmap .leaflet-control-zoom")]:
+            other = box(page, sel)
+            r.ok(f"{w}×{h}: it is clear of {what}", not overlaps(card, other),
+                 f"card {card}, {what} {other}")
+    page.set_viewport_size({"width": 1440, "height": 900})
+    r.ok("no page error", not js_errs(errs), (js_errs(errs)[0] if js_errs(errs) else "")[:140])
+    errs.clear()
 
 
 # --------------------------------------------------------------------------- #
