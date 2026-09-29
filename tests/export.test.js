@@ -13,13 +13,17 @@ const X = require("../src/export_core.js");
 
 /* ---- the schema ---- */
 
+/* v2.1 P1 adds `value_label` after `value`: a coded indicator (Boverket's
+   housing-market assessment) exports the number AND the word it stands for. */
 test("the long schema is exactly the documented column list, in order", () => {
   assert.deepStrictEqual(X.LONG_COLUMNS, [
     "level", "code", "name", "parent_code", "parent_name", "lan", "population",
-    "indicator", "label", "unit", "period", "period_type", "value", "margin_of_error",
+    "indicator", "label", "unit", "period", "period_type", "value", "value_label",
+    "margin_of_error",
     "value_type", "inherited_from", "direction", "source", "table_id", "source_url",
     "as_of", "fetched", "licence",
   ]);
+  assert.strictEqual(X.LONG_COLUMNS.indexOf("value_label"), X.LONG_COLUMNS.indexOf("value") + 1);
 });
 
 test("projects are their own columns and never carry an indicator", () => {

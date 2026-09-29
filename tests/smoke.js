@@ -35,6 +35,12 @@ const tpJs = fs.readFileSync(path.join(ROOT, "src", "testprop.js"), "utf8");
    page, in that order, and app.js reads window.ROUTE_CORE at module scope — so
    the sandbox has to load them in the same order. */
 const routeJs = fs.readFileSync(path.join(ROOT, "src", "route_core.js"), "utf8");
+/* search_core.js is inlined between them (v2.1 P3): app.js builds AREA_OPTS through
+   window.SEARCH_CORE.keysFor at module scope, so it has to be in the sandbox first. */
+const searchJs = fs.readFileSync(path.join(ROOT, "src", "search_core.js"), "utf8");
+/* geo_core.js likewise (v2.1 P4): app.js decodes the kommun outlines through
+   window.GEO_CORE at module scope. */
+const geoJs = fs.readFileSync(path.join(ROOT, "src", "geo_core.js"), "utf8");
 const viewJs = fs.readFileSync(path.join(ROOT, "src", "listings", "view.js"), "utf8");
 const exportJs = fs.readFileSync(path.join(ROOT, "src", "export_core.js"), "utf8");
 
@@ -115,6 +121,8 @@ const EXPORTS = "\n;globalThis.__app = { D, S, MK, AR, T, CH, PROP, LAY, DT, vMa
 try {
   vm.runInContext(tpJs, sandbox, { filename: "testprop.js" });
   vm.runInContext(routeJs, sandbox, { filename: "route_core.js" });
+  vm.runInContext(searchJs, sandbox, { filename: "search_core.js" });
+  vm.runInContext(geoJs, sandbox, { filename: "geo_core.js" });
   vm.runInContext(viewJs, sandbox, { filename: "listings/view.js" });
   vm.runInContext(exportJs, sandbox, { filename: "export_core.js" });
   vm.runInContext(appJs + EXPORTS, sandbox, { filename: "app.js" });
@@ -126,8 +134,25 @@ try {
 const A = sandbox.__app;
 const S = A.S, MK = A.MK, AR = A.AR, T = A.T, CH = A.CH, D = A.D;
 
+/* ---- v2.1 P4: the RegSO pool the page fetches ----
+   There is no fetch in this sandbox, so the files the browser would download are
+   read off disk and handed to the same merge the loader uses. Every check below
+   this line therefore exercises the loaded state, which is the state a reader
+   sees; the un-loaded state is what tests/ui_v2_1/spec.py drives, with the route
+   held open. The rings come back through src/geo_core.js's decoder, so this is
+   also the round trip of every RegSO polygon in the build. */
+const PROCD = path.join(ROOT, "data", "processed");
+const regsoVals = JSON.parse(fs.readFileSync(path.join(PROCD, "regso", "values.json"), "utf8"));
+const regsoRings = {};
+for (const kod of Object.keys(D.regso_index || {})) {
+  regsoRings[kod] = JSON.parse(fs.readFileSync(path.join(PROCD, "regso", `${kod}.json`), "utf8"));
+}
+sandbox.window.AM.injectRegso(regsoVals, regsoRings);
+
 console.log(`\ndata: ${D.kommuner.length} kommuner · ${D.regso.length} RegSO · ` +
             `${Object.keys(D.deso_index).length} DeSO files · ${D.indicators.length} indicators\n`);
+console.log(`fetched in: regso/values.json (${regsoVals.areas.length} areas) · ` +
+            `${Object.keys(regsoRings).length} RegSO ring files\n`);
 
 console.log("views:");
 S.view = "makro"; MK.kommun = null;
@@ -176,10 +201,15 @@ function assert(name, cond, detail) {
 }
 console.log("\nexports:");
 S.view = "table"; T.level = "kommun";
-const LONG = ["level", "code", "name", "parent_code", "parent_name", "lan", "population",
-  "indicator", "label", "unit", "period", "period_type", "value", "margin_of_error",
+/* v2.1 P1: `value_label` follows `value` — a coded indicator (Boverket BME)
+   exports −1/0/1 and Shortage/Balance/Surplus side by side. The column checks
+   below index by NAME so the next insertion does not silently move them. */
+const LONG_COLS = ["level", "code", "name", "parent_code", "parent_name", "lan", "population",
+  "indicator", "label", "unit", "period", "period_type", "value", "value_label", "margin_of_error",
   "value_type", "inherited_from", "direction", "source", "table_id", "source_url",
-  "as_of", "fetched", "licence"].join(";");
+  "as_of", "fetched", "licence"];
+const LONG = LONG_COLS.join(";");
+const col = name => LONG_COLS.indexOf(name);
 const viewCsv = A.exportRows("view");
 assert("This view exports the long schema", viewCsv[0] === LONG, viewCsv[0].slice(0, 70) + "…");
 assert("and has a row per area and indicator", viewCsv.length > 1000, `${viewCsv.length - 1} rows`);
@@ -205,12 +235,17 @@ assert("unit and magnitude agree in every exported row", bad.length === 0,
 /* the two rules a suppressed value must survive */
 const rows = areasCsv.slice(1);
 assert("a suppressed value is an empty cell, never a zero",
-  !rows.some(r => { const c = r.split(";"); return c[12] === "" && c[13] === "0"; }), "no 0 where – belongs");
+  !rows.some(r => { const c = r.split(";"); return c[col("value")] === "" && c[col("margin_of_error")] === "0"; }),
+  "no 0 where – belongs");
 assert("every row carries a source and an as-of",
-  rows.every(r => { const c = r.split(";"); return c[17] && c[20]; }),
-  (rows.find(r => { const c = r.split(";"); return !c[17] || !c[20]; }) || "").slice(0, 90));
+  rows.every(r => { const c = r.split(";"); return c[col("source")] && c[col("as_of")]; }),
+  (rows.find(r => { const c = r.split(";"); return !c[col("source")] || !c[col("as_of")]; }) || "").slice(0, 90));
 assert("a projected value is labelled as one",
-  rows.some(r => r.split(";")[14] === "projection"), "value_type=projection present");
+  rows.some(r => r.split(";")[col("value_type")] === "projection"), "value_type=projection present");
+assert("a coded indicator exports the number AND the word",
+  rows.some(r => { const c = r.split(";"); return c[col("indicator")] === "bme" && c[col("value")] !== ""
+    && ["Shortage", "Balance", "Surplus"].includes(c[col("value_label")]); }),
+  (rows.find(r => r.split(";")[col("indicator")] === "bme") || "no bme row").slice(0, 120));
 
 /* ---- data assertions the dashboard is supposed to honour ---- */
 console.log("\ndata contract:");

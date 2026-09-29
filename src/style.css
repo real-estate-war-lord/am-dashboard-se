@@ -216,6 +216,14 @@ main{overflow-y:auto;display:flex;flex-direction:column;min-width:0}
 .card.fold .foldb>.tbl:first-child,.card.fold .foldb>.hero:first-child{margin-top:0}
 .hero.hero3{grid-template-columns:repeat(3,minmax(0,1fr))}
 @media (max-width:1100px){.hero.hero3{grid-template-columns:1fr 1fr}}
+/* Data › National has five tiles in a four-column grid, so the fifth left three
+   cells of the grid's own line colour showing as empty grey boxes. Same trick as
+   .hero.wrap: the panel is the background and each cell draws its own rules, so
+   a row that does not fill is simply shorter. */
+.hero.natrow{grid-template-columns:repeat(auto-fit,minmax(200px,1fr));background:var(--panel);gap:0;
+  border-right:0;border-bottom:0}
+.hero.natrow>div{border-right:1px solid var(--line);border-bottom:1px solid var(--line)}
+@media (max-width:640px){.hero.natrow{grid-template-columns:1fr}}
 .back{margin-bottom:2px}
 .back button{background:none;border:0;color:var(--muted);font:inherit;font-size:12.5px;cursor:pointer;padding:2px 0}
 .back button:hover{color:var(--ink)}
@@ -1400,6 +1408,10 @@ a.srcv:hover{border-bottom-style:solid}
 .lgpick .lgb:hover{border-color:var(--line)}
 .lgpick .lgb.on{background:var(--ink);color:#fff}
 .pipdot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;vertical-align:middle}
+/* The dot IS the status, so it has to stay on the word's line. In Pipeline the
+   column is narrow enough that "● construction" wrapped after the dot and the
+   colour ended up a line above the word it belongs to (v2.1 P6). */
+.pipst{white-space:nowrap}
 .lgrow.lgclick{cursor:pointer;pointer-events:auto}
 .lgrow.lgclick.off{opacity:.45}
 .lgrow.lgclick:hover{text-decoration:underline}
@@ -1414,6 +1426,67 @@ a.nav-item:hover .navext{opacity:.9}
 .anpin .anlab{flex:0 1 160px}
 .anpin .anerr{flex-basis:100%;color:#B0331B;font-size:11px;font-family:var(--mono);line-height:1.4}
 .anpriv{border-left:2px solid var(--line);padding-left:10px;margin-top:10px}
+/* the privacy position: one line, with the whole of it a click away (v2.1 P5) */
+.privfold{flex-basis:100%;margin-top:12px;border-left:2px solid var(--line);padding-left:10px}
+.privfold>summary{cursor:pointer;list-style:none;font-family:var(--mono);font-size:11px;
+  line-height:1.5;color:var(--ink2)}
+.privfold>summary::-webkit-details-marker{display:none}
+.privfold>summary b{color:var(--ink);font-weight:600}
+.privfold>summary i{font-style:normal;color:var(--muted);border-bottom:1px dotted var(--dim);margin-left:4px}
+.privfold>summary:hover i{color:var(--ink);border-bottom-color:var(--ink)}
+.privbody{margin-top:7px}
+.privbody p{font-family:var(--mono);font-size:10.5px;line-height:1.6;color:var(--muted);margin:0 0 6px;max-width:96ch}
+.privbody p:last-child{margin-bottom:0}
+.privbody b{color:var(--ink2)}
+
+/* ---- the summary strip (v2.1 P5) ----
+   Seven answers, each a button into the section that shows its working. Same
+   grid discipline as the headline row: one hairline background, the cells draw
+   themselves, nothing can read as an empty grey box. */
+.stripcard{padding:14px 16px 15px}
+.pstrip{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:1px;background:var(--line);
+  border:1px solid var(--line);border-radius:9px;overflow:hidden}
+.pst{background:var(--panel);border:0;text-align:left;padding:9px 11px 8px;cursor:pointer;font:inherit;
+  display:flex;flex-direction:column;gap:2px;min-width:0}
+.pst:hover{background:var(--panel2)}
+.pst:focus-visible{outline:2px solid var(--good);outline-offset:-2px}
+.pst .pstl{font-family:var(--mono);font-size:9px;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--muted);line-height:1.35;min-height:24px}
+.pst b{font-family:var(--disp);font-size:21px;letter-spacing:-.03em;line-height:1.15;font-weight:700}
+.pst em{font-style:normal;font-family:var(--mono);font-size:9.5px;line-height:1.4;color:var(--ink2);
+  overflow-wrap:anywhere}
+.pst.loading b,.pst.none b{color:var(--dim)}
+.pst.warn b{color:var(--warn)}
+.pst.err b{font-family:var(--mono);font-size:13px;color:var(--bad);font-weight:600}
+.pst.warn{box-shadow:inset 0 3px 0 var(--warn)}
+.pst.err{box-shadow:inset 0 3px 0 var(--bad)}
+/* Seven items in a grid that wraps, so the last one stretches across whatever is
+   left of its row. Without it a four- or two-column strip leaves the eighth cell
+   empty and the hairline background shows through as a grey box — the same
+   mistake v2.1 P1 took out of Data › National. */
+.pst:last-child{grid-column:7 / -1}
+@media (max-width:1320px){.pstrip{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .pst:last-child{grid-column:3 / -1}}
+@media (max-width:820px){.pstrip{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .pst:last-child{grid-column:1 / -1}}
+@media (max-width:420px){.pst b{font-size:19px}}
+
+/* ---- direct vs queue (v2.1 P5) ---- */
+.lst-split{display:flex;flex-wrap:wrap;gap:4px 14px;align-items:baseline;margin-top:7px;
+  font-family:var(--mono);font-size:11px;color:var(--ink2)}
+.lst-split span{border:1px solid var(--line);border-radius:999px;padding:2px 9px;background:var(--panel2)}
+.lst-split b{font-size:12px;color:var(--ink);margin-left:5px}
+.lst-split i{font-style:normal;color:var(--muted);font-size:10px}
+.lst-alloc{margin-top:14px;border-top:1px solid var(--line);padding-top:10px}
+.lst-ahead{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px}
+.lst-ahead h4{font-family:var(--disp);font-size:14px;font-weight:600;margin:0;letter-spacing:-.01em;
+  display:inline-flex;align-items:baseline;gap:7px}
+.lst-ahead h4 .n{font-family:var(--mono);font-size:11px;font-weight:500;color:var(--ink2);
+  border:1px solid var(--line);border-radius:999px;padding:1px 7px}
+.lst-awhy{font-family:var(--mono);font-size:10.5px;color:var(--muted);line-height:1.5}
+.lst-aq{flex-basis:100%;font-family:var(--mono);font-size:10.5px;color:var(--ink2)}
+.lst-aq i{font-style:normal;color:var(--muted)}
+.lst-alloc .lst-cards{margin:9px 0 10px}
 .anwhere{display:flex;flex-wrap:wrap;gap:6px 16px;font-family:var(--mono);font-size:12px;margin:4px 0 10px}
 .anwhere span em{font-style:normal;color:var(--muted);margin-right:5px}
 .ansep{font-family:var(--mono);font-size:10.5px;color:var(--muted);margin-top:10px;padding-top:8px;border-top:1px solid var(--line)}
@@ -1434,12 +1507,26 @@ a.nav-item:hover .navext{opacity:.9}
 .hlc.on{background:#F0F4EE;box-shadow:inset 0 3px 0 var(--ink)}
 .hlc span{font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hlc b{font-family:var(--disp);font-size:26px;letter-spacing:-.03em;line-height:1.1;font-weight:700}
+/* The unit tail the figure does not already print — "1 710 SEK" + "/m²/yr". Mono and
+   small so it reads as the unit of the number above it, never as part of it. Inline in
+   the area page's hero line, which has the width for it; its own line on a tile, which
+   does not — there it broke between the number and its unit and read as two figures. */
+.hlu{font-family:var(--mono);font-size:11px;font-style:normal;font-weight:500;letter-spacing:0;color:var(--muted);margin-left:.35em;white-space:nowrap}
+.hlu.t{margin-left:.06em}
+.hlc .hlsub{font-family:var(--mono);font-size:10.5px;letter-spacing:0;text-transform:none;
+  color:var(--muted);white-space:normal;overflow:visible;text-overflow:clip;line-height:1.3}
+.hlc .hlsub .moe{margin-left:.45em}
+/* Six tiles: five published below kommun plus the one kommun-only figure. */
+.hl.n6{grid-template-columns:repeat(6,minmax(0,1fr))}
+.hl.n6 .hlc b{font-size:23px}
+.acard .hl.n6 .hlc b{font-size:19px}
+.hl.n6 .hlc .hlsub{font-size:10px}
 .hlc em{font-style:normal;font-family:var(--mono);font-size:10.5px;color:var(--ink2)}
 .hlc em i{font-style:normal;font-weight:600}
 .hlc .up{color:var(--good)}.hlc .dn{color:var(--bad)}
 .arhead h2{margin-top:0}
-@media (max-width:1180px){.hl{grid-template-columns:repeat(3,minmax(0,1fr))}}
-@media (max-width:820px){.hl{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:1180px){.hl,.hl.n6{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:820px){.hl,.hl.n6{grid-template-columns:repeat(2,minmax(0,1fr))}}
 /* tiles: one context line, chart link in the corner */
 .hero .tile .tm{display:flex;flex-wrap:wrap;gap:2px 10px}
 .hero .tile{position:relative}
@@ -1655,7 +1742,12 @@ td.dim .moe{color:inherit}
 [data-testid=map-toolbar] .asrch{flex:1 1 200px;min-width:130px;max-width:360px}
 [data-testid=map-toolbar] .asrch input{width:100%}
 [data-testid=map-toolbar] .indsel{height:28px;padding-top:0;padding-bottom:0;max-width:22ch}
-[data-testid=map-toolbar] .indbtn{max-width:30ch;height:28px}
+/* 30ch was narrower than the row ever needed: "Rent, median SEK / m² / yr
+   municipality ▾" was clipped to "Rent, … S… municipality ▾" while 180 px of the
+   toolbar sat empty. 46ch holds the longest label the picker can put here, and
+   the button shrinks below it under pressure — it is `overflow:hidden`, so its
+   automatic minimum size is 0 and the flex row still cannot overflow (v2.1 P6). */
+[data-testid=map-toolbar] .indbtn{max-width:46ch;min-width:0;height:28px}
 [data-testid=map-toolbar] .lk{height:28px;padding-top:0;padding-bottom:0;display:inline-flex;align-items:center}
 [data-testid=map-toolbar] .seg .sg,[data-testid=map-toolbar] .seg button{padding-top:3px;padding-bottom:3px}
 .card-head.tools-only{gap:6px}
@@ -1712,6 +1804,9 @@ td.dim .moe{color:inherit}
 .lst-card .sub{color:var(--muted);font-size:11.5px;margin-bottom:8px}
 .lst-card .facts{display:grid;grid-template-columns:1fr 1fr;gap:3px 10px;font-family:var(--mono);font-size:11.5px;margin-bottom:8px}
 .lst-card .facts i{font-style:normal;color:var(--muted)}
+/* A figure and its own unit are one thing: "6 275" on one line and "kr/mån" on
+   the next reads as two facts. The line may still break after the label. */
+.lst-card .facts .v{white-space:nowrap}
 .lst-card .badges{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px}
 .lst-bdg{font-size:10.5px;font-family:var(--mono);padding:2px 7px;border-radius:999px;
   border:1px solid var(--line);background:var(--panel2);color:var(--ink2);text-decoration:none}
@@ -1720,6 +1815,7 @@ td.dim .moe{color:inherit}
 .lst-bdg.also{background:#E9F1EF;border-color:#C9DCD7;color:#14544A}
 .lst-bdg.pos{background:var(--panel2);color:var(--muted)}
 .lst-card .text{font-size:12px;color:var(--ink2);line-height:1.45;margin-bottom:9px}
+.lst-card .text:empty{display:none}
 .lst-card .text.muted{color:var(--dim);font-style:italic}
 .lst-card .open{display:block;text-align:center;padding:8px;border-radius:var(--r);
   background:var(--side);color:var(--side-ink);text-decoration:none;font-weight:500;font-size:12.5px}
@@ -1774,6 +1870,16 @@ td.dim .moe{color:inherit}
 .pickerpop{width:min(440px,92vw);max-height:70vh;padding:8px}
 .pickerpop #indsearch{width:100%;margin-bottom:6px}
 .pkbody{overflow:auto;max-height:58vh;display:flex;flex-direction:column;gap:2px}
+/* the Swedish terms, glossed once — folded, so it is there for whoever needs it and
+   costs one line to everyone else */
+.pkhelp{margin:0 0 6px;border:1px solid var(--line);border-radius:7px;background:var(--panel2)}
+.pkhelp>summary{cursor:pointer;padding:4px 9px;font-family:var(--mono);font-size:10px;
+  letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.pkhelp>summary:hover{color:var(--ink)}
+.pkhelp p{margin:0;padding:0 9px 7px;font-size:11.5px;line-height:1.5;color:var(--ink2)}
+.pkhelp p+p{padding-top:0}
+.pkhelp b{color:var(--ink)}
+.pickerpop .pkbody{max-height:52vh}
 .pkglab{font-family:var(--mono);font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--muted);padding:9px 8px 3px;display:flex;gap:8px;align-items:baseline}
 .pkglab em{font-style:normal;letter-spacing:0;text-transform:none;font-size:10px;color:var(--dim)}
 .pkrow{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:baseline;width:100%;
@@ -1791,6 +1897,14 @@ td.dim .moe{color:inherit}
 .period{display:inline-flex;align-items:center;gap:6px}
 .fclab.clim{border-color:#C7D2E6;background:#EDF1F8;color:#2F4E8C}
 .qseg .sg{font-size:11px}
+/* "prel." — the publisher has not finalised this period. Amber, never red: a
+   preliminary figure is not a warning, it is a figure that can still move. */
+.prel{font-family:var(--mono);font-size:9.5px;letter-spacing:.04em;text-transform:lowercase;
+  color:#8A6212;background:#FAF2DD;border:1px solid #E6D6A8;border-radius:4px;padding:1px 4px;
+  font-style:normal;white-space:nowrap}
+.hl .prel,.hero .prel{margin-left:4px;font-size:8.5px;padding:0 3px}
+/* a budget the source does not publish: words, with its note on hover */
+.nobudget{font-family:var(--mono);font-size:10px;color:var(--muted);border-bottom:1px dotted var(--line2,var(--line));cursor:help}
 .pkrow .sh{font-style:normal;font-family:var(--mono);font-size:10px;color:var(--dim)}
 
 /* ---- the map's area card ---- */
@@ -1855,6 +1969,47 @@ tr.inh td.num{color:var(--ink2)}
 .toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
 
 /* ============================================================================
+   v2.1 P2 — "Map only"
+   The map with no choropleth: thin neutral outlines, no key, and one line where the
+   indicator line stands. Nothing here replaces the look — the chip is the chip
+   row's own chip and the note is the indicator strip's own box.
+   ==========================================================================*/
+/* the chip reads as a mode rather than as a figure: dashed until it is on */
+.iqb.none{border-style:dashed;color:var(--muted)}
+.iqb.none:hover{color:var(--ink)}
+.iqb.none.on{border-style:solid;background:var(--ink);color:#fff}
+.pkrow.none .pkl{font-weight:600}
+/* the info strip, in the slot indExplain() occupies so the map does not jump */
+.indx.monly{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;padding:7px 12px;font-size:12.5px}
+.indx.monly b{font-family:var(--disp);font-size:14px}
+.indx.monly .dim{font-family:var(--mono);font-size:10.5px;margin-left:auto;white-space:nowrap}
+#mapcard>.indx.monly{margin:6px 0 0}
+/* "published per kommun only" was a strip here, under the indicator line, until
+   v2.1 P4: three lines of amber prose above the map cost 79 px of the 200 the map
+   is allowed before it starts, so it moved onto the map as a .monote.ko — the
+   same element the two mini-maps have always used. Its styling is down with the
+   rest of the map's overlays at the end of this file. */
+/* the kommun's own label on a kommun-only map: the one figure, once, where it belongs */
+.lflab-kom b{font-size:13px}
+.lflab-kom{font-size:12px;font-weight:600}
+/* With nothing coloured in, the basemap may come up a step so the place names under
+   the outlines are readable. A step, not a different basemap. */
+.mapwrap.maponly .basemap{filter:saturate(.55) brightness(1.02)}
+/* the mini-maps: no chart panel beside them, so the map takes the whole row */
+.studyrow.maponly{grid-template-columns:1fr}
+.mapwrap .monote{position:absolute;left:10px;bottom:10px;z-index:800;max-width:70%;
+  background:rgba(255,255,255,.94);border:1px solid var(--line);border-radius:8px;
+  padding:5px 9px;font-family:var(--mono);font-size:10px;line-height:1.35;color:var(--ink2);
+  pointer-events:none;box-shadow:0 2px 8px rgba(20,28,24,.10)}
+/* the kommun-only note shares the mini-map with a legend in the opposite corner, so it
+   says the short version and the rest is on its hover */
+.mapwrap .monote.ko{max-width:46%;pointer-events:auto;text-transform:uppercase;letter-spacing:.04em;
+  font-size:9.5px;color:#7A5A15;border-color:#E0CFA4;background:rgba(252,247,236,.96)}
+@media (max-width:700px){
+  .indx.monly .dim{margin-left:0;white-space:normal}
+}
+
+/* ============================================================================
    v2.0 — the responsive overrides that must come last
    The map toolbar's one-row rule and the tile grid are defined above; these
    undo them for narrow screens, so they have to win on source order.
@@ -1889,4 +2044,95 @@ tr.inh td.num{color:var(--ink2)}
   .maplegs{display:none}
   body.legopen .maplegs{display:flex;max-height:70%}
   .legpill{display:inline-flex}
+}
+
+/* ============================================================================
+   v2.1 P4 — the map is the page
+   The map starts within 200 px of the top of the window at 1366×768 and takes
+   the rest of it (its height is measured in fitMapHeight(), not guessed here),
+   and the selected kommun's card is a panel OVER it rather than a block above
+   it. Last in the file because it has to beat the responsive tile rules above.
+   ==========================================================================*/
+
+/* The map's four corners, so nothing lands on anything else:
+     top left      the selected kommun's panel
+     top right     the legend stack
+     bottom left   Leaflet's zoom control (moved down out of the panel's way)
+     bottom centre the "published per kommun only" note, clear of both
+   The panel stops short of the bottom so the note and the zoom control have the
+   room, and scrolls inside itself instead of growing into them. */
+.mapwrap > .acard.mappanel{position:absolute;left:12px;top:12px;z-index:700;
+  /* 120px = the zoom control's 64 + its 26 from the bottom + 12 above it + the
+     12 this panel starts from. It shares the left edge with the zoom control, so
+     the panel scrolls inside itself rather than growing over the + and −. */
+  width:334px;max-width:calc(100% - 24px);max-height:calc(100% - 120px);
+  margin:0;overflow-y:auto;overscroll-behavior:contain;
+  background:rgba(255,255,255,.96);border:1px solid var(--line);border-radius:10px;
+  box-shadow:0 3px 16px rgba(20,28,24,.17)}
+/* collapsed: its own title bar and nothing else, so the reader can put the map
+   back without losing where they are */
+.mapwrap > .acard.mappanel.folded{width:auto;max-width:min(320px,calc(100% - 24px));
+  max-height:none;overflow:visible}
+.mapwrap > .acard.mappanel.folded .acard-id .dim{display:none}
+.mapwrap > .acard.mappanel .acard-id{padding-right:26px}
+.mapwrap > .acard.mappanel .acard-fold{position:absolute;top:8px;right:8px;margin:0}
+/* Leaflet puts + / − at the map's top left, which is exactly where the panel is.
+   Only on the big map: the mini-maps have no panel and keep theirs where it is. */
+#lfmap .leaflet-top.leaflet-left{top:auto;bottom:26px}
+/* the kommun-only note, centred along the bottom: the panel is above it on the
+   left, the zoom control beside it, the attribution to its right */
+/* Sentence case, not the mini-maps' small caps: this one names the indicator and
+   the kommun, and CSS small caps go through innerText — "Rent, median" would
+   read "RENT, MEDIAN" to a screen reader and to the tests alike. Only the label
+   in front of it is set in caps. */
+/* `:not(.minicard)` because the two mini-maps use the same element and have no
+   bottom-centre lane free — their legend is bottom-right and reaches past the
+   middle, so P4's centring put the note on top of it on every RegSO/DeSO page
+   and on Test property. Fixed in v2.1 P6; the mini-map keeps the bottom-left
+   corner it had, and `minimap-corners` measures all four pairs. */
+.mapwrap:not(.minicard) > .monote.ko{left:50%;right:auto;bottom:24px;transform:translateX(-50%);
+  max-width:min(560px,52%);text-align:center;text-transform:none;letter-spacing:0;
+  font-size:10px;line-height:1.4}
+.mapwrap:not(.minicard) > .monote.ko b{text-transform:uppercase;letter-spacing:.06em}
+/* A mini-map has no free bottom-centre lane: its legend is bottom-right and at
+   390 px it reaches past the middle. The note takes the top edge instead, between
+   Leaflet's zoom control (top left, ~40 px) and the ⤢ button (top right, 34 px),
+   which is the one corner-to-corner run nothing else on a mini-map uses. */
+.mapwrap.minicard > .monote.ko{top:8px;bottom:auto;left:50%;right:auto;
+  transform:translateX(-50%);max-width:calc(100% - 96px);text-align:center}
+/* 334 px does not hold five columns, let alone six. Two, at every viewport:
+   the media queries further up this file are written for a full-width row. */
+.mapwrap > .acard.mappanel .hl,
+.mapwrap > .acard.mappanel .hl.n6{grid-template-columns:repeat(2,minmax(0,1fr));margin-top:9px}
+.mapwrap > .acard.mappanel .hl .hlc{grid-column:auto}
+.mapwrap > .acard.mappanel .hl .hlc:last-child:nth-child(odd){grid-column:1/-1}
+.mapwrap > .acard.mappanel .hlc b,
+.mapwrap > .acard.mappanel .hl.n6 .hlc b{font-size:20px}
+.mapwrap > .acard.mappanel .acard-sec .tbl.compact th,
+.mapwrap > .acard.mappanel .acard-sec .tbl.compact td{font-size:10.5px;padding:3px 5px}
+
+/* "the file is not here yet" — never a dash, never a 0 */
+.mapwrap .monote.wait{max-width:56%;color:var(--ink2);border-color:var(--line);
+  background:rgba(255,255,255,.96)}
+
+/* ---- 600 px and below: the panel is a bottom sheet ---- */
+@media (max-width:600px){
+  .mapwrap > .acard.mappanel{left:0;right:0;top:auto;bottom:0;width:auto;max-width:none;
+    max-height:50%;border-radius:12px 12px 0 0;border-left:0;border-right:0;border-bottom:0;
+    box-shadow:0 -3px 16px rgba(20,28,24,.17)}
+  .mapwrap > .acard.mappanel.folded{width:auto;max-width:none;max-height:none}
+  .mapwrap > .acard.mappanel.folded .acard-id .dim{display:inline}
+  /* The sheet owns the map's bottom half, so everything else lives in the top
+     half and each thing has its own lane there: the zoom control on the left,
+     the legend pill on the right, the kommun-only note between them. The stack
+     is capped so that however many layers are on it cannot reach the sheet. */
+  .legpill{top:10px;right:10px;bottom:auto}
+  .maplegs{top:46px}
+  body.legopen .maplegs{display:flex;max-height:calc(50% - 60px)}
+  #lfmap .leaflet-top.leaflet-left{top:0;bottom:auto}
+  .mapwrap:not(.minicard) > .monote.ko{top:10px;bottom:auto;left:54px;right:96px;transform:none;
+    max-width:none;text-align:left}
+  /* opened, the legend stack covers that lane — and says the same thing in its
+     own note, so the overlay stands down rather than being drawn under it */
+  body.legopen .mapwrap:not(.minicard) > .monote.ko{display:none}
 }

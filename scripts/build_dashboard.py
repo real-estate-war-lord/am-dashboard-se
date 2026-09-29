@@ -5,10 +5,13 @@ Inlines src/style.css, the vendored Leaflet, src/app.js and the processed data
 (data/processed/makro.json + market.json) into src/index.html — one file that
 opens from disk or from GitHub Pages.
 
-The DeSO layer is the exception: 6 160 areas with polygons would roughly double
-the page, so data/processed/deso/<kommun>.json is copied next to it and fetched
-on demand. Those need http, which is what `make serve` and Pages provide; from
-a file:// URL the DeSO toggle is simply unavailable.
+Geometry below kommun level is the exception. The page carries the 290 kommun
+outlines and the RegSO *name* index; data/processed/regso/values.json (every
+RegSO figure), regso/<kommun>.json (its RegSO rings) and deso/<kommun>.json are
+copied next to it and fetched on demand. That is what keeps dist/index.html
+under 5 MB instead of 17. Those fetches need http, which is what `make serve`
+and Pages provide; from a file:// URL the sub-municipal levels stay unavailable
+and the page says so rather than showing empty areas.
 
 Usage: python3 scripts/build_dashboard.py [--out dist/index.html]
 """
@@ -30,11 +33,12 @@ def load(p: pathlib.Path):
     return json.loads(p.read_text(encoding="utf-8")) if p.exists() else None
 
 
-# The five JS files are inlined as classic <script> blocks in ONE global lexical
+# The JS files are inlined as classic <script> blocks in ONE global lexical
 # scope, so a top-level `const` in two of them is a SyntaxError that blanks the
 # page with nothing in the build log. `node --check` per file costs 0.2 s and
 # turns that into a build failure. Skipped silently where node is absent.
-JS_FILES = ("testprop.js", "route_core.js", "listings/view.js", "export_core.js", "app.js")
+JS_FILES = ("testprop.js", "route_core.js", "search_core.js", "geo_core.js",
+            "listings/view.js", "export_core.js", "app.js")
 
 
 def check_js() -> None:
@@ -69,6 +73,8 @@ def main() -> int:
         "indicators": makro.get("indicators", []),
         "kommuner": makro.get("kommuner", []),
         "regso": makro.get("regso", []),
+        "regso_meta": makro.get("regso_meta", {}),
+        "regso_index": makro.get("regso_index", {}),
         "deso_index": makro.get("deso_index", {}),
         "src_periods": makro.get("src_periods", {}),
         "infra": makro.get("infra", {"projects": []}),
@@ -89,6 +95,10 @@ def main() -> int:
                 # logic in an IIFE exposing one window global, unit-tested offline.
                 .replace("{{TESTPROP_JS}}", (SRC / "testprop.js").read_text(encoding="utf-8"))
                 .replace("{{ROUTE_JS}}", (SRC / "route_core.js").read_text(encoding="utf-8"))
+                .replace("{{SEARCH_JS}}", (SRC / "search_core.js").read_text(encoding="utf-8"))
+                # geo_core.js is the ONLY ring decoder: app.js reads it at module
+                # scope to decode the kommun outlines the page was built with.
+                .replace("{{GEO_JS}}", (SRC / "geo_core.js").read_text(encoding="utf-8"))
                 .replace("{{LISTINGS_VIEW_JS}}", (SRC / "listings" / "view.js").read_text(encoding="utf-8"))
                 .replace("{{EXPORT_JS}}", (SRC / "export_core.js").read_text(encoding="utf-8"))
                 .replace("{{APP_JS}}", (SRC / "app.js").read_text(encoding="utf-8"))
@@ -145,6 +155,19 @@ def main() -> int:
         shutil.copytree(src_deso, dst)
         n_deso = len(list(dst.glob("*.json")))
 
+    # and the RegSO pool: values.json plus one ring file per kommun
+    src_regso = PROC / "regso"
+    n_regso = 0
+    if src_regso.exists():
+        dst = out.parent / "regso"
+        if dst.exists():
+            shutil.rmtree(dst)
+        shutil.copytree(src_regso, dst)
+        n_regso = len(list(dst.glob("*.json")))
+    else:
+        print("note: data/processed/regso/ missing — every RegSO surface will say so "
+              "on the page. Re-run scripts/build_makro.py.", file=sys.stderr)
+
     # overlay geometry that is small enough to ship whole and fetched on demand
     n_ov = 0
     for name in ("polisen_uso.geojson",):
@@ -153,9 +176,18 @@ def main() -> int:
             shutil.copyfile(src, out.parent / name)
             n_ov += 1
 
-    print(f"wrote {out} ({out.stat().st_size / 1e6:.1f} MB) · "
+    # The budget is 5 MB (v2.1 P4): anything more and the first paint waits on
+    # geometry nobody has asked to see yet. Said out loud here and asserted in
+    # tests/ui_v2_1/spec.py, which is what fails the gate.
+    size_mb = out.stat().st_size / 1e6
+    print(f"wrote {out} ({size_mb:.1f} MB of a 5.0 MB budget) · "
           f"{len(data['kommuner'])} kommuner · {len(data['regso'])} RegSO · "
           f"{len(data['indicators'])} indicators · {len(market.get('series') or {})} macro series")
+    if size_mb > 5.0:
+        print(f"  ⚠ over the page-weight budget by {size_mb - 5.0:.1f} MB — "
+              f"something that should be fetched on demand is inline", file=sys.stderr)
+    if n_regso:
+        print(f"copied {n_regso} RegSO files → {out.parent / 'regso'}")
     if n_deso:
         print(f"copied {n_deso} DeSO files → {out.parent / 'deso'}")
     if n_sch:

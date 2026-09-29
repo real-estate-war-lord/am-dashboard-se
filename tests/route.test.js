@@ -147,6 +147,49 @@ test("isClim can be injected, so the registry decides rather than this file", ()
     "map?ind=my_own_climate_key");
 });
 
+/* ---- Map only (ind=none) ---- */
+
+test("ind=none survives on every path that has a map", () => {
+  assert.strictEqual(R.IND_NONE, "none");
+  assert.strictEqual(R.toV2("#map?ind=none"), "map?ind=none");
+  assert.strictEqual(R.toV2("#map/0180?ind=none"), "map/0180?ind=none");
+  assert.strictEqual(R.toV2("#map/0180/deso?ind=none"), "map/0180/deso?ind=none");
+  assert.strictEqual(R.toV2("#area/kommun/0180?ind=none"), "area/kommun/0180?ind=none");
+  assert.strictEqual(R.toV2("#area/deso/0180A0010_DeSO2025?ind=none"),
+    "area/deso/0180A0010_DeSO2025?ind=none");
+  assert.strictEqual(R.toV2("#property?p=59.3,18.07&ind=none"), "property?p=59.3,18.07&ind=none");
+});
+
+test("and is dropped from every path that has none — a table column cannot be nothing", () => {
+  assert.strictEqual(R.toV2("#data/areas/kommun?ind=none"), "data/areas/kommun");
+  assert.strictEqual(R.toV2("#table/regso?ind=none"), "data/areas/regso");
+  assert.strictEqual(R.toV2("#charts?ind=none&a=kommun:0180"), "charts?a=kommun:0180");
+  assert.strictEqual(R.toV2("#data/national?ind=none"), "data/national");
+  /* another key on the same link is untouched */
+  assert.strictEqual(R.toV2("#data/areas/regso?ind=none&cols=all"), "data/areas/regso?cols=all");
+});
+
+test("Map only carries its layers, and the old flags still fold into them", () => {
+  assert.strictEqual(R.toV2("#map?ind=none&srv=1&uso=1"), "map?ind=none&lay=services,uso");
+  assert.strictEqual(R.toV2("#map?ind=none&lay=listings"), "map?ind=none&lay=listings");
+});
+
+test("clim=1 wins over Map only: a climate link asks for a climate indicator", () => {
+  /* `none` is not a climate key, so the flag supplies the fallback exactly as it
+     does for any other non-climate indicator */
+  assert.strictEqual(R.toV2("#map?clim=1&ind=none"), "map?ind=" + R.CLIM_FALLBACK_IND);
+});
+
+test("stripNone is the one rule, and it is idempotent", () => {
+  assert.deepStrictEqual(R.stripNone("data/areas/kommun", { ind: "none", y: "2024" }), { y: "2024" });
+  assert.deepStrictEqual(R.stripNone("map", { ind: "none" }), { ind: "none" });
+  assert.deepStrictEqual(R.stripNone("area/kommun/0180", { ind: "none" }), { ind: "none" });
+  /* a real indicator is never touched, on any path */
+  assert.deepStrictEqual(R.stripNone("charts", { ind: "growth" }), { ind: "growth" });
+  /* "nonetheless" is not "none" */
+  assert.deepStrictEqual(R.stripNone("charts", { ind: "none_of_it" }), { ind: "none_of_it" });
+});
+
 /* ---- the area page tabs ---- */
 
 test("the area page's t= becomes show= and g= is dropped", () => {
@@ -168,6 +211,9 @@ const HASHES = [
   "#compare?a=kommun:0180&b=kommun:1480", "#area/kommun/0180?t=dist&g=Rents",
   "#area/regso/0180R001?show=figures", "#area/deso/0180A0010_DeSO2025",
   "#charts?ind=growth&a=kommun:0180", "#school/12345", "#project/x", "#nonsense/deep/path",
+  "#map?ind=none", "#map/0180?ind=none&lay=uso", "#map/0180/deso?ind=none",
+  "#area/kommun/0180?ind=none", "#property?p=59.3,18.0&ind=none",
+  "#data/areas/kommun?ind=none", "#charts?ind=none&a=kommun:0180",
 ];
 
 test("toV2 is idempotent for every hash the app has ever emitted", () => {

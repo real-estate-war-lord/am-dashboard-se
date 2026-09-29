@@ -4,9 +4,18 @@
 Inputs  config/indicators.json
         data/raw/scb_<TABLE>_<level>.jsonl.gz  (94 pulls)  + scb_<TABLE>.meta.json
         data/geo/kommuner.geojson · regso.geojson · deso.geojson
-Output  data/processed/makro.json          kommun + RegSO inline
-        data/processed/deso/<kommun>.json  DeSO, loaded on demand by the page
+Output  data/processed/makro.json            kommun inline, RegSO as a name index
+        data/processed/regso/values.json     the 3 363 RegSO, figures, no rings
+        data/processed/regso/<kommun>.json   RegSO rings, loaded on demand
+        data/processed/regso/index.json
+        data/processed/deso/<kommun>.json    DeSO, loaded on demand by the page
         data/processed/deso/index.json
+
+v2.1 P4 — page weight. The 290 kommun outlines are the only geometry left in
+the page; every RegSO ring, every RegSO figure and every DeSO file is fetched
+next to it. Rings travel encoded (see enc_ring below and src/geo_core.js, which
+is the only decoder): one short string per ring instead of an array of pairs,
+lossless at the 5 decimals rings_of() rounds to.
 
 Every calculation is driven by the `calc` field of an indicator. A source with
 no `share` block is a passthrough even when its indicator is a ratio — that is
@@ -46,6 +55,7 @@ from se_common import (  # noqa: E402
 
 OUT = PROC / "makro.json"
 DESO_DIR = PROC / "deso"
+REGSO_DIR = PROC / "regso"
 
 RE_KOMMUN = re.compile(r"^\d{4}$")
 RE_LAN = re.compile(r"^\d{2}$")
@@ -364,10 +374,60 @@ def polisen_uso() -> dict:
     return dict(out)
 
 
+# Which periods Brå has published as preliminary, per file, filled by bra_csv().
+# A separate dict rather than a sixth element on every tuple: the flag is a
+# property of the PERIOD, not of one kommun's value, and it travels to the page
+# as a list so the UI can badge the option and the "as of" line with "prel.".
+BRA_PREL: dict[str, set[str]] = {}
+
+
+def infra_payload() -> dict:
+    """The curated project list, plus WHY a blank budget is blank.
+
+    A blank budget_msek in data/external/infra_se.csv is deliberate — the four
+    nya tunnelbanan extensions are funded as one 55.5 bn SEK programme and no
+    per-line figure exists anywhere. The page used to render that as a bare "–",
+    which reads as a hole in this dashboard rather than as a fact about the
+    source. data/external/infra_budget_state.csv says which of the two it is, per
+    project, with the sentence the source's own page supports; nothing is
+    invented, apportioned or converted. A project with a blank budget and no row
+    there defaults to `not_published`."""
+    ip = PROC / "infra_index.json"
+    if not ip.exists():
+        return {"projects": []}
+    payload = json.loads(ip.read_text(encoding="utf-8"))
+    state: dict[str, tuple[str, str]] = {}
+    sp = EXT / "infra_budget_state.csv"
+    if sp.exists():
+        with sp.open(encoding="utf-8") as fh:
+            for line in fh:
+                line = line.rstrip("\n")
+                if not line or line.startswith("#") or line.startswith("id;"):
+                    continue
+                parts = line.split(";")
+                if len(parts) >= 2:
+                    state[parts[0].strip()] = (parts[1].strip(), ";".join(parts[2:]).strip())
+    unknown = sorted(set(state) - {p.get("id") for p in payload.get("projects") or []})
+    if unknown:
+        warn(f"infra_budget_state.csv names project(s) that do not exist: {unknown}")
+    for p in payload.get("projects") or []:
+        if p.get("budget_msek") is not None:
+            continue
+        st, note = state.get(p.get("id"), ("not_published", ""))
+        if st not in ("programme", "not_published"):
+            warn(f"{p.get('id')}: budget state '{st}' is not programme|not_published")
+            st = "not_published"
+        p["budget_state"] = st
+        p["budget_note"] = note or (p.get("notes") or "")
+    return payload
+
+
 def bra_csv(name: str) -> dict:
     """data/external/<name>.csv -> {key: {period: {kommun: (count, per100k)}}}."""
     p = EXT / f"{name}.csv"
     out: dict = collections.defaultdict(lambda: collections.defaultdict(dict))
+    prel: set = set()
+    BRA_PREL[name] = prel
     if not p.exists():
         return {}
     with p.open(encoding="utf-8") as fh:
@@ -377,6 +437,8 @@ def bra_csv(name: str) -> dict:
             if len(r) < 5:
                 continue
             code, period, key, cnt, rate = (x.strip() for x in r[:5])
+            if len(r) > 5 and r[5].strip():
+                prel.add(period)
             try:
                 c = float(cnt)
             except ValueError:
@@ -396,8 +458,48 @@ def load_geo(name: str):
 
 
 def rings_of(feature: dict) -> list:
+    """GeoJSON [lon, lat] → the [lat, lon] Leaflet wants, rounded to ~1.1 m.
+
+    THE ONLY SWAP IN THE PIPELINE. Nothing downstream — not enc_ring below, not
+    src/geo_core.js — touches the order again; CLAUDE.md records what the second
+    swap did the one time it existed."""
     return [[[round(p[1], 5), round(p[0], 5)] for p in ring]
             for poly in feature["geometry"]["coordinates"] for ring in poly]
+
+
+# ---- the ring codec (the decoder is src/geo_core.js; keep the two in step) ----
+# Google's polyline algorithm with a base64url alphabet instead of the 0x3F
+# offset, because that offset puts "\" in the range and JSON doubles every one
+# of them. Zig-zag, 5 bits per character, low group first, deltas against the
+# previous point of the ring. Lossless at 5 decimals, which is what rings_of
+# has already rounded to.
+ENC_ALPHA = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
+ENC_SCALE = 100000
+
+
+def enc_num(v: int) -> str:
+    x = ~(v << 1) if v < 0 else (v << 1)
+    out = []
+    while x >= 0x20:
+        out.append(ENC_ALPHA[0x20 | (x & 0x1F)])
+        x >>= 5
+    out.append(ENC_ALPHA[x])
+    return "".join(out)
+
+
+def enc_ring(ring: list) -> str:
+    la = lo = 0
+    out = []
+    for p in ring:
+        a, b = round(p[0] * ENC_SCALE), round(p[1] * ENC_SCALE)
+        out.append(enc_num(a - la))
+        out.append(enc_num(b - lo))
+        la, lo = a, b
+    return "".join(out)
+
+
+def enc_rings(rings: list) -> list:
+    return [enc_ring(r) for r in (rings or [])]
 
 
 # ---------------------------------------------------------------- distributions
@@ -863,6 +965,14 @@ def main() -> int:
             m = meta_of(ind, {"kommun": last}, {y: {"kommun": y} for y in years})
             if qper:
                 m["q_periods"] = qper
+                # every quarter is ONE quarter, never a rolling four-quarter sum
+                m["q_kind"] = "single"
+                prel = sorted(BRA_PREL.get("bra_crime_quarterly", set()) & set(qper))
+                if prel:
+                    m["q_prel"] = prel
+            yprel = sorted(BRA_PREL.get("bra_crime", set()) & set(years))
+            if yprel:
+                m["prel_periods"] = yprel
             if calc == "bra_per_1000_dwellings":
                 m["denominator"] = f"SCB TAB824 dwelling stock, {dw_year}"
             indicators_out.append(m)
@@ -1029,6 +1139,46 @@ def main() -> int:
                         "codes": dists["kommun"][what].get("codes")}
                  for what in ("age", "income", "tenure", "industry", "selfsuff")}
 
+    # ---- every ring is encoded from here on; the kommun outlines are the only
+    #      ones that stay in the page. See enc_ring() and src/geo_core.js.
+    for level in ("kommun", "regso", "deso"):
+        for e in ENT[level].values():
+            e["rings"] = enc_rings(e.get("rings"))
+
+    # ---- RegSO: the figures in one file, the rings in one file per kommun
+    #
+    # Two files rather than one, because the two are wanted at different moments.
+    # Every RegSO surface — the Data table's 3 363 rows, the national RegSO
+    # median behind a rank, the export — needs the FIGURES for all of them and
+    # none of the geometry; the map needs the geometry of ONE kommun and nothing
+    # else. Shipping them together would mean fetching 290 files to print a
+    # median, or 1.4 MB of coastline to fill in a table.
+    REGSO_DIR.mkdir(parents=True, exist_ok=True)
+    for old in REGSO_DIR.glob("*.json"):
+        old.unlink()
+    regso_rings: dict = collections.defaultdict(dict)
+    for cod, e in regso.items():
+        regso_rings[e["kommun"]][cod] = e["rings"]
+    regso_index = {}
+    for kod, rings in sorted(regso_rings.items()):
+        (REGSO_DIR / f"{kod}.json").write_text(
+            json.dumps({"kommun": kod, "rings": rings}, ensure_ascii=False, separators=(",", ":")),
+            encoding="utf-8")
+        regso_index[kod] = {"n": len(rings), "file": f"regso/{kod}.json"}
+    regso_values = [{k: v for k, v in e.items() if k != "rings"}
+                    for e in sorted(regso.values(), key=lambda a: a["code"])]
+    (REGSO_DIR / "values.json").write_text(
+        json.dumps({"areas": regso_values, "built": built},
+                   ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    (REGSO_DIR / "index.json").write_text(
+        json.dumps({"kommuner": regso_index, "built": built},
+                   ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    regso_mb = sum(p.stat().st_size for p in REGSO_DIR.glob("*.json")) / 1e6
+    print(f"regso: values.json {(REGSO_DIR / 'values.json').stat().st_size / 1e6:.1f} MB · "
+          f"{len(regso_index)} ring files · {regso_mb:.1f} MB total · "
+          f"largest ring file "
+          f"{max((REGSO_DIR / f'{k}.json').stat().st_size for k in regso_index) / 1e3:.0f} kB")
+
     # ---- DeSO goes to one file per kommun, loaded on demand
     DESO_DIR.mkdir(parents=True, exist_ok=True)
     for old in DESO_DIR.glob("*.json"):
@@ -1089,8 +1239,7 @@ def main() -> int:
         },
         "indicators": indicators_out,
         # Pipeline and the Infrastructure overlay read this list directly
-        "infra": (json.loads((PROC / "infra_index.json").read_text(encoding="utf-8"))
-                  if (PROC / "infra_index.json").exists() else {"projects": []}),
+        "infra": infra_payload(),
         # the Services / Public buildings overlays
         "services_meta": (json.loads((PROC / "services.json").read_text(encoding="utf-8"))
                           if (PROC / "services.json").exists() else {}),
@@ -1102,11 +1251,23 @@ def main() -> int:
                           if (PROC / "schools.json").exists() else {}).get("index", {}),
         "schools_meta": (json.loads((PROC / "schools.json").read_text(encoding="utf-8"))
                          if (PROC / "schools.json").exists() else {}).get("meta", {}),
-        # shared by every verify-at-source link on a monthly or quarterly table:
-        # a year is not a Tid code there, so the page needs the real period codes
-        "src_periods": src_periods,
+        # Shared by every verify-at-source link on a monthly or quarterly table:
+        # a year is not a Tid code there, so the page needs the real period codes.
+        # srcPeriods() in app.js only ever matches a period against a year the
+        # reader can select, so the lists are cut to the years this build holds —
+        # CPI's ran monthly back to 1980M01 and 45 years of it were dead weight.
+        "src_periods": {t: [p for p in codes if p[:4] >= years_sorted[0]]
+                        for t, codes in src_periods.items()},
         "kommuner": sorted(kommuner.values(), key=lambda m: -(m.get("pop") or 0)),
-        "regso": sorted(regso.values(), key=lambda a: a["code"]),
+        # RegSO in the page is the name index and nothing else: code, name and
+        # kommun for all 3 363, which is what the search box, the row counts and
+        # the breadcrumbs need on a cold open. The figures arrive from
+        # regso/values.json and are merged into these same objects; the rings
+        # arrive per kommun. ~0.25 MB here against 10.4 MB before.
+        "regso": [{"code": a["code"], "name": a["name"], "kommun": a["kommun"]}
+                  for a in regso_values],
+        "regso_meta": {"n": len(regso_values), "file": "regso/values.json"},
+        "regso_index": regso_index,
         "deso_index": index,
     }
     OUT.parent.mkdir(parents=True, exist_ok=True)
@@ -1116,6 +1277,40 @@ def main() -> int:
     for w in warnings:
         print("  ⚠", w)
     return 0
+
+
+# SCB marks a not-yet-final period in prose only: a table-level note that either
+# names the year it starts ("The figures from 2026 are preliminary.") or says the
+# whole table is preliminary ("… Preliminary statistics. Month 2020M01-2026M06").
+# Both are read off the metadata the fetcher recorded — never inferred from how
+# new a period looks — and travel to the page, which badges the period "prel.".
+PREL_FROM = re.compile(r"figures\s+from\s+(\d{4})\s+are\s+preliminary", re.I)
+PREL_ALL = re.compile(r"preliminary statistics", re.I)
+
+
+def ind_prel(ind: dict) -> dict:
+    """-> {"prel": {geo: "all" | "<first preliminary year>"}} or {}.
+
+    Per geography, because an indicator is often two tables: unemployment is
+    preliminary at kommun (TAB6260, "Preliminary statistics") and final at
+    RegSO/DeSO (TAB6680). Badging the whole indicator would put "prel." on a
+    figure that is not."""
+    out: dict[str, str] = {}
+    for s in ind.get("sources") or []:
+        if s.get("db") not in (None, "scb") or s.get("role") == "denominator":
+            continue
+        t = s.get("table")
+        if not t:
+            continue
+        geo = s.get("geo") or ind.get("level") or "kommun"
+        m = table_meta(t)
+        blob = " ".join([str(m.get("label") or "")] + [str(x) for x in (m.get("note") or [])])
+        hit = PREL_FROM.search(blob)
+        if hit:
+            out[geo] = hit.group(1)
+        elif PREL_ALL.search(blob):
+            out[geo] = "all"
+    return {"prel": out} if out else {}
 
 
 def meta_of(ind: dict, asof: dict, hist_asof: dict) -> dict:
@@ -1136,6 +1331,7 @@ def meta_of(ind: dict, asof: dict, hist_asof: dict) -> dict:
                 "note": ind.get("note", ""), "moe": bool(ind.get("moe")),
                 "moe_rel": (ind.get("moe") or {}).get("suppress_if_rel_gt"),
                 "asof": asof, "hist_asof": hist_asof})
+    out.update(ind_prel(ind))
     return out
 
 

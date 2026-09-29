@@ -26,9 +26,14 @@
    blocks in one global lexical scope, so a top-level const here would collide. */
 (function () {
 
+/* `value_label` is the word behind a coded value — Boverket's housing-market
+   assessment is exported as −1/0/1 AND as Shortage/Balance/Surplus, because the
+   number is what a spreadsheet sorts on and the word is what a reader needs to
+   know it is not a quantity. It is empty for every ordinary indicator. */
 const LONG_COLUMNS = [
   "level", "code", "name", "parent_code", "parent_name", "lan", "population",
-  "indicator", "label", "unit", "period", "period_type", "value", "margin_of_error",
+  "indicator", "label", "unit", "period", "period_type", "value", "value_label",
+  "margin_of_error",
   "value_type", "inherited_from", "direction", "source", "table_id", "source_url",
   "as_of", "fetched", "licence",
 ];
