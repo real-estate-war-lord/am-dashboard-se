@@ -166,15 +166,24 @@ test("HomeQ failing does not take the portals down with it", async () => {
 
 test("a hanging HomeQ is cut off at 8 s and reported", async () => {
   const env = { LISTINGS_KV: kvStub(freshSnapshots()) };
-  const r = await call(`/nearby?${CENTER}&r=3000`, {
-    upstream: (url, opts) => new Promise((_res, rej) => {
-      opts.signal.addEventListener("abort", () => rej(opts.signal.reason));
-    }),
-    env,
-  });
-  assert.equal(srcOf(r.body, "homeq").ok, false);
-  assert.match(srcOf(r.body, "homeq").error, /did not answer in time/);
-  assert.equal(srcOf(r.body, "heimstaden").ok, true, "the portals are unaffected");
+  // AbortSignal.timeout() runs on an unref'd timer in Node, so while this test waits for the
+  // cut-off nothing holds the event loop open: the process drains, and the runner cancels this
+  // test and every one after it ("Promise resolution is still pending but the event loop has
+  // already resolved"). A ref'd interval keeps the loop alive until the abort has fired.
+  const keepAlive = setInterval(() => {}, 1000);
+  try {
+    const r = await call(`/nearby?${CENTER}&r=3000`, {
+      upstream: (url, opts) => new Promise((_res, rej) => {
+        opts.signal.addEventListener("abort", () => rej(opts.signal.reason));
+      }),
+      env,
+    });
+    assert.equal(srcOf(r.body, "homeq").ok, false);
+    assert.match(srcOf(r.body, "homeq").error, /did not answer in time/);
+    assert.equal(srcOf(r.body, "heimstaden").ok, true, "the portals are unaffected");
+  } finally {
+    clearInterval(keepAlive);
+  }
 });
 
 test("listings from all sources come back sorted by distance", async () => {
