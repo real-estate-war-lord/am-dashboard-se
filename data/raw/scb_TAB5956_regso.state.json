@@ -11,8 +11,8 @@
   "{\"ContentsCode\": [\"000005MO\", \"000005MO\", 1], \"Region\": [\"0114R001\", \"2584R015\", 3363], \"Tid\": [\"2023\", \"2023\", 1], \"UtbildningsNiva\": [\"21\", \"US\", 5]}"
  ],
  "rows": 151335,
- "started": "2026-09-20T18:56:28",
- "finished": "2026-09-20T18:57:07",
+ "started": "2026-11-23T16:45:22",
+ "finished": "2026-11-23T16:46:04",
  "updated_at_source": "2024-04-25T06:00:00Z",
  "vintage": "RegSO2020 (no 2025 codes in table)",
  "time_spec": "all",

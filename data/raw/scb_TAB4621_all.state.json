@@ -1,11 +1,11 @@
 {
  "done": [
-  "{\"Agarkategori\": [\"PrivOovriga\", \"00\", 3], \"ByggAr\": [\"1\", \"00\", 8], \"ContentsCode\": [\"0000014H\", \"0000014I\", 4], \"Region\": [\"00\", \"0041\", 6], \"Tid\": [\"2016\", \"2025\", 10]}"
+  "{\"Agarkategori\": [\"PrivOovriga\", \"00\", 3], \"ByggAr\": [\"1\", \"00\", 8], \"ContentsCode\": [\"0000014H\", \"0000014I\", 4], \"Region\": [\"00\", \"0041\", 6], \"Tid\": [\"2016\", \"2026\", 11]}"
  ],
- "rows": 5760,
- "started": "2026-09-20T19:18:21",
- "finished": "2026-09-20T19:18:22",
- "updated_at_source": "2025-10-03T06:00:00Z",
+ "rows": 6336,
+ "started": "2026-11-23T17:14:27",
+ "finished": "2026-11-23T17:14:29",
+ "updated_at_source": "2026-10-02T06:00:00Z",
  "vintage": "all levels",
  "time_spec": "all",
  "note": "rent change %"

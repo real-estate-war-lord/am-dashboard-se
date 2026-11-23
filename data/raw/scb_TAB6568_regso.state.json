@@ -13,8 +13,8 @@
   "{\"ContentsCode\": [\"000007Y1\", \"000007Y1\", 1], \"Hushallstyp\": [\"SBMB\", \"TOTALT\", 6], \"Region\": [\"0114R001_RegSO2025\", \"2584R015_RegSO2025\", 3363], \"Tid\": [\"2025\", \"2025\", 1]}"
  ],
  "rows": 221958,
- "started": "2026-09-20T18:05:08",
- "finished": "2026-09-20T18:06:23",
+ "started": "2026-11-23T15:59:00",
+ "finished": "2026-11-23T16:00:17",
  "updated_at_source": "2026-03-24T07:00:00Z",
  "vintage": "RegSO2025",
  "time_spec": "top(11)",

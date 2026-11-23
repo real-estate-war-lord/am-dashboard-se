@@ -1,11 +1,11 @@
 {
  "done": [
-  "{\"ContentsCode\": [\"BO0501AF\", \"BO0501AI\", 3], \"Region\": [\"00\", \"00\", 1], \"Tid\": [\"2015M09\", \"2026M08\", 132]}"
+  "{\"ContentsCode\": [\"BO0501AF\", \"BO0501AI\", 3], \"Region\": [\"00\", \"00\", 1], \"Tid\": [\"2015M11\", \"2026M10\", 132]}"
  ],
  "rows": 396,
- "started": "2026-09-20T19:19:43",
- "finished": "2026-09-20T19:19:44",
- "updated_at_source": "2026-09-10T06:00:00Z",
+ "started": "2026-11-23T17:16:10",
+ "finished": "2026-11-23T17:16:12",
+ "updated_at_source": "2026-11-05T07:00:00Z",
  "vintage": "",
  "time_spec": "top(132)",
  "note": "småhusbarometern, national, monthly"

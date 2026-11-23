@@ -3,8 +3,8 @@
   "{\"ContentsCode\": [\"BO0104AH\", \"BO0104AH\", 1], \"Hustyp\": [\"SMÅHUS\", \"SPEC\", 4], \"Region\": [\"0114\", \"2584\", 290], \"Tid\": [\"2015\", \"2025\", 11], \"Upplatelseform\": [\"1\", \"ÖVRIGT\", 4]}"
  ],
  "rows": 51040,
- "started": "2026-09-20T18:58:09",
- "finished": "2026-09-20T18:58:10",
+ "started": "2026-11-23T16:47:02",
+ "finished": "2026-11-23T16:47:05",
  "updated_at_source": "2026-04-17T06:00:00Z",
  "vintage": "kommun",
  "time_spec": "top(11)",

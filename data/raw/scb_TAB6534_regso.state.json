@@ -3,8 +3,8 @@
   "{\"ContentsCode\": [\"000007Z6\", \"000007Z6\", 1], \"Region\": [\"0114R001_RegSO2025\", \"2584R015_RegSO2025\", 3363], \"Tid\": [\"2024\", \"2025\", 2], \"UtbildningsNiva\": [\"21\", \"US\", 5]}"
  ],
  "rows": 33630,
- "started": "2026-09-20T18:56:17",
- "finished": "2026-09-20T18:56:21",
+ "started": "2026-11-23T16:45:02",
+ "finished": "2026-11-23T16:45:07",
  "updated_at_source": "2026-04-27T06:00:00Z",
  "vintage": "RegSO2025",
  "time_spec": "all",

@@ -13,8 +13,8 @@
   "{\"ContentsCode\": [\"000007DQ\", \"000007DQ\", 1], \"Region\": [\"0114A0010_DeSO2025\", \"2584C1130_DeSO2025\", 6160], \"Tid\": [\"2025\", \"2025\", 1], \"Upplatelseform\": [\"ÄG/ANDEL\", \"TOTALT\", 5]}"
  ],
  "rows": 338800,
- "started": "2026-09-20T19:03:44",
- "finished": "2026-09-20T19:05:18",
+ "started": "2026-11-23T16:55:16",
+ "finished": "2026-11-23T16:57:05",
  "updated_at_source": "2026-04-17T06:00:00Z",
  "vintage": "DeSO2025",
  "time_spec": "top(11)",

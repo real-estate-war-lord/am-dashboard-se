@@ -11,8 +11,8 @@
   "{\"ContentsCode\": [\"000006OC\", \"000006OC\", 1], \"Region\": [\"0114A0010\", \"2584C1130\", 5984], \"Tid\": [\"2023\", \"2023\", 1], \"Upplatelseform\": [\"1\", \"ÖVRIGT\", 4]}"
  ],
  "rows": 215424,
- "started": "2026-09-20T18:58:49",
- "finished": "2026-09-20T18:59:26",
+ "started": "2026-11-23T16:48:12",
+ "finished": "2026-11-23T16:49:04",
  "updated_at_source": "2024-04-18T06:00:00Z",
  "vintage": "DeSO2018 (no 2025 codes in table)",
  "time_spec": "all",

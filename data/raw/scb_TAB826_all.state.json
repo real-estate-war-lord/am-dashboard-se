@@ -13,8 +13,8 @@
   "{\"Bostadsarea\": [\"30mindre\", \"US\", 20], \"ContentsCode\": [\"BO0104AE\", \"BO0104AE\", 1], \"Hustyp\": [\"SMÅHUS\", \"ÖVRHUS\", 3], \"Region\": [\"00\", \"2584\", 312], \"Tid\": [\"2025\", \"2025\", 1]}"
  ],
  "rows": 205920,
- "started": "2026-09-20T18:59:26",
- "finished": "2026-09-20T18:59:44",
+ "started": "2026-11-23T16:49:04",
+ "finished": "2026-11-23T16:49:36",
  "updated_at_source": "2026-04-17T06:00:00Z",
  "vintage": "all levels",
  "time_spec": "top(11)",

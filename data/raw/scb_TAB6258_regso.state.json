@@ -11,8 +11,8 @@
   "{\"ContentsCode\": [\"000006OC\", \"000006OC\", 1], \"Region\": [\"0114R001\", \"2584R015\", 3363], \"Tid\": [\"2023\", \"2023\", 1], \"Upplatelseform\": [\"1\", \"ÖVRIGT\", 4]}"
  ],
  "rows": 121068,
- "started": "2026-09-20T18:58:19",
- "finished": "2026-09-20T18:58:49",
+ "started": "2026-11-23T16:47:24",
+ "finished": "2026-11-23T16:48:09",
  "updated_at_source": "2024-04-18T06:00:00Z",
  "vintage": "RegSO2020 (no 2025 codes in table)",
  "time_spec": "all",

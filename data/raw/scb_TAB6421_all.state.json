@@ -1,11 +1,11 @@
 {
  "done": [
-  "{\"AntalRum\": [\"1\", \"00\", 6], \"Byggherre\": [\"1\", \"4\", 3], \"ContentsCode\": [\"000007NC\", \"000007NH\", 6], \"Region\": [\"00\", \"0041\", 6], \"Tid\": [\"2022\", \"2024\", 3]}"
+  "{\"AntalRum\": [\"1\", \"00\", 6], \"Byggherre\": [\"1\", \"4\", 3], \"ContentsCode\": [\"000007NC\", \"000007NH\", 6], \"Region\": [\"00\", \"0041\", 6], \"Tid\": [\"2022\", \"2025\", 4]}"
  ],
- "rows": 1944,
- "started": "2026-09-20T19:18:44",
- "finished": "2026-09-20T19:18:45",
- "updated_at_source": "2025-10-14T06:00:00Z",
+ "rows": 2592,
+ "started": "2026-11-23T17:14:40",
+ "finished": "2026-11-23T17:14:41",
+ "updated_at_source": "2026-10-02T06:00:00Z",
  "vintage": "all levels",
  "time_spec": "all",
  "note": "new-build rents, companion table"
