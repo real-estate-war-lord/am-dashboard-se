@@ -13,7 +13,7 @@ on:
     branches: [main]                 # UI/code change -> rebuild + deploy (no fetch)
   schedule: [{ cron: "0 4 5 * *" }]  # 5th of each month, 04:00 UTC — SCB publishes early
   workflow_dispatch:                 # manual: same as schedule
-permissions: { contents: write, pages: write, id-token: write }
+permissions: { contents: write, pages: write, id-token: write, issues: write }
 concurrency: { group: pages, cancel-in-progress: false }
 
 jobs:
@@ -23,10 +23,10 @@ jobs:
   # unit suite couples two things that ship independently, and it did exactly
   # that — a gateway failure held back the whole site.
   #
-  # NOTE: this suite is 153 green locally, including under CI's timezone and
-  # locale, with no network calls and only node: built-ins imported. It failed
-  # on the runner under Node 22 and the cause is not yet understood; it is
-  # isolated here so it is visible without being able to block a release.
+  # It used to fail on the runner with 25 tests cancelled: the hanging-HomeQ test
+  # waited on AbortSignal.timeout(), whose timer is unref'd, so the event loop
+  # drained and the runner cancelled that test and everything after it. The test
+  # now holds the loop open itself (gateway/test/worker.test.js).
   gateway-tests:
     runs-on: ubuntu-latest
     steps:
@@ -47,8 +47,13 @@ jobs:
       - name: Check the indicator registry against the metadata on disk
         run: python scripts/validate_indicators.py
 
+      # --refresh is what makes this a refresh. data/raw/*.state.json is committed and says
+      # every pull is finished, but the *.jsonl.gz it describes is not committed — so without
+      # the flag a fresh runner reports "cached 96", downloads nothing in 0.0 min, and
+      # build_makro then stops on the first raw file it cannot find. That is how the
+      # October and November 2026 runs failed.
       - name: Pull SCB
-        run: python scripts/fetch_scb.py
+        run: python scripts/fetch_scb.py --refresh
 
       - name: Pull Riksbank
         run: python scripts/fetch_riksbank.py || echo "Riksbank unavailable — policy_rate/bond_10y will show no data"
@@ -78,6 +83,14 @@ jobs:
           git add data/external data/geo/polisen_uso.geojson data/raw/bra/*.meta.json || true
           git commit -m "data: monthly refresh $(date +%F)" || echo "nothing to commit"
           git push
+
+      # A failed cron run is otherwise silent: the page just keeps last month's figures.
+      - name: Open an issue when the refresh fails
+        if: failure()
+        env: { GH_TOKEN: "${{ github.token }}" }
+        run: |
+          gh issue create --title "Monthly data refresh failed $(date +%F)" \
+            --body "The scheduled refresh did not finish, so the published page still shows the previous data. Log: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
 
   build-deploy:
     needs: refresh
