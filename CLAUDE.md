@@ -48,7 +48,8 @@ Also done:
   the level vocabulary renamed and the Buildings/BBR layer replaced by distribution cards.
 - `scripts/fetch_riksbank.py` — SWEA API, `SECBREPOEFF` and `SEGVB10YC`.
 - `tests/smoke.js` — renders every view headlessly against the built page and asserts the
-  documented numbers (Stockholm 1 710 ±28, Malå suppressed, RegSO not inheriting).
+  documented numbers (Stockholm 1 710 ±28 and Malå suppressed, both for 2025 — pinned to that
+  year in the history, never to the latest value, which moves with every survey; RegSO not inheriting).
   `make test`.
 
 **Trap:** simplification tolerances must be in **metres**, never degrees. A degree of
@@ -156,8 +157,8 @@ Base `https://api.scb.se/OV0104/v2beta/api/v2/`, no key, licence CC0 (attribute
   control. Render the ±, and grey or suppress kommuner whose margin is too wide. False precision is
   the easy mistake here.
 - Suppressed values (`..` / null) stay null and render as `–`. **Never imputed, never 0.**
-  Sanity check: Malå (2418) is fully suppressed in TAB4590; Stockholm (0180) 2025 is median
-  1 710 SEK/m²/yr ±28, mean 1 734 ±19.
+  Sanity check, both for 2025: Malå (2418) is suppressed in TAB4590 (it is published again from
+  2026); Stockholm (0180) is median 1 710 SEK/m²/yr ±28, mean 1 734 ±19.
 - **The price chip is labelled K/T-tal** (purchase price ÷ assessed value), never "price per m²".
   Sweden publishes no open realised price per m² at any geography; claiming otherwise would be wrong.
   Known gaps to state plainly in the README: no price/m², no bostadsrätt prices below län, no

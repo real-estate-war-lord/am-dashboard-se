@@ -251,10 +251,19 @@ assert("a coded indicator exports the number AND the word",
 console.log("\ndata contract:");
 const byCode = A.byCode;
 const sthlm = byCode["0180"], mala = byCode["2418"];
-assert("Stockholm rent 1710", sthlm.rent === 1710, `got ${sthlm.rent}`);
-assert("Stockholm rent margin ±28", sthlm.rent_moe === 28, `got ±${sthlm.rent_moe}`);
-assert("Malå rent suppressed (absent, not 0)", sthlm.rent != null && mala.rent == null,
-       `Malå rent = ${JSON.stringify(mala.rent)}`);
+/* The documented figures are the 2025 survey's (docs/DATA_MAP_SE.md). They are pinned to that
+   year in the history, not to "latest": the first monthly refresh after SCB published the 2026
+   survey moved the latest value to 1 772 ±31, published Malå for the first time, and failed
+   three assertions that were about a year, not about the page. A year that has been published
+   does not change, so these hold across every later refresh. */
+const rentHist = k => (k.hist || {}).rent || {}, moeHist = k => (k.hist || {}).rent_moe || {};
+assert("Stockholm rent 2025 is 1710", rentHist(sthlm)["2025"] === 1710, `got ${rentHist(sthlm)["2025"]}`);
+assert("Stockholm rent margin 2025 is ±28", moeHist(sthlm)["2025"] === 28, `got ±${moeHist(sthlm)["2025"]}`);
+assert("Malå rent 2025 suppressed (absent, not 0)", !("2025" in rentHist(mala)),
+       `Malå rent 2025 = ${JSON.stringify(rentHist(mala)["2025"])}`);
+assert("the latest rent is the newest year in the history",
+       sthlm.rent != null && sthlm.rent === rentHist(sthlm)[Object.keys(rentHist(sthlm)).sort().pop()],
+       `latest ${sthlm.rent} · history ends ${Object.keys(rentHist(sthlm)).sort().pop()}`);
 const sub = D.regso.filter(r => r.kommun === "0180");
 const distinct = new Set(sub.map(r => r.income_med).filter(v => v != null));
 assert("RegSO carry their own values, not the kommun's",
@@ -274,8 +283,11 @@ assert("every registered indicator either has data or says why",
 console.log("\nrendered output:");
 S.view = "table"; T.level = "kommun"; MK.ind = "rent";
 const tbl = A.vTable();
-assert("the ± is rendered, not just carried", tbl.includes("±28"), "Stockholm rent ±28 in the table");
-assert("a suppressed value renders as –", />–</.test(tbl), "Malå row shows –");
+assert("the ± is rendered, not just carried", sthlm.rent_moe > 0 && tbl.includes(`±${sthlm.rent_moe}`),
+       `Stockholm rent ±${sthlm.rent_moe} in the table`);
+const noRent = D.kommuner.filter(k => k.rent == null).length;
+assert("a suppressed value renders as –", noRent === 0 || />–</.test(tbl),
+       `${noRent} kommun(er) with no published rent`);
 assert("a margin too wide for the indicator is flagged", tbl.includes("moe wide"),
        `${(tbl.match(/moe wide/g) || []).length} kommuner greyed for a wide margin`);
 
