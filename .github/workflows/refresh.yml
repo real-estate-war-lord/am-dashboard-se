@@ -1,6 +1,7 @@
 name: refresh-data
 # Two jobs, as in the Danish edition, but the Swedish pull is much heavier:
-# ~1 350 calls and 43 M cells, about 70 minutes. So the monthly job fetches and
+# ~1 350 calls and 45 M rows. It took 108 minutes on 2026-11-23 and was still 250 calls
+# short after 180 on 2026-11-27, when SCB answered slowly — the time is SCB's, not ours. So the monthly job fetches and
 # rebuilds the processed layer and commits it; every push only re-assembles the
 # page from what is already committed, which takes seconds.
 #
@@ -12,7 +13,12 @@ on:
   push:
     branches: [main]                 # UI/code change -> rebuild + deploy (no fetch)
   schedule: [{ cron: "0 4 5 * *" }]  # 5th of each month, 04:00 UTC — SCB publishes early
-  workflow_dispatch:                 # manual: same as schedule
+  workflow_dispatch:                 # manual: same as schedule, unless deploy_only is ticked
+    inputs:
+      deploy_only:
+        description: "Publish what is already committed, without pulling SCB again"
+        type: boolean
+        default: false
 permissions: { contents: write, pages: write, id-token: write, issues: write }
 concurrency: { group: pages, cancel-in-progress: false }
 
@@ -36,9 +42,14 @@ jobs:
       - run: cd gateway && node --test test/*.test.js
 
   refresh:
-    if: github.event_name != 'push'
+    # deploy_only is the way out when only the publish step failed (GitHub Pages has twice
+    # reported "No artifacts named github-pages were found" straight after uploading one):
+    # re-running that job fails on a duplicate artifact, and a fresh run without this input
+    # would repeat a two-hour pull to publish data that is already committed.
+    if: github.event_name != 'push' && inputs.deploy_only != true
     runs-on: ubuntu-latest
-    timeout-minutes: 180
+    # GitHub's ceiling for a job is 360. 180 left no room for a slow day at SCB.
+    timeout-minutes: 330
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-python@v6
@@ -86,7 +97,9 @@ jobs:
 
       # A failed cron run is otherwise silent: the page just keeps last month's figures.
       - name: Open an issue when the refresh fails
-        if: failure()
+        # cancelled() covers the timeout: a job that runs out of time is cancelled, not failed,
+        # and on 2026-11-27 that is exactly how a refresh ended without anyone being told.
+        if: failure() || cancelled()
         env: { GH_TOKEN: "${{ github.token }}" }
         run: |
           gh issue create --title "Monthly data refresh failed $(date +%F)" \
